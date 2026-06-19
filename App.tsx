@@ -8,6 +8,8 @@ import {
   LayoutChangeEvent,
   Pressable,
   SafeAreaView,
+  ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -64,6 +66,7 @@ import {
   listInFlightReminders,
   listStableSnails
 } from "./src/useCases/localCarrierState";
+import { buildJourneyWatchState } from "./src/useCases/watchJourneyState";
 import { loadBackendJourneyState } from "./src/useCases/loadBackendJourneyState";
 import {
   resolveAnonymousCarrierUser,
@@ -96,6 +99,12 @@ const REVENUECAT_PRODUCT_IDENTIFIERS = {
 } satisfies Record<PurchaseProductId, string>;
 
 const RUNTIME_MODE = __DEV__ ? "development" : "production";
+const WATCH_SCRUB_STOPS = [
+  { label: "Start", progress: 0 },
+  { label: "25%", progress: 0.25 },
+  { label: "50%", progress: 0.5 },
+  { label: "75%", progress: 0.75 }
+] as const;
 
 type Viewport = {
   height: number;
@@ -126,6 +135,12 @@ export default function App() {
   const [backgroundLocationMode, setBackgroundLocationMode] =
     useState<BackgroundLocationMode>("foreground-only");
   const [personalityDemoEnabled, setPersonalityDemoEnabled] = useState(false);
+  const [selectedWatchJourneyId, setSelectedWatchJourneyId] = useState<
+    string | undefined
+  >(undefined);
+  const [watchScrubProgress, setWatchScrubProgress] = useState<
+    number | undefined
+  >(undefined);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
@@ -306,8 +321,6 @@ export default function App() {
       }),
     [journeyCreatedAtMs, target]
   );
-  const activeJourney = getActiveJourney(carrierState);
-  const journey = activeJourney ?? demoJourney;
   const demoPersonalityJourneys = useMemo(
     () =>
       createDemoPersonalityJourneys({
@@ -316,18 +329,61 @@ export default function App() {
       }),
     [journeyCreatedAtMs, target]
   );
-  const activeSnail = activeJourney
-    ? carrierState.snails.find((snail) => snail.id === activeJourney.snailId)
-    : undefined;
+  const watchState = useMemo(
+    () =>
+      buildJourneyWatchState({
+        clock: { now: () => nowMs },
+        scrubProgressByJourneyId:
+          selectedWatchJourneyId && watchScrubProgress !== undefined
+            ? { [selectedWatchJourneyId]: watchScrubProgress }
+            : undefined,
+        selectedJourneyId: selectedWatchJourneyId,
+        state: carrierState,
+        timeWarpFactor
+      }),
+    [
+      carrierState,
+      nowMs,
+      selectedWatchJourneyId,
+      timeWarpFactor,
+      watchScrubProgress
+    ]
+  );
+  const selectedWatchJourney = watchState.selectedJourney;
   const visibleCrawls = personalityDemoEnabled
-    ? demoPersonalityJourneys
-    : [
-        {
-          id: activeJourney?.id ?? "single-demo",
-          journey,
-          snail: activeSnail ?? demoPersonalityJourneys[0].snail
-        }
-      ];
+    ? demoPersonalityJourneys.map((crawl) => ({
+        highlighted: false,
+        id: crawl.id,
+        progress: getCrawlFrame({
+          journey: crawl.journey,
+          nowMs,
+          timeWarpFactor
+        }).progress,
+        snail: crawl.snail
+      }))
+    : watchState.journeys.length > 0
+      ? watchState.journeys.map((watchJourney) => ({
+          highlighted:
+            watchJourney.journeyId === selectedWatchJourney?.journeyId,
+          id: watchJourney.journeyId,
+          progress: watchJourney.preview.progress,
+          snail:
+            carrierState.snails.find(
+              (snail) => snail.id === watchJourney.snailId
+            ) ?? demoPersonalityJourneys[0].snail
+        }))
+      : [
+          {
+            highlighted: false,
+            id: "single-demo",
+            progress: getCrawlFrame({
+              journey: demoJourney,
+              nowMs,
+              timeWarpFactor
+            }).progress,
+            snail: demoPersonalityJourneys[0].snail
+          }
+        ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -360,19 +416,17 @@ export default function App() {
   }, [backendSession, pushSender, timeWarpFactor]);
 
   const crawlOverlays = visibleCrawls.map((crawl, index) => {
-    const frame = getCrawlFrame({
-      journey: crawl.journey,
-      nowMs,
-      timeWarpFactor
-    });
+    const laneOffset =
+      visibleCrawls.length > 1
+        ? (index - (visibleCrawls.length - 1) / 2) * 20
+        : 0;
 
     return {
       ...crawl,
-      frame,
       overlay: projectCrawlToViewport(
-        frame.progress,
+        crawl.progress,
         viewport,
-        personalityDemoEnabled ? (index - 1) * 18 : 0
+        laneOffset
       )
     };
   });
@@ -634,6 +688,37 @@ export default function App() {
     }
   }
 
+  function selectWatchJourney(journeyId: string) {
+    setSelectedWatchJourneyId(journeyId);
+    setWatchScrubProgress(undefined);
+  }
+
+  function scrubWatchJourney(progress: number | undefined) {
+    if (!selectedWatchJourney) {
+      return;
+    }
+
+    setSelectedWatchJourneyId(selectedWatchJourney.journeyId);
+    setWatchScrubProgress(progress);
+  }
+
+  function shareSelectedTrail() {
+    if (!selectedWatchJourney) {
+      return;
+    }
+
+    void Share.share({
+      message: [
+        "Carrier Snail trail",
+        `${selectedWatchJourney.snailName} is carrying "${selectedWatchJourney.reminderText}".`,
+        selectedWatchJourney.etaRange.copy,
+        `Progress ${Math.round(
+          selectedWatchJourney.preview.progress * 100
+        )}%, target ${formatCoordinate(selectedWatchJourney.target)}.`
+      ].join("\n")
+    });
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -688,6 +773,17 @@ export default function App() {
             cy={targetOverlay.target.y}
             r={7}
           />
+          {crawlOverlays
+            .filter(({ highlighted }) => highlighted)
+            .map(({ id, overlay, snail }) => (
+              <Circle
+                color={hexToRgba(snail.trail.color, 0.22)}
+                cx={overlay.snail.x}
+                cy={overlay.snail.y}
+                key={`${id}-selected-ring`}
+                r={27}
+              />
+            ))}
           {crawlOverlays.map(({ id, overlay, snail }) => (
             <Circle
               color={snail.appearance.shellColor}
@@ -757,6 +853,11 @@ export default function App() {
       </View>
 
       <SafeAreaView style={styles.controls}>
+        <ScrollView
+          contentContainerStyle={styles.controlsContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.statusRow}>
           <View style={styles.titleBlock}>
             <Text numberOfLines={1} style={styles.title}>
@@ -809,6 +910,109 @@ export default function App() {
                 </Text>
               </View>
             ))}
+          </View>
+        ) : null}
+        {watchState.journeys.length > 0 && selectedWatchJourney ? (
+          <View style={styles.watchPanel}>
+            <View style={styles.watchHeaderRow}>
+              <View style={styles.watchTitleBlock}>
+                <Text style={styles.watchKicker}>Journey watch</Text>
+                <Text numberOfLines={1} style={styles.watchTitle}>
+                  {selectedWatchJourney.reminderText}
+                </Text>
+              </View>
+              <Text style={styles.watchProgress}>
+                {Math.round(selectedWatchJourney.preview.progress * 100)}%
+              </Text>
+            </View>
+            <Text numberOfLines={2} style={styles.watchEta}>
+              {selectedWatchJourney.etaRange.copy}
+            </Text>
+            <View style={styles.watchJourneyTabs}>
+              {watchState.journeys.map((watchJourney) => {
+                const selected =
+                  watchJourney.journeyId === selectedWatchJourney.journeyId;
+
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
+                    key={watchJourney.journeyId}
+                    onPress={() => selectWatchJourney(watchJourney.journeyId)}
+                    style={({ pressed }) => [
+                      styles.watchJourneyTab,
+                      selected ? styles.watchJourneyTabSelected : null,
+                      pressed ? styles.watchJourneyTabPressed : null
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.watchJourneySwatch,
+                        { backgroundColor: watchJourney.trail.color }
+                      ]}
+                    />
+                    <Text numberOfLines={1} style={styles.watchJourneyTabText}>
+                      {watchJourney.snailName}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text numberOfLines={2} style={styles.watchMeta}>
+              Path {formatDistance(selectedWatchJourney.preview.travelledMeters)}{" "}
+              crawled,{" "}
+              {formatDistance(selectedWatchJourney.preview.remainingMeters)} left
+            </Text>
+            <Text numberOfLines={2} style={styles.watchMeta}>
+              Target {formatCoordinate(selectedWatchJourney.target)} · trail
+              history {selectedWatchJourney.trailHistory.length}
+            </Text>
+            <View style={styles.watchActionRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Share selected trail"
+                onPress={shareSelectedTrail}
+                style={({ pressed }) => [
+                  styles.watchShareButton,
+                  pressed ? styles.watchShareButtonPressed : null
+                ]}
+              >
+                <Text style={styles.watchShareButtonText}>Share trail</Text>
+              </Pressable>
+              <View style={styles.watchScrubRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Show live journey position"
+                  onPress={() => scrubWatchJourney(undefined)}
+                  style={({ pressed }) => [
+                    styles.watchScrubButton,
+                    watchScrubProgress === undefined
+                      ? styles.watchScrubButtonSelected
+                      : null,
+                    pressed ? styles.watchScrubButtonPressed : null
+                  ]}
+                >
+                  <Text style={styles.watchScrubButtonText}>Live</Text>
+                </Pressable>
+                {WATCH_SCRUB_STOPS.map((stop) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Preview trail at ${stop.label}`}
+                    key={stop.label}
+                    onPress={() => scrubWatchJourney(stop.progress)}
+                    style={({ pressed }) => [
+                      styles.watchScrubButton,
+                      watchScrubProgress === stop.progress
+                        ? styles.watchScrubButtonSelected
+                        : null,
+                      pressed ? styles.watchScrubButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.watchScrubButtonText}>{stop.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           </View>
         ) : null}
         <View style={styles.stablePanel}>
@@ -1035,6 +1239,7 @@ export default function App() {
             ))}
           </View>
         ) : null}
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -1127,6 +1332,18 @@ function formatPurchaseDetail(product: PurchaseCatalogProduct): string {
   return product.description;
 }
 
+function formatDistance(distanceMeters: number): string {
+  if (distanceMeters >= 1000) {
+    return `${(distanceMeters / 1000).toFixed(1)} km`;
+  }
+
+  return `${Math.round(distanceMeters)} m`;
+}
+
+function formatCoordinate(coordinate: Coordinate): string {
+  return `${coordinate.latitude.toFixed(3)}, ${coordinate.longitude.toFixed(3)}`;
+}
+
 const styles = StyleSheet.create({
   backgroundLocationButton: {
     alignItems: "center",
@@ -1186,11 +1403,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     bottom: 0,
     left: 0,
+    maxHeight: "76%",
     paddingBottom: 18,
     paddingHorizontal: 18,
     paddingTop: 14,
     position: "absolute",
     right: 0
+  },
+  controlsContent: {
+    paddingBottom: 2
   },
   composerRow: {
     alignItems: "center",
@@ -1569,5 +1790,143 @@ const styles = StyleSheet.create({
     color: "#fff7dc",
     fontSize: 16,
     fontWeight: "700"
+  },
+  watchActionRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "space-between",
+    marginTop: 10
+  },
+  watchEta: {
+    color: "#56645e",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 6
+  },
+  watchHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between"
+  },
+  watchJourneySwatch: {
+    borderRadius: 5,
+    height: 10,
+    width: 10
+  },
+  watchJourneyTab: {
+    alignItems: "center",
+    backgroundColor: "#f7f6ef",
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 30,
+    maxWidth: 142,
+    paddingHorizontal: 9
+  },
+  watchJourneyTabPressed: {
+    backgroundColor: "#eef7f1"
+  },
+  watchJourneyTabSelected: {
+    borderColor: "#3f6d5b",
+    borderWidth: 2
+  },
+  watchJourneyTabText: {
+    color: "#25332e",
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  watchJourneyTabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10
+  },
+  watchKicker: {
+    color: "#6d5a46",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0,
+    textTransform: "uppercase"
+  },
+  watchMeta: {
+    color: "#56645e",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 6
+  },
+  watchPanel: {
+    backgroundColor: "rgba(255, 255, 255, 0.68)",
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 10
+  },
+  watchProgress: {
+    color: "#3f6d5b",
+    fontSize: 18,
+    fontWeight: "800"
+  },
+  watchScrubButton: {
+    alignItems: "center",
+    backgroundColor: "#edf1e8",
+    borderColor: "rgba(37, 51, 46, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 30,
+    minWidth: 48,
+    paddingHorizontal: 8
+  },
+  watchScrubButtonPressed: {
+    backgroundColor: "#dfe9df"
+  },
+  watchScrubButtonSelected: {
+    backgroundColor: "#dfeee4",
+    borderColor: "#3f6d5b"
+  },
+  watchScrubButtonText: {
+    color: "#25332e",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  watchScrubRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "flex-end"
+  },
+  watchShareButton: {
+    alignItems: "center",
+    backgroundColor: "#365c8d",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 32,
+    minWidth: 88,
+    paddingHorizontal: 10
+  },
+  watchShareButtonPressed: {
+    backgroundColor: "#294870"
+  },
+  watchShareButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  watchTitle: {
+    color: "#25332e",
+    fontSize: 14,
+    fontWeight: "800",
+    marginTop: 2
+  },
+  watchTitleBlock: {
+    flex: 1,
+    minWidth: 0
   }
 });
