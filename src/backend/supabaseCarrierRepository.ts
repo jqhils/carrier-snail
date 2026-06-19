@@ -51,6 +51,21 @@ type JourneyRow = {
 export class SupabaseCarrierRepository implements BackendCarrierRepository {
   constructor(private readonly client: SupabaseClient) {}
 
+  async listUserIdsWithPendingJourneys(): Promise<string[]> {
+    const result = await this.client
+      .from("journeys")
+      .select("user_id")
+      .eq("status", "in-flight");
+
+    assertNoSupabaseError(result.error, "load users with pending journeys");
+
+    return [
+      ...new Set(
+        asRows<{ user_id: string }>(result.data).map(({ user_id }) => user_id)
+      )
+    ];
+  }
+
   async ensureUser(
     authUser: AuthenticatedUser,
     nowMs: number

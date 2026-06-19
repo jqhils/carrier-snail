@@ -46,3 +46,20 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 
 When those values are absent, the app keeps using the existing in-memory local
 state.
+
+## Backend arrival worker
+
+The scheduled arrival path lives in `runScheduledArrivalWorker`. It evaluates
+pending journeys from the repository, uses the server `Clock` plus the Delivery
+Floor ETA, sends exactly one arrival push through `PushSender`, then persists the
+arrived journey, delivered reminder, and resting snail state.
+
+Local/dev verification does not need real push credentials:
+
+```sh
+npm test -- --runTestsByPath src/useCases/runScheduledArrivalWorker.test.ts
+```
+
+Production scheduling should run the same use-case with a service-role Supabase
+client, `SupabaseCarrierRepository`, and a `PushSender` implementation that
+delivers through Expo Push.
