@@ -1,5 +1,7 @@
+import { LOCATION_PRIVACY_PLAIN_LANGUAGE } from "./onboarding";
+
 export const BACKGROUND_LOCATION_PERMISSION_COPY =
-  "Optional coarse background re-aiming lets your snails adjust while the app is closed. Denying it keeps foreground-only delivery working.";
+  LOCATION_PRIVACY_PLAIN_LANGUAGE;
 
 export const LOW_POWER_BACKGROUND_LOCATION_POLICY = {
   accuracy: "balanced",

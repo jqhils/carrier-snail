@@ -47,6 +47,7 @@ describe("loadBackendJourneyState", () => {
           status: "in-flight"
         }
       ],
+      onboarding: {},
       reminders: [
         {
           createdAtMs: 0,

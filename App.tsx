@@ -53,6 +53,12 @@ import {
   levelUpSnail
 } from "./src/useCases/levelUpSnail";
 import {
+  completeOnboarding,
+  FIRST_RUN_ONBOARDING_STEPS,
+  LOCATION_PRIVACY_PLAIN_LANGUAGE,
+  shouldShowOnboarding
+} from "./src/useCases/onboarding";
+import {
   getPurchaseCatalog,
   PURCHASE_FLOOR_DISCLOSURE,
   purchaseInventory,
@@ -171,6 +177,7 @@ export default function App() {
   const unhatchedEggs = carrierState.eggs.filter(
     (egg) => egg.status === "unhatched"
   );
+  const onboardingVisible = shouldShowOnboarding(carrierState);
   const purchaseCatalog = useMemo(() => getPurchaseCatalog(), []);
   const entitlementProvider = useMemo(
     () =>
@@ -481,6 +488,32 @@ export default function App() {
       setFormError("");
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Reminder failed.");
+    }
+  }
+
+  async function finishOnboarding() {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      completeOnboarding({
+        clock: { now: () => Date.now() },
+        repository
+      });
+      const nextState = repository.snapshot();
+
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+      }
+
+      setCarrierState(nextState);
+      setFormError("");
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Onboarding failed."
+      );
     }
   }
 
@@ -910,6 +943,45 @@ export default function App() {
                 </Text>
               </View>
             ))}
+          </View>
+        ) : null}
+        {onboardingVisible ? (
+          <View style={styles.onboardingPanel}>
+            <View style={styles.onboardingHeaderRow}>
+              <View style={styles.onboardingTitleBlock}>
+                <Text style={styles.onboardingKicker}>First delivery</Text>
+                <Text numberOfLines={1} style={styles.onboardingTitle}>
+                  Garden Snail is ready
+                </Text>
+              </View>
+              <View style={styles.onboardingSnailBadge}>
+                <Text style={styles.onboardingSnailBadgeText}>1</Text>
+              </View>
+            </View>
+            <View style={styles.onboardingStepList}>
+              {FIRST_RUN_ONBOARDING_STEPS.map((step, index) => (
+                <View key={step} style={styles.onboardingStep}>
+                  <Text style={styles.onboardingStepNumber}>{index + 1}</Text>
+                  <Text style={styles.onboardingStepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+            <Text style={styles.onboardingPrivacy}>
+              {LOCATION_PRIVACY_PLAIN_LANGUAGE}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Start with Garden Snail"
+              onPress={finishOnboarding}
+              style={({ pressed }) => [
+                styles.onboardingButton,
+                pressed ? styles.onboardingButtonPressed : null
+              ]}
+            >
+              <Text style={styles.onboardingButtonText}>
+                Start with Garden Snail
+              </Text>
+            </Pressable>
           </View>
         ) : null}
         {watchState.journeys.length > 0 && selectedWatchJourney ? (
@@ -1568,6 +1640,98 @@ const styles = StyleSheet.create({
     color: "#56645e",
     fontSize: 13,
     marginTop: 2
+  },
+  onboardingButton: {
+    alignItems: "center",
+    backgroundColor: "#365c8d",
+    borderRadius: 8,
+    justifyContent: "center",
+    marginTop: 10,
+    minHeight: 38,
+    paddingHorizontal: 12
+  },
+  onboardingButtonPressed: {
+    backgroundColor: "#294870"
+  },
+  onboardingButtonText: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  onboardingHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between"
+  },
+  onboardingKicker: {
+    color: "#6d5a46",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0,
+    textTransform: "uppercase"
+  },
+  onboardingPanel: {
+    backgroundColor: "#f7f6ef",
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 10
+  },
+  onboardingPrivacy: {
+    color: "#56645e",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 9
+  },
+  onboardingSnailBadge: {
+    alignItems: "center",
+    backgroundColor: "#dfeee4",
+    borderColor: "rgba(63, 109, 91, 0.26)",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: "center",
+    width: 34
+  },
+  onboardingSnailBadgeText: {
+    color: "#3f6d5b",
+    fontSize: 16,
+    fontWeight: "800"
+  },
+  onboardingStep: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8
+  },
+  onboardingStepList: {
+    gap: 7,
+    marginTop: 10
+  },
+  onboardingStepNumber: {
+    color: "#3f6d5b",
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 17,
+    minWidth: 14
+  },
+  onboardingStepText: {
+    color: "#25332e",
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    minWidth: 0
+  },
+  onboardingTitle: {
+    color: "#25332e",
+    fontSize: 14,
+    fontWeight: "800",
+    marginTop: 2
+  },
+  onboardingTitleBlock: {
+    flex: 1,
+    minWidth: 0
   },
   personalityButton: {
     alignItems: "center",

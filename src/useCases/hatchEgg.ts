@@ -120,6 +120,7 @@ export function hatchEgg(
     ),
     inventory: state.inventory,
     journeys: state.journeys,
+    onboarding: state.onboarding,
     purchases: state.purchases,
     reminders: state.reminders,
     snails: [...state.snails, snail],

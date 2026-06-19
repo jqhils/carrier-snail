@@ -65,6 +65,7 @@ export function completeArrivedJourneys({
     eggs: [...state.eggs, ...earnedEggs],
     inventory: state.inventory,
     journeys,
+    onboarding: state.onboarding,
     purchases: state.purchases,
     reminders: state.reminders.map((reminder) =>
       completedReminderIds.has(reminder.id)

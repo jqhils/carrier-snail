@@ -104,6 +104,7 @@ export function createReminderJourney(
     eggs: state.eggs,
     inventory: state.inventory,
     journeys: [...state.journeys, journey],
+    onboarding: state.onboarding,
     purchases: state.purchases,
     reminders: [...state.reminders, reminder],
     snails: state.snails.map((candidate) =>

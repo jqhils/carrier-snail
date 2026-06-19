@@ -61,6 +61,10 @@ export type StableSlots = {
   purchased: number;
 };
 
+export type OnboardingState = {
+  completedAtMs?: number;
+};
+
 export type Snail = {
   appearance: SnailAppearanceTraits;
   baseSpeedMetersPerHour: number;
@@ -113,6 +117,7 @@ export type CarrierState = {
   eggs: Egg[];
   inventory: Inventory;
   journeys: JourneyRecord[];
+  onboarding: OnboardingState;
   purchases: PurchaseRecord[];
   reminders: Reminder[];
   snails: Snail[];
@@ -183,6 +188,7 @@ export function createInitialCarrierState(): CarrierState {
     eggs: [],
     inventory: { cosmetics: [] },
     journeys: [],
+    onboarding: {},
     purchases: [],
     reminders: [],
     snails: [createStarterGardenSnail()],
@@ -278,6 +284,9 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
         recordedAtMs: point.recordedAtMs
       }))
     })),
+    onboarding: {
+      completedAtMs: state.onboarding?.completedAtMs
+    },
     purchases: state.purchases?.map((purchase) => ({ ...purchase })) ?? [],
     reminders: state.reminders.map((reminder) => ({ ...reminder })),
     snails: state.snails.map((snail) => ({
