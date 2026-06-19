@@ -10,7 +10,9 @@ import {
 import { getEggRarityPoolOdds } from "./hatchEgg";
 import {
   getPurchaseCatalog,
+  PURCHASE_FLOOR_DISCLOSURE,
   purchaseInventory,
+  PurchaseAuthorizationMismatchError,
   type EntitlementProvider,
   type PurchaseAuthorization,
   type PurchaseProductId
@@ -35,7 +37,21 @@ class FakeEntitlementProvider implements EntitlementProvider {
   }
 }
 
+class FixedAuthorizationProvider implements EntitlementProvider {
+  constructor(private readonly authorization: PurchaseAuthorization) {}
+
+  async purchase(): Promise<PurchaseAuthorization> {
+    return this.authorization;
+  }
+}
+
 describe("purchaseInventory", () => {
+  it("exposes plain purchase copy that money cannot buy urgency", () => {
+    expect(PURCHASE_FLOOR_DISCLOSURE).toContain("24 hours");
+    expect(PURCHASE_FLOOR_DISCLOSURE).toContain("40%");
+    expect(PURCHASE_FLOOR_DISCLOSURE).toContain("never");
+  });
+
   it("discloses paid egg odds before purchase", () => {
     const catalog = getPurchaseCatalog();
     const eggPack = catalog.find(({ id }) => id === "egg-pack-small");
@@ -165,5 +181,62 @@ describe("purchaseInventory", () => {
         }
       )
     ).toThrow(NoRestingSnailError);
+  });
+
+  it("rejects entitlements that do not authorize the requested product", async () => {
+    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
+    const entitlementProvider = new FixedAuthorizationProvider({
+      productId: "stable-slot-single",
+      purchaseId: "sandbox-mismatch",
+      purchasedAtMs: 5000
+    });
+
+    await expect(
+      purchaseInventory(
+        { productId: "egg-pack-small" },
+        {
+          clock: { now: () => 4000 },
+          entitlementProvider,
+          repository
+        }
+      )
+    ).rejects.toThrow(PurchaseAuthorizationMismatchError);
+    expect(repository.snapshot()).toEqual(createInitialCarrierState());
+  });
+
+  it("does not grant the same entitlement purchase twice", async () => {
+    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
+    const entitlementProvider = new FixedAuthorizationProvider({
+      productId: "egg-pack-small",
+      purchaseId: "sandbox-repeat",
+      purchasedAtMs: 5000
+    });
+
+    await purchaseInventory(
+      { productId: "egg-pack-small" },
+      {
+        clock: { now: () => 4000 },
+        entitlementProvider,
+        repository
+      }
+    );
+    await purchaseInventory(
+      { productId: "egg-pack-small" },
+      {
+        clock: { now: () => 6000 },
+        entitlementProvider,
+        repository
+      }
+    );
+    const state = repository.snapshot();
+
+    expect(state.eggs).toHaveLength(3);
+    expect(state.purchases).toEqual([
+      {
+        id: "sandbox-repeat",
+        productId: "egg-pack-small",
+        purchasedAtMs: 5000
+      }
+    ]);
   });
 });

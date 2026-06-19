@@ -52,6 +52,7 @@ import {
 } from "./src/useCases/levelUpSnail";
 import {
   getPurchaseCatalog,
+  PURCHASE_FLOOR_DISCLOSURE,
   purchaseInventory,
   type PurchaseCatalogProduct,
   type PurchaseProductId
@@ -920,6 +921,9 @@ export default function App() {
             </View>
           ) : null}
           <View style={styles.shopList}>
+            <Text style={styles.shopDisclosure}>
+              {PURCHASE_FLOOR_DISCLOSURE}
+            </Text>
             {purchaseCatalog.map((product) => (
               <View key={product.id} style={styles.shopRow}>
                 <View style={styles.shopCopy}>
@@ -1380,6 +1384,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     marginTop: 2
+  },
+  shopDisclosure: {
+    color: "#6d5a46",
+    fontSize: 12,
+    lineHeight: 16
   },
   shopList: {
     borderTopColor: "rgba(43, 58, 52, 0.12)",

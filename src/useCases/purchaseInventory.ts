@@ -56,6 +56,16 @@ export class UnknownPurchaseProductError extends Error {
   }
 }
 
+export class PurchaseAuthorizationMismatchError extends Error {
+  constructor() {
+    super("Purchase authorization did not match the requested product.");
+    this.name = "PurchaseAuthorizationMismatchError";
+  }
+}
+
+export const PURCHASE_FLOOR_DISCLOSURE =
+  "Purchases never make a reminder arrive sooner than 24 hours or 40% of honest distance-time.";
+
 const PURCHASE_CATALOG: PurchaseCatalogProduct[] = [
   {
     description: "Three premium eggs.",
@@ -113,6 +123,14 @@ export async function purchaseInventory(
   const authorization = await entitlementProvider.purchase(input.productId);
   const purchasedAtMs = authorization.purchasedAtMs ?? clock.now();
   const state = repository.snapshot();
+
+  if (authorization.productId !== input.productId) {
+    throw new PurchaseAuthorizationMismatchError();
+  }
+
+  if (state.purchases.some((purchase) => purchase.id === authorization.purchaseId)) {
+    return;
+  }
 
   repository.save({
     ...applyGrant({
