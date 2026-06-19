@@ -63,7 +63,9 @@ export function completeArrivedJourneys({
 
   const nextState: CarrierState = {
     eggs: [...state.eggs, ...earnedEggs],
+    inventory: state.inventory,
     journeys,
+    purchases: state.purchases,
     reminders: state.reminders.map((reminder) =>
       completedReminderIds.has(reminder.id)
         ? {
@@ -85,7 +87,8 @@ export function completeArrivedJourneys({
     ),
     softCurrency: {
       slime: (state.softCurrency?.slime ?? 0) + completedCount
-    }
+    },
+    stableSlots: state.stableSlots
   };
 
   if (completedCount > 0) {

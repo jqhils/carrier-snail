@@ -8,12 +8,17 @@ import {
 export type SnailStatus = "resting" | "on-journey";
 export type ReminderStatus = "in-flight" | "delivered" | "recalled";
 export type JourneyStatus = "in-flight" | "arrived" | "recalled";
-export type EggSource = "earned";
-export type EggRarityPool = "earned-basic";
+export type EggSource = "earned" | "purchased";
+export type EggRarityPool = "earned-basic" | "paid-premium";
 export type EggStatus = "unhatched" | "hatched";
 export type SnailRarity = "common" | "uncommon" | "rare" | "mythic" | "cursed";
 export type SnailSpeedBand = "garden" | "steady" | "swift" | "mythic";
 export type SnailTemperament = "steady" | "sleepy" | "wanderer" | "cursed";
+export type CosmeticId = "trail-sparkle";
+export type PurchaseProductId =
+  | "egg-pack-small"
+  | "cosmetic-trail-sparkle"
+  | "stable-slot-single";
 
 export type TrailHistoryPoint = {
   coordinate: Coordinate;
@@ -33,6 +38,27 @@ export type SnailTrailTraits = {
 
 export type SoftCurrencyBalance = {
   slime: number;
+};
+
+export type CosmeticInventoryItem = {
+  acquiredAtMs: number;
+  id: CosmeticId;
+  name: string;
+  source: "purchased";
+};
+
+export type Inventory = {
+  cosmetics: CosmeticInventoryItem[];
+};
+
+export type PurchaseRecord = {
+  id: string;
+  productId: PurchaseProductId;
+  purchasedAtMs: number;
+};
+
+export type StableSlots = {
+  purchased: number;
 };
 
 export type Snail = {
@@ -85,10 +111,13 @@ export type Egg = {
 
 export type CarrierState = {
   eggs: Egg[];
+  inventory: Inventory;
   journeys: JourneyRecord[];
+  purchases: PurchaseRecord[];
   reminders: Reminder[];
   snails: Snail[];
   softCurrency: SoftCurrencyBalance;
+  stableSlots: StableSlots;
 };
 
 export type InFlightReminderListItem = {
@@ -107,6 +136,7 @@ export type StableSnailListItem = {
 
 export type StableCapacity = {
   busyCount: number;
+  emptySlotCount: number;
   freeCount: number;
   totalCount: number;
 };
@@ -151,10 +181,13 @@ export function createStarterGardenSnail(): Snail {
 export function createInitialCarrierState(): CarrierState {
   return {
     eggs: [],
+    inventory: { cosmetics: [] },
     journeys: [],
+    purchases: [],
     reminders: [],
     snails: [createStarterGardenSnail()],
-    softCurrency: { slime: 0 }
+    softCurrency: { slime: 0 },
+    stableSlots: { purchased: 0 }
   };
 }
 
@@ -200,12 +233,14 @@ export function listStableSnails(state: CarrierState): StableSnapshot {
   }));
 
   const freeCount = snails.filter(({ status }) => status === "resting").length;
+  const emptySlotCount = state.stableSlots?.purchased ?? 0;
 
   return {
     capacity: {
       busyCount: snails.length - freeCount,
+      emptySlotCount,
       freeCount,
-      totalCount: snails.length
+      totalCount: snails.length + emptySlotCount
     },
     snails
   };
@@ -230,6 +265,10 @@ export function getActiveJourney(state: CarrierState): JourneyRecord | undefined
 export function cloneCarrierState(state: CarrierState): CarrierState {
   return {
     eggs: state.eggs?.map((egg) => ({ ...egg })) ?? [],
+    inventory: {
+      cosmetics:
+        state.inventory?.cosmetics.map((cosmetic) => ({ ...cosmetic })) ?? []
+    },
     journeys: state.journeys.map((journey) => ({
       ...journey,
       start: cloneCoordinate(journey.start),
@@ -239,6 +278,7 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
         recordedAtMs: point.recordedAtMs
       }))
     })),
+    purchases: state.purchases?.map((purchase) => ({ ...purchase })) ?? [],
     reminders: state.reminders.map((reminder) => ({ ...reminder })),
     snails: state.snails.map((snail) => ({
       ...snail,
@@ -247,6 +287,9 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
     })),
     softCurrency: {
       slime: state.softCurrency?.slime ?? 0
+    },
+    stableSlots: {
+      purchased: state.stableSlots?.purchased ?? 0
     }
   };
 }

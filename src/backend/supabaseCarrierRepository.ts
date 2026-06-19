@@ -4,8 +4,12 @@ import {
   cloneCarrierState,
   createStarterGardenSnail,
   type CarrierState,
+  type CosmeticId,
   type Egg,
+  type Inventory,
   type JourneyRecord,
+  type PurchaseProductId,
+  type PurchaseRecord,
   type Reminder,
   type Snail,
   type TrailHistoryPoint
@@ -23,6 +27,9 @@ type CarrierUserRow = {
 };
 
 type CarrierUserStateRow = {
+  inventory: unknown;
+  purchase_records: unknown;
+  purchased_stable_slots: number;
   soft_currency_slime: number;
 };
 
@@ -134,7 +141,9 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     const [userState, snails, reminders, journeys, eggs] = await Promise.all([
       this.client
         .from("carrier_users")
-        .select("soft_currency_slime")
+        .select(
+          "soft_currency_slime, inventory, purchase_records, purchased_stable_slots"
+        )
         .eq("id", userId)
         .maybeSingle(),
       this.client
@@ -203,16 +212,19 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     assertNoSupabaseError(journeys.error, "load journeys");
     assertNoSupabaseError(eggs.error, "load eggs");
 
+    const mappedUserState = mapUserState(
+      userState.data as CarrierUserStateRow | null
+    );
+
     return {
       eggs: asRows<EggRow>(eggs.data).map(mapEgg),
+      inventory: mappedUserState.inventory,
       journeys: asRows<JourneyRow>(journeys.data).map(mapJourney),
+      purchases: mappedUserState.purchases,
       reminders: asRows<ReminderRow>(reminders.data).map(mapReminder),
       snails: asRows<SnailRow>(snails.data).map(mapSnail),
-      softCurrency: {
-        slime:
-          finiteNumber((userState.data as CarrierUserStateRow | null)?.soft_currency_slime) ??
-          0
-      }
+      softCurrency: mappedUserState.softCurrency,
+      stableSlots: mappedUserState.stableSlots
     };
   }
 
@@ -222,6 +234,9 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     const userState = await this.client
       .from("carrier_users")
       .update({
+        inventory: snapshot.inventory,
+        purchase_records: snapshot.purchases,
+        purchased_stable_slots: snapshot.stableSlots.purchased,
         soft_currency_slime: snapshot.softCurrency.slime,
         updated_at: new Date().toISOString()
       })
@@ -334,6 +349,22 @@ function mapCarrierUser(row: CarrierUserRow): CarrierUser {
   };
 }
 
+function mapUserState(row: CarrierUserStateRow | null): Pick<
+  CarrierState,
+  "inventory" | "purchases" | "softCurrency" | "stableSlots"
+> {
+  return {
+    inventory: mapInventory(row?.inventory),
+    purchases: mapPurchases(row?.purchase_records),
+    softCurrency: {
+      slime: finiteNumber(row?.soft_currency_slime) ?? 0
+    },
+    stableSlots: {
+      purchased: finiteNumber(row?.purchased_stable_slots) ?? 0
+    }
+  };
+}
+
 function mapSnail(row: SnailRow): Snail {
   const fallback = createStarterGardenSnail();
 
@@ -358,6 +389,49 @@ function mapSnail(row: SnailRow): Snail {
     temperament: row.temperament ?? fallback.temperament,
     trail: mapTrail(row.trail_traits, fallback.trail)
   };
+}
+
+function mapInventory(value: unknown): Inventory {
+  if (!isRecord(value) || !Array.isArray(value.cosmetics)) {
+    return { cosmetics: [] };
+  }
+
+  return {
+    cosmetics: value.cosmetics.flatMap((cosmetic) => {
+      if (!isRecord(cosmetic) || !isCosmeticId(cosmetic.id)) {
+        return [];
+      }
+
+      return [
+        {
+          acquiredAtMs: finiteNumber(cosmetic.acquiredAtMs) ?? 0,
+          id: cosmetic.id,
+          name: typeof cosmetic.name === "string" ? cosmetic.name : cosmetic.id,
+          source: "purchased" as const
+        }
+      ];
+    })
+  };
+}
+
+function mapPurchases(value: unknown): PurchaseRecord[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((purchase) => {
+    if (!isRecord(purchase) || !isPurchaseProductId(purchase.productId)) {
+      return [];
+    }
+
+    return [
+      {
+        id: typeof purchase.id === "string" ? purchase.id : purchase.productId,
+        productId: purchase.productId,
+        purchasedAtMs: finiteNumber(purchase.purchasedAtMs) ?? 0
+      }
+    ];
+  });
 }
 
 function mapReminder(row: ReminderRow): Reminder {
@@ -445,6 +519,18 @@ function mapTrail(value: unknown, fallback: Snail["trail"]): Snail["trail"] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isCosmeticId(value: unknown): value is CosmeticId {
+  return value === "trail-sparkle";
+}
+
+function isPurchaseProductId(value: unknown): value is PurchaseProductId {
+  return (
+    value === "egg-pack-small" ||
+    value === "cosmetic-trail-sparkle" ||
+    value === "stable-slot-single"
+  );
 }
 
 function finiteNumber(value: unknown): number | undefined {

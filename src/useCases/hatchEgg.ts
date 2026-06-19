@@ -33,14 +33,21 @@ const EARNED_BASIC_ODDS: RarityPoolOdd[] = [
   { label: "Cursed", probability: 0.01, rarity: "cursed" }
 ];
 
+const PAID_PREMIUM_ODDS: RarityPoolOdd[] = [
+  { label: "Common", probability: 0.45, rarity: "common" },
+  { label: "Uncommon", probability: 0.3, rarity: "uncommon" },
+  { label: "Rare", probability: 0.16, rarity: "rare" },
+  { label: "Mythic", probability: 0.06, rarity: "mythic" },
+  { label: "Cursed", probability: 0.03, rarity: "cursed" }
+];
+
 export function getEggRarityPoolOdds(
   rarityPool: EggRarityPool
 ): RarityPoolOdd[] {
-  if (rarityPool === "earned-basic") {
-    return EARNED_BASIC_ODDS.map((odd) => ({ ...odd }));
-  }
+  const odds =
+    rarityPool === "paid-premium" ? PAID_PREMIUM_ODDS : EARNED_BASIC_ODDS;
 
-  return EARNED_BASIC_ODDS.map((odd) => ({ ...odd }));
+  return odds.map((odd) => ({ ...odd }));
 }
 
 export function selectRarityFromOdds(
@@ -111,10 +118,13 @@ export function hatchEgg(
           }
         : candidate
     ),
+    inventory: state.inventory,
     journeys: state.journeys,
+    purchases: state.purchases,
     reminders: state.reminders,
     snails: [...state.snails, snail],
-    softCurrency: state.softCurrency
+    softCurrency: state.softCurrency,
+    stableSlots: state.stableSlots
   });
 
   return { snail };
