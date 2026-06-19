@@ -73,6 +73,7 @@ export async function runScheduledArrivalWorker({
         snails: state.snails
       });
       state.eggs.push(createEarnedEgg(state.eggs.length + 1, serverNowMs));
+      state.softCurrency.slime += 1;
       completedCount += 1;
       changed = true;
     }
@@ -114,6 +115,8 @@ function markJourneyDelivered({
   const snail = snails.find(({ id }) => id === journey.snailId);
 
   if (snail) {
+    snail.experiencePoints += 1;
+    snail.journeysCompleted += 1;
     snail.status = "resting";
   }
 }
@@ -122,6 +125,7 @@ function createEarnedEgg(sequence: number, earnedAtMs: number) {
   return {
     earnedAtMs,
     id: `egg-${sequence}`,
+    rarityPool: "earned-basic" as const,
     source: "earned" as const,
     status: "unhatched" as const
   };

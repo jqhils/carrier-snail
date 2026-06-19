@@ -120,13 +120,17 @@ describe("runScheduledArrivalWorker", () => {
       status: "delivered"
     });
     expect(completed.snails[0]).toMatchObject({
+      experiencePoints: 1,
       id: "garden-1",
+      journeysCompleted: 1,
       status: "resting"
     });
+    expect(completed.softCurrency).toEqual({ slime: 1 });
     expect(completed.eggs).toEqual([
       {
         earnedAtMs: eta.earliestArrivalAtMs,
         id: "egg-1",
+        rarityPool: "earned-basic",
         source: "earned",
         status: "unhatched"
       }

@@ -62,7 +62,8 @@ describe("loadBackendJourneyState", () => {
           name: "Backend Garden",
           status: "on-journey"
         }
-      ]
+      ],
+      softCurrency: { slime: 0 }
     };
     const repository = new FakeBackendCarrierRepository(backendState);
 

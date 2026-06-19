@@ -9,7 +9,8 @@ export type SnailStatus = "resting" | "on-journey";
 export type ReminderStatus = "in-flight" | "delivered" | "recalled";
 export type JourneyStatus = "in-flight" | "arrived" | "recalled";
 export type EggSource = "earned";
-export type EggStatus = "unhatched";
+export type EggRarityPool = "earned-basic";
+export type EggStatus = "unhatched" | "hatched";
 export type SnailRarity = "common" | "uncommon" | "rare" | "mythic" | "cursed";
 export type SnailSpeedBand = "garden" | "steady" | "swift" | "mythic";
 export type SnailTemperament = "steady" | "sleepy" | "wanderer" | "cursed";
@@ -30,10 +31,16 @@ export type SnailTrailTraits = {
   texture: "glistening" | "sparkling" | "misty" | "inky";
 };
 
+export type SoftCurrencyBalance = {
+  slime: number;
+};
+
 export type Snail = {
   appearance: SnailAppearanceTraits;
   baseSpeedMetersPerHour: number;
+  experiencePoints: number;
   id: string;
+  journeysCompleted: number;
   level: number;
   name: string;
   quirk: JourneyQuirk;
@@ -68,7 +75,10 @@ export type JourneyRecord = PhaseZeroJourney & {
 
 export type Egg = {
   earnedAtMs: number;
+  hatchedAtMs?: number;
+  hatchedSnailId?: string;
   id: string;
+  rarityPool: EggRarityPool;
   source: EggSource;
   status: EggStatus;
 };
@@ -78,6 +88,7 @@ export type CarrierState = {
   journeys: JourneyRecord[];
   reminders: Reminder[];
   snails: Snail[];
+  softCurrency: SoftCurrencyBalance;
 };
 
 export type InFlightReminderListItem = {
@@ -117,7 +128,9 @@ export function createStarterGardenSnail(): Snail {
       shellColor: "#7b4b34"
     },
     baseSpeedMetersPerHour: BASE_SNAIL_SPEED_METERS_PER_HOUR,
+    experiencePoints: 0,
     id: "garden-1",
+    journeysCompleted: 0,
     level: 1,
     name: "Garden Snail",
     quirk: "none",
@@ -140,7 +153,8 @@ export function createInitialCarrierState(): CarrierState {
     eggs: [],
     journeys: [],
     reminders: [],
-    snails: [createStarterGardenSnail()]
+    snails: [createStarterGardenSnail()],
+    softCurrency: { slime: 0 }
   };
 }
 
@@ -230,7 +244,10 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
       ...snail,
       appearance: { ...snail.appearance },
       trail: { ...snail.trail }
-    }))
+    })),
+    softCurrency: {
+      slime: state.softCurrency?.slime ?? 0
+    }
   };
 }
 
