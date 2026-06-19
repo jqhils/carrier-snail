@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Expo / React Native
+.expo/
+dist/
+web-build/
+*.orig.*
+ios/build/
+android/build/
+android/app/build/
+*.keystore
+!debug.keystore
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Test / coverage
+coverage/
+
+# Editor / misc
+.idea/
+.vscode/
+*.tsbuildinfo
