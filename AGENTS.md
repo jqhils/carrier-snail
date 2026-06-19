@@ -20,3 +20,9 @@ The five canonical roles, verbatim: `needs-triage`, `needs-info`, `ready-for-age
 ### Domain docs
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Autonomous build loop
+
+For long-running, AFK build runs (e.g. a dedicated Codex session), the operating
+manual is `docs/agents/autonomous-loop.md`. **It is opt-in** — normal interactive
+sessions should ignore it unless explicitly asked to run the loop.
