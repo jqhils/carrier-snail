@@ -5,5 +5,5 @@ export type ArrivalPush = {
 };
 
 export interface PushSender {
-  sendArrival(push: ArrivalPush): void;
+  sendArrival(push: ArrivalPush): Promise<void> | void;
 }
