@@ -12,6 +12,10 @@ import {
   type ServerJourneyEta
 } from "./computeServerJourneyEta";
 import type { BackendCarrierRepository } from "./resolveAnonymousCarrierUser";
+import {
+  buildJourneyWatchState,
+  type JourneyWatchState
+} from "./watchJourneyState";
 
 export type BackendJourneyState = {
   activeFrame?: CrawlFrame;
@@ -19,6 +23,7 @@ export type BackendJourneyState = {
   carrierState: CarrierState;
   inFlightReminders: InFlightReminderListItem[];
   serverEta?: ServerJourneyEta;
+  watchState: JourneyWatchState;
 };
 
 export async function loadBackendJourneyState({
@@ -34,12 +39,14 @@ export async function loadBackendJourneyState({
 }): Promise<BackendJourneyState> {
   const carrierState = await repository.loadCarrierState(userId);
   const activeJourney = getActiveJourney(carrierState);
+  const serverNowMs = clock.now();
+  const serverClock = { now: () => serverNowMs };
 
   return {
     activeFrame: activeJourney
       ? getCrawlFrame({
           journey: activeJourney,
-          nowMs: clock.now(),
+          nowMs: serverNowMs,
           timeWarpFactor
         })
       : undefined,
@@ -48,9 +55,14 @@ export async function loadBackendJourneyState({
     inFlightReminders: listInFlightReminders(carrierState),
     serverEta: activeJourney
       ? computeServerJourneyEta({
-          clock,
+          clock: serverClock,
           journey: activeJourney
         })
-      : undefined
+      : undefined,
+    watchState: buildJourneyWatchState({
+      clock: serverClock,
+      state: carrierState,
+      timeWarpFactor
+    })
   };
 }

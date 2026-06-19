@@ -92,5 +92,10 @@ describe("loadBackendJourneyState", () => {
         text: "check passport"
       }
     ]);
+    expect(state.watchState.journeys).toHaveLength(1);
+    expect(state.watchState.journeys[0].reminderText).toBe("check passport");
+    expect(state.watchState.journeys[0].etaRange.copy).toMatch(
+      /^No sooner than /
+    );
   });
 });
