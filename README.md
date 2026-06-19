@@ -32,3 +32,17 @@ npm run android
 MapLibre React Native is native code and does not run in Expo Go. The app uses
 the MapLibre demo style by default; override it with
 `EXPO_PUBLIC_MAP_STYLE_URL` in `.env` if needed.
+
+## Backend spine
+
+Issue #4 adds the Supabase foundation without requiring credentials for local
+demo mode. To exercise backend persistence, apply the migration in
+`supabase/migrations/` to a Supabase project and set:
+
+```sh
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+When those values are absent, the app keeps using the existing in-memory local
+state.

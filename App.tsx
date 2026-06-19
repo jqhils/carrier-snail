@@ -20,6 +20,12 @@ import {
   getCrawlFrame
 } from "./src/journey/snailCrawl";
 import type { Coordinate } from "./src/journey/snailCrawl";
+import { SupabaseAnonymousAuthProvider } from "./src/backend/supabaseAnonymousAuthProvider";
+import { SupabaseCarrierRepository } from "./src/backend/supabaseCarrierRepository";
+import {
+  createCarrierSupabaseClient,
+  installSupabaseAutoRefresh
+} from "./src/backend/supabaseClient";
 import { buildFadingTrailSegments } from "./src/journey/trail";
 import { completeArrivedJourneys } from "./src/useCases/completeArrivedJourneys";
 import { createReminderJourney } from "./src/useCases/createReminderJourney";
@@ -33,6 +39,12 @@ import {
   InMemoryCarrierRepository,
   listInFlightReminders
 } from "./src/useCases/localCarrierState";
+import { loadBackendJourneyState } from "./src/useCases/loadBackendJourneyState";
+import {
+  resolveAnonymousCarrierUser,
+  type BackendCarrierRepository,
+  type CarrierUser
+} from "./src/useCases/resolveAnonymousCarrierUser";
 
 const MOCK_RESTING_POINT: Coordinate = {
   latitude: -33.8688,
@@ -50,6 +62,11 @@ type Viewport = {
   width: number;
 };
 
+type BackendSession = {
+  repository: BackendCarrierRepository;
+  user: CarrierUser;
+};
+
 export default function App() {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
@@ -60,6 +77,9 @@ export default function App() {
   );
   const [reminderText, setReminderText] = useState("");
   const [formError, setFormError] = useState("");
+  const [backendSession, setBackendSession] = useState<BackendSession | null>(
+    null
+  );
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
@@ -103,6 +123,62 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const supabase = createCarrierSupabaseClient();
+
+    if (!supabase) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const uninstallAutoRefresh = installSupabaseAutoRefresh(supabase);
+    const repository = new SupabaseCarrierRepository(supabase);
+    const authProvider = new SupabaseAnonymousAuthProvider(supabase);
+
+    async function loadBackendState() {
+      const user = await resolveAnonymousCarrierUser({
+        authProvider,
+        clock: { now: () => Date.now() },
+        repository
+      });
+      const loaded = await loadBackendJourneyState({
+        clock: { now: () => Date.now() },
+        repository,
+        userId: user.id
+      });
+      const initialState =
+        loaded.carrierState.snails.length > 0
+          ? loaded.carrierState
+          : createInitialCarrierState();
+
+      if (loaded.carrierState.snails.length === 0) {
+        await repository.saveCarrierState(user.id, initialState);
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setBackendSession({ repository, user });
+      setCarrierState(initialState);
+    }
+
+    loadBackendState().catch((error) => {
+      if (!cancelled) {
+        setFormError(
+          error instanceof Error
+            ? error.message
+            : "Supabase setup failed; using local state."
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      uninstallAutoRefresh();
+    };
+  }, []);
+
   const demoJourney = useMemo(
     () =>
       createPhaseZeroJourney({
@@ -132,13 +208,16 @@ export default function App() {
         });
 
         return result.completedCount > 0
-          ? repository.snapshot()
+          ? persistCompletedState(
+              repository.snapshot(),
+              backendSession
+            )
           : currentState;
       });
     }, 250);
 
     return () => clearInterval(interval);
-  }, [pushSender, timeWarpFactor]);
+  }, [backendSession, pushSender, timeWarpFactor]);
 
   const frame = getCrawlFrame({
     journey,
@@ -160,7 +239,7 @@ export default function App() {
     });
   }
 
-  function sendReminder() {
+  async function sendReminder() {
     try {
       const repository = new InMemoryCarrierRepository(carrierState);
 
@@ -172,7 +251,26 @@ export default function App() {
           repository
         }
       );
-      setCarrierState(repository.snapshot());
+      const nextState = repository.snapshot();
+
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+
+        const loaded = await loadBackendJourneyState({
+          clock: { now: () => Date.now() },
+          repository: backendSession.repository,
+          timeWarpFactor,
+          userId: backendSession.user.id
+        });
+
+        setCarrierState(loaded.carrierState);
+      } else {
+        setCarrierState(nextState);
+      }
+
       setReminderText("");
       setFormError("");
     } catch (error) {
@@ -307,6 +405,19 @@ export default function App() {
       </SafeAreaView>
     </View>
   );
+}
+
+function persistCompletedState(
+  state: ReturnType<InMemoryCarrierRepository["snapshot"]>,
+  backendSession: BackendSession | null
+) {
+  if (backendSession) {
+    backendSession.repository
+      .saveCarrierState(backendSession.user.id, state)
+      .catch(() => undefined);
+  }
+
+  return state;
 }
 
 function projectCrawlToViewport(progress: number, viewport: Viewport) {
