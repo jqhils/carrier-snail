@@ -2,6 +2,7 @@ import {
   BASE_SNAIL_SPEED_METERS_PER_HOUR,
   createPhaseZeroJourney
 } from "../journey/snailCrawl";
+import { DELIVERY_FLOOR_MINIMUM_MS } from "../journey/deliveryFloor";
 import { loadBackendJourneyState } from "./loadBackendJourneyState";
 import type { BackendCarrierRepository } from "./resolveAnonymousCarrierUser";
 import type { CarrierState } from "./localCarrierState";
@@ -74,6 +75,9 @@ describe("loadBackendJourneyState", () => {
     expect(state.activeFrame?.travelledMeters).toBeCloseTo(
       BASE_SNAIL_SPEED_METERS_PER_HOUR,
       3
+    );
+    expect(state.serverEta?.earliestArrivalAtMs).toBeGreaterThanOrEqual(
+      DELIVERY_FLOOR_MINIMUM_MS
     );
     expect(state.inFlightReminders).toEqual([
       {

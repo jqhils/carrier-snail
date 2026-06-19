@@ -7,6 +7,10 @@ import {
   type InFlightReminderListItem,
   type JourneyRecord
 } from "./localCarrierState";
+import {
+  computeServerJourneyEta,
+  type ServerJourneyEta
+} from "./computeServerJourneyEta";
 import type { BackendCarrierRepository } from "./resolveAnonymousCarrierUser";
 
 export type BackendJourneyState = {
@@ -14,6 +18,7 @@ export type BackendJourneyState = {
   activeJourney?: JourneyRecord;
   carrierState: CarrierState;
   inFlightReminders: InFlightReminderListItem[];
+  serverEta?: ServerJourneyEta;
 };
 
 export async function loadBackendJourneyState({
@@ -40,6 +45,12 @@ export async function loadBackendJourneyState({
       : undefined,
     activeJourney,
     carrierState,
-    inFlightReminders: listInFlightReminders(carrierState)
+    inFlightReminders: listInFlightReminders(carrierState),
+    serverEta: activeJourney
+      ? computeServerJourneyEta({
+          clock,
+          journey: activeJourney
+        })
+      : undefined
   };
 }
