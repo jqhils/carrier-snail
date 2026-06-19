@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Carrier Snail",
+    "slug": "carrier-snail",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "@maplibre/maplibre-react-native"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jqhils.carriersnail",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Carrier Snail uses a coarse resting point so the demo snail knows where to crawl."
+      }
+    },
+    "android": {
+      "package": "com.jqhils.carriersnail",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "extra": {
+      "mapStyleUrl": "https://demotiles.maplibre.org/style.json"
+    }
+  }
+}
