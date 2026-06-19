@@ -13,6 +13,7 @@ import {
   View
 } from "react-native";
 
+import { ExpoBackgroundLocationController } from "./src/background/expoBackgroundLocationController";
 import {
   coerceTimeWarpFactor,
   createPhaseZeroJourney,
@@ -28,6 +29,11 @@ import {
 } from "./src/backend/supabaseClient";
 import { buildFadingTrailSegments } from "./src/journey/trail";
 import { completeArrivedJourneys } from "./src/useCases/completeArrivedJourneys";
+import {
+  BACKGROUND_LOCATION_PERMISSION_COPY,
+  configureOptionalBackgroundLocation,
+  type BackgroundLocationMode
+} from "./src/useCases/configureOptionalBackgroundLocation";
 import { createReminderJourney } from "./src/useCases/createReminderJourney";
 import {
   ExpoLocalPushSender,
@@ -81,12 +87,19 @@ export default function App() {
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null
   );
+  const [backgroundLocationBusy, setBackgroundLocationBusy] = useState(false);
+  const [backgroundLocationMode, setBackgroundLocationMode] =
+    useState<BackgroundLocationMode>("foreground-only");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
   const inFlightReminders = listInFlightReminders(carrierState);
   const pushSender = useMemo(() => new ExpoLocalPushSender(), []);
+  const backgroundLocationController = useMemo(
+    () => new ExpoBackgroundLocationController(),
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -312,6 +325,32 @@ export default function App() {
     }
   }
 
+  async function enableBackgroundLocation() {
+    setBackgroundLocationBusy(true);
+
+    try {
+      const result = await configureOptionalBackgroundLocation({
+        controller: backgroundLocationController
+      });
+
+      setBackgroundLocationMode(result.mode);
+
+      if (result.mode === "location-denied") {
+        setFormError("Location permission denied. Foreground-only mode remains available.");
+      } else {
+        setFormError("");
+      }
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Background location setup failed."
+      );
+    } finally {
+      setBackgroundLocationBusy(false);
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -425,6 +464,35 @@ export default function App() {
             <Text style={styles.sendButtonText}>Send</Text>
           </Pressable>
         </View>
+        <View style={styles.backgroundLocationRow}>
+          <Text style={styles.backgroundLocationText}>
+            {BACKGROUND_LOCATION_PERMISSION_COPY}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Enable optional background location"
+            disabled={
+              backgroundLocationBusy ||
+              backgroundLocationMode === "background-enabled"
+            }
+            onPress={enableBackgroundLocation}
+            style={({ pressed }) => [
+              styles.backgroundLocationButton,
+              pressed ? styles.backgroundLocationButtonPressed : null,
+              backgroundLocationMode === "background-enabled"
+                ? styles.backgroundLocationButtonEnabled
+                : null
+            ]}
+          >
+            <Text style={styles.backgroundLocationButtonText}>
+              {backgroundLocationMode === "background-enabled"
+                ? "On"
+                : backgroundLocationBusy
+                  ? "..."
+                  : "Enable"}
+            </Text>
+          </Pressable>
+        </View>
         {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
         {inFlightReminders.length > 0 ? (
           <View style={styles.inFlightList}>
@@ -493,6 +561,38 @@ function projectCrawlToViewport(progress: number, viewport: Viewport) {
 }
 
 const styles = StyleSheet.create({
+  backgroundLocationButton: {
+    alignItems: "center",
+    backgroundColor: "#3f6d5b",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 38,
+    minWidth: 68,
+    paddingHorizontal: 12
+  },
+  backgroundLocationButtonEnabled: {
+    backgroundColor: "#6a7b70"
+  },
+  backgroundLocationButtonPressed: {
+    backgroundColor: "#315547"
+  },
+  backgroundLocationButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  backgroundLocationRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10
+  },
+  backgroundLocationText: {
+    color: "#56645e",
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16
+  },
   controls: {
     backgroundColor: "rgba(249, 247, 238, 0.94)",
     borderTopColor: "rgba(38, 51, 46, 0.12)",
