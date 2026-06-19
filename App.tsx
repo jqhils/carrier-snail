@@ -42,6 +42,14 @@ import {
   requestArrivalNotificationPermission
 } from "./src/useCases/expoLocalPushSender";
 import {
+  getEggRarityPoolOdds,
+  hatchEgg
+} from "./src/useCases/hatchEgg";
+import {
+  levelUpCost,
+  levelUpSnail
+} from "./src/useCases/levelUpSnail";
+import {
   createInitialCarrierState,
   getActiveJourney,
   InMemoryCarrierRepository,
@@ -114,6 +122,19 @@ export default function App() {
       snail.id === requestedSelectedSnailId && snail.status === "resting"
   ) ?? firstRestingSnail;
   const selectedSnailId = selectedStableSnail?.id ?? "";
+  const selectedOwnedSnail = carrierState.snails.find(
+    (snail) => snail.id === selectedSnailId
+  );
+  const selectedLevelCost = selectedOwnedSnail
+    ? levelUpCost(selectedOwnedSnail)
+    : 0;
+  const selectedCanLevel =
+    !!selectedOwnedSnail &&
+    selectedOwnedSnail.status === "resting" &&
+    carrierState.softCurrency.slime >= selectedLevelCost;
+  const unhatchedEggs = carrierState.eggs.filter(
+    (egg) => egg.status === "unhatched"
+  );
   const pushSender = useMemo(() => new ExpoLocalPushSender(), []);
   const backgroundLocationController = useMemo(
     () => new ExpoBackgroundLocationController(),
@@ -461,6 +482,83 @@ export default function App() {
     }
   }
 
+  async function hatchCarrierEgg(eggId: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+      const result = hatchEgg(
+        { eggId },
+        {
+          clock: { now: () => Date.now() },
+          repository
+        }
+      );
+      const nextState = repository.snapshot();
+
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+
+        const loaded = await loadBackendJourneyState({
+          clock: { now: () => Date.now() },
+          repository: backendSession.repository,
+          timeWarpFactor,
+          userId: backendSession.user.id
+        });
+
+        setCarrierState(loaded.carrierState);
+      } else {
+        setCarrierState(nextState);
+      }
+
+      setRequestedSelectedSnailId(result.snail.id);
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Hatch failed.");
+    }
+  }
+
+  async function levelSelectedSnail() {
+    if (!selectedOwnedSnail) {
+      return;
+    }
+
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      levelUpSnail(
+        { snailId: selectedOwnedSnail.id },
+        {
+          repository
+        }
+      );
+      const nextState = repository.snapshot();
+
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+
+        const loaded = await loadBackendJourneyState({
+          clock: { now: () => Date.now() },
+          repository: backendSession.repository,
+          timeWarpFactor,
+          userId: backendSession.user.id
+        });
+
+        setCarrierState(loaded.carrierState);
+      } else {
+        setCarrierState(nextState);
+      }
+
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Level up failed.");
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -643,12 +741,15 @@ export default function App() {
             <Text style={styles.stableTitle}>Stable</Text>
             <Text style={styles.stableCapacity}>
               {stable.capacity.freeCount}/{stable.capacity.totalCount} free,{" "}
-              {carrierState.eggs.length} eggs
+              {unhatchedEggs.length} eggs, {carrierState.softCurrency.slime} slime
             </Text>
           </View>
           <View style={styles.stableSnailList}>
             {stable.snails.map((snail) => {
               const selected = snail.id === selectedSnailId;
+              const ownedSnail = carrierState.snails.find(
+                (candidate) => candidate.id === snail.id
+              );
 
               return (
                 <Pressable
@@ -681,10 +782,68 @@ export default function App() {
                         ? "Selected"
                         : "Ready"}
                   </Text>
+                  {ownedSnail ? (
+                    <Text numberOfLines={1} style={styles.stableSnailStats}>
+                      Lv {ownedSnail.level} · {ownedSnail.rarity} ·{" "}
+                      {Math.round(ownedSnail.baseSpeedMetersPerHour)} m/h ·{" "}
+                      {Math.round(ownedSnail.reliability * 100)}%
+                    </Text>
+                  ) : null}
                 </Pressable>
               );
             })}
           </View>
+          {selectedOwnedSnail ? (
+            <View style={styles.levelRow}>
+              <Text numberOfLines={1} style={styles.levelText}>
+                {selectedOwnedSnail.name} Lv {selectedOwnedSnail.level}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Level ${selectedOwnedSnail.name}`}
+                disabled={!selectedCanLevel}
+                onPress={levelSelectedSnail}
+                style={({ pressed }) => [
+                  styles.levelButton,
+                  !selectedCanLevel ? styles.levelButtonDisabled : null,
+                  pressed ? styles.levelButtonPressed : null
+                ]}
+              >
+                <Text style={styles.levelButtonText}>
+                  Level {selectedLevelCost}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {unhatchedEggs.length > 0 ? (
+            <View style={styles.eggList}>
+              {unhatchedEggs.map((egg) => (
+                <View key={egg.id} style={styles.eggRow}>
+                  <View style={styles.eggCopy}>
+                    <Text numberOfLines={1} style={styles.eggTitle}>
+                      Earned egg
+                    </Text>
+                    <Text numberOfLines={2} style={styles.eggOdds}>
+                      {formatOddsText(egg.rarityPool)}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Hatch ${egg.id}`}
+                    onPress={() => {
+                      void hatchCarrierEgg(egg.id);
+                    }}
+                    style={({ pressed }) => [
+                      styles.hatchButton,
+                      pressed ? styles.hatchButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.hatchButtonText}>Hatch</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
         <View style={styles.composerRow}>
           <TextInput
@@ -838,6 +997,14 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${safeAlpha})`;
 }
 
+function formatOddsText(
+  rarityPool: Parameters<typeof getEggRarityPoolOdds>[0]
+): string {
+  return getEggRarityPoolOdds(rarityPool)
+    .map((odd) => `${Math.round(odd.probability * 100)}% ${odd.rarity}`)
+    .join(" · ");
+}
+
 const styles = StyleSheet.create({
   backgroundLocationButton: {
     alignItems: "center",
@@ -922,6 +1089,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8
   },
+  eggCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  eggList: {
+    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopWidth: 1,
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10
+  },
+  eggOdds: {
+    color: "#56645e",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2
+  },
+  eggRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
+  },
+  eggTitle: {
+    color: "#25332e",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  hatchButton: {
+    alignItems: "center",
+    backgroundColor: "#365c8d",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 68,
+    paddingHorizontal: 10
+  },
+  hatchButtonPressed: {
+    backgroundColor: "#294870"
+  },
+  hatchButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "700"
+  },
   inFlightItem: {
     alignItems: "center",
     borderColor: "rgba(43, 58, 52, 0.12)",
@@ -950,6 +1161,42 @@ const styles = StyleSheet.create({
     color: "#25332e",
     fontSize: 14,
     fontWeight: "600"
+  },
+  levelButton: {
+    alignItems: "center",
+    backgroundColor: "#3f6d5b",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 76,
+    paddingHorizontal: 10
+  },
+  levelButtonDisabled: {
+    backgroundColor: "#7c8580"
+  },
+  levelButtonPressed: {
+    backgroundColor: "#315547"
+  },
+  levelButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  levelRow: {
+    alignItems: "center",
+    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+    paddingTop: 10
+  },
+  levelText: {
+    color: "#25332e",
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
+    minWidth: 0
   },
   mapShell: {
     flex: 1
@@ -1107,6 +1354,11 @@ const styles = StyleSheet.create({
     color: "#3f6d5b",
     fontSize: 12,
     fontWeight: "700"
+  },
+  stableSnailStats: {
+    color: "#6d5a46",
+    fontSize: 12,
+    marginTop: 3
   },
   stableTitle: {
     color: "#25332e",

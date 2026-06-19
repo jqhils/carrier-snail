@@ -22,10 +22,16 @@ type CarrierUserRow = {
   id: string;
 };
 
+type CarrierUserStateRow = {
+  soft_currency_slime: number;
+};
+
 type SnailRow = {
   appearance: unknown;
   base_speed_meters_per_hour: number;
+  experience_points: number;
   id: string;
+  journeys_completed: number;
   level: number;
   name: string;
   quirk: Snail["quirk"];
@@ -66,7 +72,10 @@ type JourneyRow = {
 
 type EggRow = {
   earned_at: string;
+  hatched_at: string | null;
+  hatched_snail_id: string | null;
   id: string;
+  rarity_pool: Egg["rarityPool"];
   source: Egg["source"];
   status: Egg["status"];
 };
@@ -122,7 +131,12 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
   }
 
   async loadCarrierState(userId: string): Promise<CarrierState> {
-    const [snails, reminders, journeys, eggs] = await Promise.all([
+    const [userState, snails, reminders, journeys, eggs] = await Promise.all([
+      this.client
+        .from("carrier_users")
+        .select("soft_currency_slime")
+        .eq("id", userId)
+        .maybeSingle(),
       this.client
         .from("snails")
         .select(
@@ -132,6 +146,8 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
             "status",
             "rarity",
             "level",
+            "experience_points",
+            "journeys_completed",
             "base_speed_meters_per_hour",
             "quirk_seed",
             "temperament",
@@ -174,11 +190,14 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
         .order("created_at", { ascending: true }),
       this.client
         .from("eggs")
-        .select("id, source, status, earned_at")
+        .select(
+          "id, source, status, rarity_pool, earned_at, hatched_at, hatched_snail_id"
+        )
         .eq("user_id", userId)
         .order("created_at", { ascending: true })
     ]);
 
+    assertNoSupabaseError(userState.error, "load user state");
     assertNoSupabaseError(snails.error, "load snails");
     assertNoSupabaseError(reminders.error, "load reminders");
     assertNoSupabaseError(journeys.error, "load journeys");
@@ -188,19 +207,36 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       eggs: asRows<EggRow>(eggs.data).map(mapEgg),
       journeys: asRows<JourneyRow>(journeys.data).map(mapJourney),
       reminders: asRows<ReminderRow>(reminders.data).map(mapReminder),
-      snails: asRows<SnailRow>(snails.data).map(mapSnail)
+      snails: asRows<SnailRow>(snails.data).map(mapSnail),
+      softCurrency: {
+        slime:
+          finiteNumber((userState.data as CarrierUserStateRow | null)?.soft_currency_slime) ??
+          0
+      }
     };
   }
 
   async saveCarrierState(userId: string, state: CarrierState): Promise<void> {
     const snapshot = cloneCarrierState(state);
 
+    const userState = await this.client
+      .from("carrier_users")
+      .update({
+        soft_currency_slime: snapshot.softCurrency.slime,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", userId);
+
+    assertNoSupabaseError(userState.error, "save user state");
+
     if (snapshot.snails.length > 0) {
       const result = await this.client.from("snails").upsert(
         snapshot.snails.map((snail) => ({
           appearance: snail.appearance,
           base_speed_meters_per_hour: snail.baseSpeedMetersPerHour,
+          experience_points: snail.experiencePoints,
           id: snail.id,
+          journeys_completed: snail.journeysCompleted,
           level: snail.level,
           name: snail.name,
           quirk: snail.quirk,
@@ -273,7 +309,11 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       const result = await this.client.from("eggs").upsert(
         snapshot.eggs.map((egg) => ({
           earned_at: toIso(egg.earnedAtMs),
+          hatched_at:
+            egg.hatchedAtMs === undefined ? null : toIso(egg.hatchedAtMs),
+          hatched_snail_id: egg.hatchedSnailId ?? null,
           id: egg.id,
+          rarity_pool: egg.rarityPool,
           source: egg.source,
           status: egg.status,
           user_id: userId
@@ -302,7 +342,11 @@ function mapSnail(row: SnailRow): Snail {
     baseSpeedMetersPerHour:
       finiteNumber(row.base_speed_meters_per_hour) ??
       fallback.baseSpeedMetersPerHour,
+    experiencePoints:
+      finiteNumber(row.experience_points) ?? fallback.experiencePoints,
     id: row.id,
+    journeysCompleted:
+      finiteNumber(row.journeys_completed) ?? fallback.journeysCompleted,
     level: finiteNumber(row.level) ?? fallback.level,
     name: row.name,
     quirk: row.quirk ?? fallback.quirk,
@@ -353,7 +397,10 @@ function mapJourney(row: JourneyRow): JourneyRecord {
 function mapEgg(row: EggRow): Egg {
   return {
     earnedAtMs: fromIso(row.earned_at),
+    hatchedAtMs: row.hatched_at ? fromIso(row.hatched_at) : undefined,
+    hatchedSnailId: row.hatched_snail_id ?? undefined,
     id: row.id,
+    rarityPool: row.rarity_pool ?? "earned-basic",
     source: row.source,
     status: row.status
   };

@@ -75,9 +75,17 @@ export function completeArrivedJourneys({
     ),
     snails: state.snails.map((snail) =>
       completedSnailIds.has(snail.id)
-        ? { ...snail, status: "resting" }
+        ? {
+            ...snail,
+            experiencePoints: snail.experiencePoints + 1,
+            journeysCompleted: snail.journeysCompleted + 1,
+            status: "resting"
+          }
         : snail
-    )
+    ),
+    softCurrency: {
+      slime: (state.softCurrency?.slime ?? 0) + completedCount
+    }
   };
 
   if (completedCount > 0) {
@@ -91,6 +99,7 @@ function createEarnedEgg(sequence: number, earnedAtMs: number): Egg {
   return {
     earnedAtMs,
     id: `egg-${sequence}`,
+    rarityPool: "earned-basic",
     source: "earned",
     status: "unhatched"
   };

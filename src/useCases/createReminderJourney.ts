@@ -108,7 +108,8 @@ export function createReminderJourney(
       candidate.id === snail.id
         ? { ...candidate, status: "on-journey" }
         : candidate
-    )
+    ),
+    softCurrency: state.softCurrency
   });
 
   return { journey, reminder };

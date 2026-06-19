@@ -93,13 +93,17 @@ describe("completeArrivedJourneys", () => {
       status: "arrived"
     });
     expect(state.snails[0]).toMatchObject({
+      experiencePoints: 1,
       id: "garden-1",
+      journeysCompleted: 1,
       status: "resting"
     });
+    expect(state.softCurrency).toEqual({ slime: 1 });
     expect(state.eggs).toEqual([
       {
         earnedAtMs: arrivalMs,
         id: "egg-1",
+        rarityPool: "earned-basic",
         source: "earned",
         status: "unhatched"
       }
