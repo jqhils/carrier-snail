@@ -85,4 +85,34 @@ describe("delivery floor", () => {
       }
     }
   });
+
+  it("keeps mythic speed bands and rarity multipliers above the Floor", () => {
+    const target = destinationCoordinate({
+      bearingDegrees: 90,
+      distanceMeters: 8000,
+      from: origin
+    });
+    const createdAtMs = 123456;
+    const etaAtMs = calculateClampedArrivalAtMs({
+      baseSpeedMetersPerHour: 120,
+      createdAtMs,
+      speedModifiers: {
+        levelMultiplier: 10,
+        rarityMultiplier: 12,
+        spendMultiplier: 50
+      },
+      start: origin,
+      target
+    });
+    const floorDurationMs = calculateDeliveryFloorDurationMs({
+      baseSpeedMetersPerHour: 120,
+      start: origin,
+      target
+    });
+
+    expect(etaAtMs - createdAtMs).toBeGreaterThanOrEqual(floorDurationMs);
+    expect(etaAtMs - createdAtMs).toBeGreaterThanOrEqual(
+      DELIVERY_FLOOR_MINIMUM_MS
+    );
+  });
 });

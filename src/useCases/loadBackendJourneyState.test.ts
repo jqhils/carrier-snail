@@ -5,7 +5,7 @@ import {
 import { DELIVERY_FLOOR_MINIMUM_MS } from "../journey/deliveryFloor";
 import { loadBackendJourneyState } from "./loadBackendJourneyState";
 import type { BackendCarrierRepository } from "./resolveAnonymousCarrierUser";
-import type { CarrierState } from "./localCarrierState";
+import { createStarterGardenSnail, type CarrierState } from "./localCarrierState";
 
 const target = {
   latitude: -33.8688,
@@ -57,6 +57,7 @@ describe("loadBackendJourneyState", () => {
       ],
       snails: [
         {
+          ...createStarterGardenSnail(),
           id: "snail-1",
           name: "Backend Garden",
           status: "on-journey"

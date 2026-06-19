@@ -2,6 +2,7 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import {
   cloneCarrierState,
+  createStarterGardenSnail,
   type CarrierState,
   type Egg,
   type JourneyRecord,
@@ -22,9 +23,19 @@ type CarrierUserRow = {
 };
 
 type SnailRow = {
+  appearance: unknown;
+  base_speed_meters_per_hour: number;
   id: string;
+  level: number;
   name: string;
+  quirk: Snail["quirk"];
+  quirk_seed: string;
+  rarity: Snail["rarity"];
+  reliability: number;
+  speed_band: Snail["speedBand"];
   status: Snail["status"];
+  temperament: Snail["temperament"];
+  trail_traits: unknown;
 };
 
 type ReminderRow = {
@@ -114,7 +125,23 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     const [snails, reminders, journeys, eggs] = await Promise.all([
       this.client
         .from("snails")
-        .select("id, name, status")
+        .select(
+          [
+            "id",
+            "name",
+            "status",
+            "rarity",
+            "level",
+            "base_speed_meters_per_hour",
+            "quirk_seed",
+            "temperament",
+            "speed_band",
+            "reliability",
+            "quirk",
+            "appearance",
+            "trail_traits"
+          ].join(", ")
+        )
         .eq("user_id", userId)
         .order("created_at", { ascending: true }),
       this.client
@@ -171,9 +198,19 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     if (snapshot.snails.length > 0) {
       const result = await this.client.from("snails").upsert(
         snapshot.snails.map((snail) => ({
+          appearance: snail.appearance,
+          base_speed_meters_per_hour: snail.baseSpeedMetersPerHour,
           id: snail.id,
+          level: snail.level,
           name: snail.name,
+          quirk: snail.quirk,
+          quirk_seed: snail.quirkSeed,
+          rarity: snail.rarity,
+          reliability: snail.reliability,
+          speed_band: snail.speedBand,
           status: snail.status,
+          temperament: snail.temperament,
+          trail_traits: snail.trail,
           user_id: userId
         })),
         { onConflict: "user_id,id" }
@@ -258,10 +295,24 @@ function mapCarrierUser(row: CarrierUserRow): CarrierUser {
 }
 
 function mapSnail(row: SnailRow): Snail {
+  const fallback = createStarterGardenSnail();
+
   return {
+    appearance: mapAppearance(row.appearance, fallback.appearance),
+    baseSpeedMetersPerHour:
+      finiteNumber(row.base_speed_meters_per_hour) ??
+      fallback.baseSpeedMetersPerHour,
     id: row.id,
+    level: finiteNumber(row.level) ?? fallback.level,
     name: row.name,
-    status: row.status
+    quirk: row.quirk ?? fallback.quirk,
+    quirkSeed: row.quirk_seed || fallback.quirkSeed,
+    rarity: row.rarity ?? fallback.rarity,
+    reliability: finiteNumber(row.reliability) ?? fallback.reliability,
+    speedBand: row.speed_band ?? fallback.speedBand,
+    status: row.status,
+    temperament: row.temperament ?? fallback.temperament,
+    trail: mapTrail(row.trail_traits, fallback.trail)
   };
 }
 
@@ -306,6 +357,61 @@ function mapEgg(row: EggRow): Egg {
     source: row.source,
     status: row.status
   };
+}
+
+function mapAppearance(
+  value: unknown,
+  fallback: Snail["appearance"]
+): Snail["appearance"] {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    bodyColor:
+      typeof value.bodyColor === "string" ? value.bodyColor : fallback.bodyColor,
+    shellColor:
+      typeof value.shellColor === "string"
+        ? value.shellColor
+        : fallback.shellColor
+  };
+}
+
+function mapTrail(value: unknown, fallback: Snail["trail"]): Snail["trail"] {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    color: typeof value.color === "string" ? value.color : fallback.color,
+    persistenceMs:
+      finiteNumber(value.persistenceMs) ?? fallback.persistenceMs,
+    texture:
+      value.texture === "sparkling" ||
+      value.texture === "misty" ||
+      value.texture === "inky" ||
+      value.texture === "glistening"
+        ? value.texture
+        : fallback.texture
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
 }
 
 function mapTrailHistory(

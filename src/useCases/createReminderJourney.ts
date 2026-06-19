@@ -80,6 +80,9 @@ export function createReminderJourney(
   const createdAtMs = clock.now();
   const baseJourney = createPhaseZeroJourney({
     createdAtMs,
+    quirk: snail.quirk,
+    quirkSeed: snail.quirkSeed,
+    speedMetersPerHour: snail.baseSpeedMetersPerHour,
     target: coarsenCoordinate(locationSource.currentTarget())
   });
   const reminder: Reminder = {
