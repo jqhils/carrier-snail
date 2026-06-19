@@ -28,6 +28,7 @@ type CarrierUserRow = {
 
 type CarrierUserStateRow = {
   inventory: unknown;
+  onboarding_completed_at: string | null;
   purchase_records: unknown;
   purchased_stable_slots: number;
   soft_currency_slime: number;
@@ -142,7 +143,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       this.client
         .from("carrier_users")
         .select(
-          "soft_currency_slime, inventory, purchase_records, purchased_stable_slots"
+          "soft_currency_slime, inventory, purchase_records, purchased_stable_slots, onboarding_completed_at"
         )
         .eq("id", userId)
         .maybeSingle(),
@@ -220,6 +221,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       eggs: asRows<EggRow>(eggs.data).map(mapEgg),
       inventory: mappedUserState.inventory,
       journeys: asRows<JourneyRow>(journeys.data).map(mapJourney),
+      onboarding: mappedUserState.onboarding,
       purchases: mappedUserState.purchases,
       reminders: asRows<ReminderRow>(reminders.data).map(mapReminder),
       snails: asRows<SnailRow>(snails.data).map(mapSnail),
@@ -235,6 +237,10 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       .from("carrier_users")
       .update({
         inventory: snapshot.inventory,
+        onboarding_completed_at:
+          snapshot.onboarding?.completedAtMs === undefined
+            ? null
+            : toIso(snapshot.onboarding.completedAtMs),
         purchase_records: snapshot.purchases,
         purchased_stable_slots: snapshot.stableSlots.purchased,
         soft_currency_slime: snapshot.softCurrency.slime,
@@ -351,10 +357,15 @@ function mapCarrierUser(row: CarrierUserRow): CarrierUser {
 
 function mapUserState(row: CarrierUserStateRow | null): Pick<
   CarrierState,
-  "inventory" | "purchases" | "softCurrency" | "stableSlots"
+  "inventory" | "onboarding" | "purchases" | "softCurrency" | "stableSlots"
 > {
   return {
     inventory: mapInventory(row?.inventory),
+    onboarding: {
+      completedAtMs: row?.onboarding_completed_at
+        ? fromIso(row.onboarding_completed_at)
+        : undefined
+    },
     purchases: mapPurchases(row?.purchase_records),
     softCurrency: {
       slime: finiteNumber(row?.soft_currency_slime) ?? 0

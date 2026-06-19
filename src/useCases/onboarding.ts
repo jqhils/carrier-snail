@@ -1,0 +1,36 @@
+import type { Clock } from "./createReminderJourney";
+import type { CarrierRepository, CarrierState } from "./localCarrierState";
+
+export const FIRST_RUN_ONBOARDING_STEPS = [
+  "Write a short reminder. Your starter Garden Snail begins about 8 km away and crawls toward your coarse resting place.",
+  "There are no mid-journey notifications. Carrier Snail sends one push only when the snail finally arrives.",
+  "Recall is always available. It ends the reminder, sends the snail home empty, and lets the thought go."
+] as const;
+
+export const LOCATION_PRIVACY_PLAIN_LANGUAGE =
+  "Carrier Snail uses coarse location only. We keep the latest target and a short trail history, not a long-term location log. Background re-aiming is optional; foreground-only delivery still works.";
+
+export function shouldShowOnboarding(state: CarrierState): boolean {
+  return state.onboarding?.completedAtMs === undefined;
+}
+
+export function completeOnboarding({
+  clock,
+  repository
+}: {
+  clock: Clock;
+  repository: CarrierRepository;
+}): void {
+  const state = repository.snapshot();
+
+  if (!shouldShowOnboarding(state)) {
+    return;
+  }
+
+  repository.save({
+    ...state,
+    onboarding: {
+      completedAtMs: clock.now()
+    }
+  });
+}

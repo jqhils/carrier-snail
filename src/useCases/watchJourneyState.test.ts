@@ -154,6 +154,7 @@ function createWatchState({
     eggs: [],
     inventory: { cosmetics: [] },
     journeys,
+    onboarding: {},
     purchases: [],
     reminders: [
       {
