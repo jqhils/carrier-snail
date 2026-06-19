@@ -63,3 +63,9 @@ npm test -- --runTestsByPath src/useCases/runScheduledArrivalWorker.test.ts
 Production scheduling should run the same use-case with a service-role Supabase
 client, `SupabaseCarrierRepository`, and a `PushSender` implementation that
 delivers through Expo Push.
+
+## Foreground target updates
+
+Foreground location updates run through `updateForegroundTarget`, which rounds
+samples to roughly 50 m before persistence, re-aims active journeys from their
+stored parameters, and retains only the latest target plus a short trail history.

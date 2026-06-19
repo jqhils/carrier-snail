@@ -5,7 +5,8 @@ import {
   type CarrierState,
   type JourneyRecord,
   type Reminder,
-  type Snail
+  type Snail,
+  type TrailHistoryPoint
 } from "../useCases/localCarrierState";
 import type {
   AuthenticatedUser,
@@ -46,6 +47,7 @@ type JourneyRow = {
   status: JourneyRecord["status"];
   target_latitude: number;
   target_longitude: number;
+  trail_history: TrailHistoryPoint[] | null;
 };
 
 export class SupabaseCarrierRepository implements BackendCarrierRepository {
@@ -124,7 +126,8 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
             "start_longitude",
             "target_latitude",
             "target_longitude",
-            "base_speed_meters_per_hour"
+            "base_speed_meters_per_hour",
+            "trail_history"
           ].join(", ")
         )
         .eq("user_id", userId)
@@ -194,6 +197,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
           status: journey.status,
           target_latitude: journey.target.latitude,
           target_longitude: journey.target.longitude,
+          trail_history: journey.trailHistory ?? [],
           user_id: userId
         })),
         { onConflict: "user_id,id" }
@@ -247,8 +251,25 @@ function mapJourney(row: JourneyRow): JourneyRecord {
     target: {
       latitude: row.target_latitude,
       longitude: row.target_longitude
-    }
+    },
+    trailHistory: mapTrailHistory(row.trail_history)
   };
+}
+
+function mapTrailHistory(
+  trailHistory: TrailHistoryPoint[] | null
+): TrailHistoryPoint[] | undefined {
+  if (!Array.isArray(trailHistory) || trailHistory.length === 0) {
+    return undefined;
+  }
+
+  return trailHistory.map((point) => ({
+    coordinate: {
+      latitude: point.coordinate.latitude,
+      longitude: point.coordinate.longitude
+    },
+    recordedAtMs: point.recordedAtMs
+  }));
 }
 
 function assertNoSupabaseError(

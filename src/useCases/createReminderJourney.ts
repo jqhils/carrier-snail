@@ -2,6 +2,7 @@ import {
   createPhaseZeroJourney,
   type Coordinate
 } from "../journey/snailCrawl";
+import { coarsenCoordinate } from "../location/coarseLocation";
 import type {
   CarrierRepository,
   JourneyRecord,
@@ -74,7 +75,7 @@ export function createReminderJourney(
   const createdAtMs = clock.now();
   const baseJourney = createPhaseZeroJourney({
     createdAtMs,
-    target: locationSource.currentTarget()
+    target: coarsenCoordinate(locationSource.currentTarget())
   });
   const reminder: Reminder = {
     createdAtMs,

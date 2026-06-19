@@ -4,6 +4,11 @@ export type SnailStatus = "resting" | "on-journey";
 export type ReminderStatus = "in-flight" | "delivered";
 export type JourneyStatus = "in-flight" | "arrived";
 
+export type TrailHistoryPoint = {
+  coordinate: Coordinate;
+  recordedAtMs: number;
+};
+
 export type Snail = {
   id: string;
   name: string;
@@ -25,6 +30,7 @@ export type JourneyRecord = PhaseZeroJourney & {
   reminderId: string;
   snailId: string;
   status: JourneyStatus;
+  trailHistory?: TrailHistoryPoint[];
 };
 
 export type CarrierState = {
@@ -99,7 +105,11 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
     journeys: state.journeys.map((journey) => ({
       ...journey,
       start: cloneCoordinate(journey.start),
-      target: cloneCoordinate(journey.target)
+      target: cloneCoordinate(journey.target),
+      trailHistory: journey.trailHistory?.map((point) => ({
+        coordinate: cloneCoordinate(point.coordinate),
+        recordedAtMs: point.recordedAtMs
+      }))
     })),
     reminders: state.reminders.map((reminder) => ({ ...reminder })),
     snails: state.snails.map((snail) => ({ ...snail }))

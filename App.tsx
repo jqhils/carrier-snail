@@ -45,6 +45,7 @@ import {
   type BackendCarrierRepository,
   type CarrierUser
 } from "./src/useCases/resolveAnonymousCarrierUser";
+import { updateForegroundTarget } from "./src/useCases/updateForegroundTarget";
 
 const MOCK_RESTING_POINT: Coordinate = {
   latitude: -33.8688,
@@ -178,6 +179,39 @@ export default function App() {
       uninstallAutoRefresh();
     };
   }, []);
+
+  useEffect(() => {
+    if (!backendSession) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    updateForegroundTarget({
+      clock: { now: () => Date.now() },
+      locationSource: { currentTarget: () => target },
+      repository: backendSession.repository,
+      userId: backendSession.user.id
+    })
+      .then((result) => {
+        if (!cancelled && result.updatedCount > 0) {
+          setCarrierState(result.carrierState);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setFormError(
+            error instanceof Error
+              ? error.message
+              : "Target update failed."
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backendSession, target]);
 
   const demoJourney = useMemo(
     () =>
