@@ -1,8 +1,8 @@
 import type { Coordinate, PhaseZeroJourney } from "../journey/snailCrawl";
 
 export type SnailStatus = "resting" | "on-journey";
-export type ReminderStatus = "in-flight";
-export type JourneyStatus = "in-flight";
+export type ReminderStatus = "in-flight" | "delivered";
+export type JourneyStatus = "in-flight" | "arrived";
 
 export type Snail = {
   id: string;
@@ -12,6 +12,7 @@ export type Snail = {
 
 export type Reminder = {
   createdAtMs: number;
+  deliveredAtMs?: number;
   id: string;
   snailId: string;
   status: ReminderStatus;
@@ -19,6 +20,7 @@ export type Reminder = {
 };
 
 export type JourneyRecord = PhaseZeroJourney & {
+  arrivedAtMs?: number;
   id: string;
   reminderId: string;
   snailId: string;

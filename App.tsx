@@ -20,7 +20,13 @@ import {
   getCrawlFrame
 } from "./src/journey/snailCrawl";
 import type { Coordinate } from "./src/journey/snailCrawl";
+import { buildFadingTrailSegments } from "./src/journey/trail";
+import { completeArrivedJourneys } from "./src/useCases/completeArrivedJourneys";
 import { createReminderJourney } from "./src/useCases/createReminderJourney";
+import {
+  ExpoLocalPushSender,
+  requestArrivalNotificationPermission
+} from "./src/useCases/expoLocalPushSender";
 import {
   createInitialCarrierState,
   getActiveJourney,
@@ -59,6 +65,7 @@ export default function App() {
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
   const inFlightReminders = listInFlightReminders(carrierState);
+  const pushSender = useMemo(() => new ExpoLocalPushSender(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +96,7 @@ export default function App() {
     readCoarseLocation().catch(() => {
       setLocationLabel("Mock resting point");
     });
+    requestArrivalNotificationPermission().catch(() => undefined);
 
     return () => {
       cancelled = true;
@@ -107,11 +115,30 @@ export default function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setNowMs(Date.now());
+      const timestamp = Date.now();
+
+      setNowMs(timestamp);
+      setCarrierState((currentState) => {
+        if (!getActiveJourney(currentState)) {
+          return currentState;
+        }
+
+        const repository = new InMemoryCarrierRepository(currentState);
+        const result = completeArrivedJourneys({
+          clock: { now: () => timestamp },
+          pushSender,
+          repository,
+          timeWarpFactor
+        });
+
+        return result.completedCount > 0
+          ? repository.snapshot()
+          : currentState;
+      });
     }, 250);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [pushSender, timeWarpFactor]);
 
   const frame = getCrawlFrame({
     journey,
@@ -171,20 +198,26 @@ export default function App() {
           />
         </Map>
         <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Line
-            color="rgba(53, 108, 91, 0.24)"
-            p1={vec(overlay.start.x, overlay.start.y)}
-            p2={vec(overlay.snail.x, overlay.snail.y)}
-            strokeCap="round"
-            strokeWidth={10}
-          />
-          <Line
-            color="rgba(245, 248, 237, 0.84)"
-            p1={vec(overlay.start.x, overlay.start.y)}
-            p2={vec(overlay.snail.x, overlay.snail.y)}
-            strokeCap="round"
-            strokeWidth={3}
-          />
+          {overlay.trailSegments.map((segment, index) => (
+            <Line
+              color={`rgba(53, 108, 91, ${segment.opacity * 0.36})`}
+              key={`trail-shadow-${index}`}
+              p1={vec(segment.from.x, segment.from.y)}
+              p2={vec(segment.to.x, segment.to.y)}
+              strokeCap="round"
+              strokeWidth={10}
+            />
+          ))}
+          {overlay.trailSegments.map((segment, index) => (
+            <Line
+              color={`rgba(245, 248, 237, ${segment.opacity})`}
+              key={`trail-shine-${index}`}
+              p1={vec(segment.from.x, segment.from.y)}
+              p2={vec(segment.to.x, segment.to.y)}
+              strokeCap="round"
+              strokeWidth={3}
+            />
+          ))}
           <Circle
             color="rgba(31, 93, 162, 0.2)"
             cx={overlay.target.x}
@@ -289,13 +322,28 @@ function projectCrawlToViewport(progress: number, viewport: Viewport) {
   };
   const easedProgress = Math.min(1, Math.max(0, progress));
 
+  function pointAt(pointProgress: number) {
+    return {
+      x: start.x + (target.x - start.x) * pointProgress,
+      y: start.y + (target.y - start.y) * pointProgress
+    };
+  }
+
   return {
     snail: {
       x: start.x + (target.x - start.x) * easedProgress,
       y: start.y + (target.y - start.y) * easedProgress
     },
     start,
-    target
+    target,
+    trailSegments: buildFadingTrailSegments({
+      progress: easedProgress,
+      segmentCount: 10
+    }).map((segment) => ({
+      from: pointAt(segment.fromProgress),
+      opacity: segment.opacity,
+      to: pointAt(segment.toProgress)
+    }))
   };
 }
 
