@@ -36,6 +36,7 @@ import {
   type BackgroundLocationMode
 } from "./src/useCases/configureOptionalBackgroundLocation";
 import { createReminderJourney } from "./src/useCases/createReminderJourney";
+import { createDemoPersonalityJourneys } from "./src/useCases/demoSnailPersonalities";
 import {
   ExpoLocalPushSender,
   requestArrivalNotificationPermission
@@ -95,6 +96,7 @@ export default function App() {
   const [backgroundLocationBusy, setBackgroundLocationBusy] = useState(false);
   const [backgroundLocationMode, setBackgroundLocationMode] =
     useState<BackgroundLocationMode>("foreground-only");
+  const [personalityDemoEnabled, setPersonalityDemoEnabled] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
@@ -251,7 +253,28 @@ export default function App() {
       }),
     [journeyCreatedAtMs, target]
   );
-  const journey = getActiveJourney(carrierState) ?? demoJourney;
+  const activeJourney = getActiveJourney(carrierState);
+  const journey = activeJourney ?? demoJourney;
+  const demoPersonalityJourneys = useMemo(
+    () =>
+      createDemoPersonalityJourneys({
+        createdAtMs: journeyCreatedAtMs,
+        target
+      }),
+    [journeyCreatedAtMs, target]
+  );
+  const activeSnail = activeJourney
+    ? carrierState.snails.find((snail) => snail.id === activeJourney.snailId)
+    : undefined;
+  const visibleCrawls = personalityDemoEnabled
+    ? demoPersonalityJourneys
+    : [
+        {
+          id: activeJourney?.id ?? "single-demo",
+          journey,
+          snail: activeSnail ?? demoPersonalityJourneys[0].snail
+        }
+      ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -283,12 +306,24 @@ export default function App() {
     return () => clearInterval(interval);
   }, [backendSession, pushSender, timeWarpFactor]);
 
-  const frame = getCrawlFrame({
-    journey,
-    nowMs,
-    timeWarpFactor
+  const crawlOverlays = visibleCrawls.map((crawl, index) => {
+    const frame = getCrawlFrame({
+      journey: crawl.journey,
+      nowMs,
+      timeWarpFactor
+    });
+
+    return {
+      ...crawl,
+      frame,
+      overlay: projectCrawlToViewport(
+        frame.progress,
+        viewport,
+        personalityDemoEnabled ? (index - 1) * 18 : 0
+      )
+    };
   });
-  const overlay = projectCrawlToViewport(frame.progress, viewport);
+  const targetOverlay = projectCrawlToViewport(0, viewport);
 
   function cycleWarp() {
     const currentIndex = allowedWarps.indexOf(timeWarpFactor);
@@ -444,78 +479,165 @@ export default function App() {
           />
         </Map>
         <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-          {overlay.trailSegments.map((segment, index) => (
-            <Line
-              color={`rgba(53, 108, 91, ${segment.opacity * 0.36})`}
-              key={`trail-shadow-${index}`}
-              p1={vec(segment.from.x, segment.from.y)}
-              p2={vec(segment.to.x, segment.to.y)}
-              strokeCap="round"
-              strokeWidth={10}
-            />
-          ))}
-          {overlay.trailSegments.map((segment, index) => (
-            <Line
-              color={`rgba(245, 248, 237, ${segment.opacity})`}
-              key={`trail-shine-${index}`}
-              p1={vec(segment.from.x, segment.from.y)}
-              p2={vec(segment.to.x, segment.to.y)}
-              strokeCap="round"
-              strokeWidth={3}
-            />
-          ))}
+          {crawlOverlays.flatMap(({ id, overlay, snail }) =>
+            overlay.trailSegments.map((segment, index) => (
+              <Line
+                color={hexToRgba(snail.trail.color, segment.opacity * 0.32)}
+                key={`${id}-trail-shadow-${index}`}
+                p1={vec(segment.from.x, segment.from.y)}
+                p2={vec(segment.to.x, segment.to.y)}
+                strokeCap="round"
+                strokeWidth={10}
+              />
+            ))
+          )}
+          {crawlOverlays.flatMap(({ id, overlay, snail }) =>
+            overlay.trailSegments.map((segment, index) => (
+              <Line
+                color={hexToRgba(snail.trail.color, segment.opacity)}
+                key={`${id}-trail-shine-${index}`}
+                p1={vec(segment.from.x, segment.from.y)}
+                p2={vec(segment.to.x, segment.to.y)}
+                strokeCap="round"
+                strokeWidth={3}
+              />
+            ))
+          )}
           <Circle
             color="rgba(31, 93, 162, 0.2)"
-            cx={overlay.target.x}
-            cy={overlay.target.y}
+            cx={targetOverlay.target.x}
+            cy={targetOverlay.target.y}
             r={18}
           />
           <Circle
             color="#1f5da2"
-            cx={overlay.target.x}
-            cy={overlay.target.y}
+            cx={targetOverlay.target.x}
+            cy={targetOverlay.target.y}
             r={7}
           />
-          <Circle color="#7b4b34" cx={overlay.snail.x - 9} cy={overlay.snail.y + 4} r={17} />
-          <Circle color="#d99f5f" cx={overlay.snail.x + 7} cy={overlay.snail.y - 2} r={13} />
-          <Circle color="#fff4d3" cx={overlay.snail.x + 12} cy={overlay.snail.y - 5} r={5} />
-          <Line
-            color="#3c2a1f"
-            p1={vec(overlay.snail.x + 10, overlay.snail.y - 13)}
-            p2={vec(overlay.snail.x + 22, overlay.snail.y - 26)}
-            strokeCap="round"
-            strokeWidth={2}
-          />
-          <Line
-            color="#3c2a1f"
-            p1={vec(overlay.snail.x + 2, overlay.snail.y - 13)}
-            p2={vec(overlay.snail.x + 11, overlay.snail.y - 28)}
-            strokeCap="round"
-            strokeWidth={2}
-          />
-          <Circle color="#3c2a1f" cx={overlay.snail.x + 23} cy={overlay.snail.y - 27} r={2.5} />
-          <Circle color="#3c2a1f" cx={overlay.snail.x + 12} cy={overlay.snail.y - 29} r={2.5} />
+          {crawlOverlays.map(({ id, overlay, snail }) => (
+            <Circle
+              color={snail.appearance.shellColor}
+              cx={overlay.snail.x - 9}
+              cy={overlay.snail.y + 4}
+              key={`${id}-shell`}
+              r={17}
+            />
+          ))}
+          {crawlOverlays.map(({ id, overlay, snail }) => (
+            <Circle
+              color={snail.appearance.bodyColor}
+              cx={overlay.snail.x + 7}
+              cy={overlay.snail.y - 2}
+              key={`${id}-body`}
+              r={13}
+            />
+          ))}
+          {crawlOverlays.map(({ id, overlay }) => (
+            <Circle
+              color="#fff4d3"
+              cx={overlay.snail.x + 12}
+              cy={overlay.snail.y - 5}
+              key={`${id}-highlight`}
+              r={5}
+            />
+          ))}
+          {crawlOverlays.map(({ id, overlay }) => (
+            <Line
+              color="#3c2a1f"
+              key={`${id}-right-eye-stalk`}
+              p1={vec(overlay.snail.x + 10, overlay.snail.y - 13)}
+              p2={vec(overlay.snail.x + 22, overlay.snail.y - 26)}
+              strokeCap="round"
+              strokeWidth={2}
+            />
+          ))}
+          {crawlOverlays.map(({ id, overlay }) => (
+            <Line
+              color="#3c2a1f"
+              key={`${id}-left-eye-stalk`}
+              p1={vec(overlay.snail.x + 2, overlay.snail.y - 13)}
+              p2={vec(overlay.snail.x + 11, overlay.snail.y - 28)}
+              strokeCap="round"
+              strokeWidth={2}
+            />
+          ))}
+          {crawlOverlays.map(({ id, overlay }) => (
+            <Circle
+              color="#3c2a1f"
+              cx={overlay.snail.x + 23}
+              cy={overlay.snail.y - 27}
+              key={`${id}-right-eye`}
+              r={2.5}
+            />
+          ))}
+          {crawlOverlays.map(({ id, overlay }) => (
+            <Circle
+              color="#3c2a1f"
+              cx={overlay.snail.x + 12}
+              cy={overlay.snail.y - 29}
+              key={`${id}-left-eye`}
+              r={2.5}
+            />
+          ))}
         </Canvas>
       </View>
 
       <SafeAreaView style={styles.controls}>
         <View style={styles.statusRow}>
-          <View>
-            <Text style={styles.title}>Carrier Snail</Text>
-            <Text style={styles.meta}>{locationLabel}</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cycle debug time warp"
-            onPress={cycleWarp}
-            style={styles.warpButton}
-          >
-            <Text style={styles.warpValue}>
-              {timeWarpFactor.toLocaleString()}x
+          <View style={styles.titleBlock}>
+            <Text numberOfLines={1} style={styles.title}>
+              Carrier Snail
             </Text>
-            <Text style={styles.warpLabel}>warp</Text>
-          </Pressable>
+            <Text numberOfLines={1} style={styles.meta}>
+              {locationLabel}
+            </Text>
+          </View>
+          <View style={styles.statusActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Toggle personality demo trio"
+              onPress={() => setPersonalityDemoEnabled((enabled) => !enabled)}
+              style={({ pressed }) => [
+                styles.personalityButton,
+                personalityDemoEnabled ? styles.personalityButtonEnabled : null,
+                pressed ? styles.personalityButtonPressed : null
+              ]}
+            >
+              <Text style={styles.personalityButtonText}>
+                {personalityDemoEnabled ? "Solo" : "Trio"}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cycle debug time warp"
+              onPress={cycleWarp}
+              style={styles.warpButton}
+            >
+              <Text style={styles.warpValue}>
+                {timeWarpFactor.toLocaleString()}x
+              </Text>
+              <Text style={styles.warpLabel}>warp</Text>
+            </Pressable>
+          </View>
         </View>
+        {personalityDemoEnabled ? (
+          <View style={styles.demoLegend}>
+            {demoPersonalityJourneys.map(({ snail }) => (
+              <View key={snail.id} style={styles.demoLegendItem}>
+                <View
+                  style={[
+                    styles.demoLegendSwatch,
+                    { backgroundColor: snail.trail.color }
+                  ]}
+                />
+                <Text numberOfLines={1} style={styles.demoLegendText}>
+                  {snail.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <View style={styles.stablePanel}>
           <View style={styles.stableHeaderRow}>
             <Text style={styles.stableTitle}>Stable</Text>
@@ -664,16 +786,20 @@ function persistCompletedState(
   return state;
 }
 
-function projectCrawlToViewport(progress: number, viewport: Viewport) {
+function projectCrawlToViewport(
+  progress: number,
+  viewport: Viewport,
+  laneOffset = 0
+) {
   const width = Math.max(viewport.width, 1);
   const height = Math.max(viewport.height, 1);
   const start = {
     x: width * 0.19,
-    y: height * 0.76
+    y: height * 0.76 + laneOffset
   };
   const target = {
     x: width * 0.74,
-    y: height * 0.34
+    y: height * 0.34 + laneOffset
   };
   const easedProgress = Math.min(1, Math.max(0, progress));
 
@@ -700,6 +826,16 @@ function projectCrawlToViewport(progress: number, viewport: Viewport) {
       to: pointAt(segment.toProgress)
     }))
   };
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace("#", "");
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+  const safeAlpha = Math.max(0, Math.min(1, alpha));
+
+  return `rgba(${red}, ${green}, ${blue}, ${safeAlpha})`;
 }
 
 const styles = StyleSheet.create({
@@ -753,6 +889,34 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 12
   },
+  demoLegend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10
+  },
+  demoLegendItem: {
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 30,
+    paddingHorizontal: 9
+  },
+  demoLegendSwatch: {
+    borderRadius: 5,
+    height: 10,
+    width: 10
+  },
+  demoLegendText: {
+    color: "#25332e",
+    fontSize: 12,
+    fontWeight: "700",
+    maxWidth: 124
+  },
   errorText: {
     color: "#a13d2d",
     fontSize: 13,
@@ -794,6 +958,29 @@ const styles = StyleSheet.create({
     color: "#56645e",
     fontSize: 13,
     marginTop: 2
+  },
+  personalityButton: {
+    alignItems: "center",
+    backgroundColor: "#edf1e8",
+    borderColor: "rgba(37, 51, 46, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 48,
+    minWidth: 62,
+    paddingHorizontal: 12
+  },
+  personalityButtonEnabled: {
+    backgroundColor: "#fff6ef",
+    borderColor: "rgba(178, 72, 54, 0.34)"
+  },
+  personalityButtonPressed: {
+    backgroundColor: "#e3ebe2"
+  },
+  personalityButtonText: {
+    color: "#25332e",
+    fontSize: 13,
+    fontWeight: "800"
   },
   screen: {
     backgroundColor: "#edf1e8",
@@ -853,6 +1040,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between"
+  },
+  statusActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8
   },
   stableCapacity: {
     color: "#56645e",
@@ -925,6 +1117,10 @@ const styles = StyleSheet.create({
     color: "#25332e",
     fontSize: 21,
     fontWeight: "700"
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0
   },
   warpButton: {
     alignItems: "center",
