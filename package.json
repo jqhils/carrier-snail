@@ -19,6 +19,7 @@
     "expo-dev-client": "~56.0.20",
     "expo-location": "~56.0.18",
     "expo-modules-core": "~56.0.17",
+    "expo-notifications": "~56.0.18",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-native": "0.85.3",
