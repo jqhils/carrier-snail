@@ -69,3 +69,14 @@ delivers through Expo Push.
 Foreground location updates run through `updateForegroundTarget`, which rounds
 samples to roughly 50 m before persistence, re-aims active journeys from their
 stored parameters, and retains only the latest target plus a short trail history.
+
+## Optional background location
+
+Background re-aiming is opt-in. The app asks for foreground permission first,
+then background permission with plain copy that says the mode is optional and
+coarse. If background permission is denied, foreground-only re-aiming still
+works.
+
+The Expo adapter uses `expo-task-manager` with balanced accuracy, 500 m movement
+spacing, deferred updates, and automatic pausing. It requires a native dev build
+or release build; Expo Go does not support background location.

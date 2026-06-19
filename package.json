@@ -23,6 +23,7 @@
     "expo-modules-core": "~56.0.17",
     "expo-notifications": "~56.0.18",
     "expo-status-bar": "~56.0.4",
+    "expo-task-manager": "~56.0.19",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-reanimated": "4.3.1",
