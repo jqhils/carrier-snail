@@ -37,6 +37,7 @@ describe("loadBackendJourneyState", () => {
     const baseJourney = createPhaseZeroJourney({ createdAtMs: 0, target });
     const backendState: CarrierState = {
       eggs: [],
+      inventory: { cosmetics: [] },
       journeys: [
         {
           ...baseJourney,
@@ -63,7 +64,9 @@ describe("loadBackendJourneyState", () => {
           status: "on-journey"
         }
       ],
-      softCurrency: { slime: 0 }
+      purchases: [],
+      softCurrency: { slime: 0 },
+      stableSlots: { purchased: 0 }
     };
     const repository = new FakeBackendCarrierRepository(backendState);
 

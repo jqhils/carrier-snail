@@ -51,14 +51,17 @@ export function levelUpSnail(
 
   repository.save({
     eggs: state.eggs,
+    inventory: state.inventory,
     journeys: state.journeys,
+    purchases: state.purchases,
     reminders: state.reminders,
     snails: state.snails.map((candidate) =>
       candidate.id === snail.id ? leveledSnail : candidate
     ),
     softCurrency: {
       slime: state.softCurrency.slime - cost
-    }
+    },
+    stableSlots: state.stableSlots
   });
 
   return { snail: leveledSnail };

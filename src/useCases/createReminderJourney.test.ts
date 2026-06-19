@@ -54,6 +54,7 @@ describe("createReminderJourney", () => {
     expect(listStableSnails(state)).toEqual({
       capacity: {
         busyCount: 1,
+        emptySlotCount: 0,
         freeCount: 0,
         totalCount: 1
       },

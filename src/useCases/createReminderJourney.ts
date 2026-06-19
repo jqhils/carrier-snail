@@ -102,14 +102,17 @@ export function createReminderJourney(
 
   repository.save({
     eggs: state.eggs,
+    inventory: state.inventory,
     journeys: [...state.journeys, journey],
+    purchases: state.purchases,
     reminders: [...state.reminders, reminder],
     snails: state.snails.map((candidate) =>
       candidate.id === snail.id
         ? { ...candidate, status: "on-journey" }
         : candidate
     ),
-    softCurrency: state.softCurrency
+    softCurrency: state.softCurrency,
+    stableSlots: state.stableSlots
   });
 
   return { journey, reminder };

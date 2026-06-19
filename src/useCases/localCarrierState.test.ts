@@ -33,6 +33,7 @@ describe("stable state", () => {
 
     expect(stable.capacity).toEqual({
       busyCount: 0,
+      emptySlotCount: 0,
       freeCount: 1,
       totalCount: 1
     });

@@ -29,6 +29,7 @@ import {
   installSupabaseAutoRefresh
 } from "./src/backend/supabaseClient";
 import { buildFadingTrailSegments } from "./src/journey/trail";
+import { createRevenueCatEntitlementProvider } from "./src/payments/revenueCatEntitlementProvider";
 import { completeArrivedJourneys } from "./src/useCases/completeArrivedJourneys";
 import {
   BACKGROUND_LOCATION_PERMISSION_COPY,
@@ -49,6 +50,12 @@ import {
   levelUpCost,
   levelUpSnail
 } from "./src/useCases/levelUpSnail";
+import {
+  getPurchaseCatalog,
+  purchaseInventory,
+  type PurchaseCatalogProduct,
+  type PurchaseProductId
+} from "./src/useCases/purchaseInventory";
 import {
   createInitialCarrierState,
   getActiveJourney,
@@ -73,6 +80,19 @@ const MOCK_RESTING_POINT: Coordinate = {
 const MAP_STYLE_URL =
   process.env.EXPO_PUBLIC_MAP_STYLE_URL ??
   "https://demotiles.maplibre.org/style.json";
+const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+const REVENUECAT_ANDROID_API_KEY =
+  process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
+const REVENUECAT_PRODUCT_IDENTIFIERS = {
+  "cosmetic-trail-sparkle":
+    process.env.EXPO_PUBLIC_REVENUECAT_COSMETIC_TRAIL_SPARKLE_ID ??
+    "cosmetic-trail-sparkle",
+  "egg-pack-small":
+    process.env.EXPO_PUBLIC_REVENUECAT_EGG_PACK_SMALL_ID ?? "egg-pack-small",
+  "stable-slot-single":
+    process.env.EXPO_PUBLIC_REVENUECAT_STABLE_SLOT_SINGLE_ID ??
+    "stable-slot-single"
+} satisfies Record<PurchaseProductId, string>;
 
 const RUNTIME_MODE = __DEV__ ? "development" : "production";
 
@@ -134,6 +154,17 @@ export default function App() {
     carrierState.softCurrency.slime >= selectedLevelCost;
   const unhatchedEggs = carrierState.eggs.filter(
     (egg) => egg.status === "unhatched"
+  );
+  const purchaseCatalog = useMemo(() => getPurchaseCatalog(), []);
+  const entitlementProvider = useMemo(
+    () =>
+      createRevenueCatEntitlementProvider({
+        androidApiKey: REVENUECAT_ANDROID_API_KEY,
+        appUserId: backendSession?.user.id ?? "local-carrier",
+        iosApiKey: REVENUECAT_IOS_API_KEY,
+        productIdentifiers: REVENUECAT_PRODUCT_IDENTIFIERS
+      }),
+    [backendSession?.user.id]
   );
   const pushSender = useMemo(() => new ExpoLocalPushSender(), []);
   const backgroundLocationController = useMemo(
@@ -559,6 +590,49 @@ export default function App() {
     }
   }
 
+  async function buyCatalogProduct(productId: PurchaseProductId) {
+    if (!entitlementProvider) {
+      setFormError("RevenueCat API keys are required for purchases.");
+      return;
+    }
+
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      await purchaseInventory(
+        { productId },
+        {
+          clock: { now: () => Date.now() },
+          entitlementProvider,
+          repository
+        }
+      );
+      const nextState = repository.snapshot();
+
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+
+        const loaded = await loadBackendJourneyState({
+          clock: { now: () => Date.now() },
+          repository: backendSession.repository,
+          timeWarpFactor,
+          userId: backendSession.user.id
+        });
+
+        setCarrierState(loaded.carrierState);
+      } else {
+        setCarrierState(nextState);
+      }
+
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Purchase failed.");
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -739,9 +813,10 @@ export default function App() {
         <View style={styles.stablePanel}>
           <View style={styles.stableHeaderRow}>
             <Text style={styles.stableTitle}>Stable</Text>
-            <Text style={styles.stableCapacity}>
-              {stable.capacity.freeCount}/{stable.capacity.totalCount} free,{" "}
-              {unhatchedEggs.length} eggs, {carrierState.softCurrency.slime} slime
+            <Text numberOfLines={2} style={styles.stableCapacity}>
+              {stable.capacity.freeCount} resting,{" "}
+              {stable.capacity.emptySlotCount} slots, {unhatchedEggs.length} eggs,{" "}
+              {carrierState.softCurrency.slime} slime
             </Text>
           </View>
           <View style={styles.stableSnailList}>
@@ -844,6 +919,35 @@ export default function App() {
               ))}
             </View>
           ) : null}
+          <View style={styles.shopList}>
+            {purchaseCatalog.map((product) => (
+              <View key={product.id} style={styles.shopRow}>
+                <View style={styles.shopCopy}>
+                  <Text numberOfLines={1} style={styles.shopTitle}>
+                    {product.label}
+                  </Text>
+                  <Text numberOfLines={2} style={styles.shopDetail}>
+                    {formatPurchaseDetail(product)}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Buy ${product.label}`}
+                  disabled={!entitlementProvider}
+                  onPress={() => {
+                    void buyCatalogProduct(product.id);
+                  }}
+                  style={({ pressed }) => [
+                    styles.buyButton,
+                    !entitlementProvider ? styles.buyButtonDisabled : null,
+                    pressed ? styles.buyButtonPressed : null
+                  ]}
+                >
+                  <Text style={styles.buyButtonText}>Buy</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
         </View>
         <View style={styles.composerRow}>
           <TextInput
@@ -1005,6 +1109,20 @@ function formatOddsText(
     .join(" · ");
 }
 
+function formatPurchaseDetail(product: PurchaseCatalogProduct): string {
+  if (product.grant.kind === "eggs") {
+    return `${product.grant.count} eggs · ${formatOddsText(
+      product.grant.rarityPool
+    )}`;
+  }
+
+  if (product.grant.kind === "stable-slot") {
+    return `${product.grant.count} empty stable slot`;
+  }
+
+  return product.description;
+}
+
 const styles = StyleSheet.create({
   backgroundLocationButton: {
     alignItems: "center",
@@ -1037,6 +1155,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 16
+  },
+  buyButton: {
+    alignItems: "center",
+    backgroundColor: "#365c8d",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 60,
+    paddingHorizontal: 10
+  },
+  buyButtonDisabled: {
+    backgroundColor: "#7c8580"
+  },
+  buyButtonPressed: {
+    backgroundColor: "#294870"
+  },
+  buyButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "700"
   },
   controls: {
     backgroundColor: "rgba(249, 247, 238, 0.94)",
@@ -1233,6 +1371,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#edf1e8",
     flex: 1
   },
+  shopCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  shopDetail: {
+    color: "#56645e",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2
+  },
+  shopList: {
+    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopWidth: 1,
+    gap: 9,
+    marginTop: 10,
+    paddingTop: 10
+  },
+  shopRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
+  },
+  shopTitle: {
+    color: "#25332e",
+    fontSize: 13,
+    fontWeight: "700"
+  },
   sendButton: {
     alignItems: "center",
     backgroundColor: "#365c8d",
@@ -1295,8 +1460,11 @@ const styles = StyleSheet.create({
   },
   stableCapacity: {
     color: "#56645e",
+    flex: 1,
     fontSize: 13,
-    fontWeight: "700"
+    fontWeight: "700",
+    marginLeft: 8,
+    textAlign: "right"
   },
   stableHeaderRow: {
     alignItems: "center",
