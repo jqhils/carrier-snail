@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
+  TextInput,
   View
 } from "react-native";
 
@@ -19,6 +20,13 @@ import {
   getCrawlFrame
 } from "./src/journey/snailCrawl";
 import type { Coordinate } from "./src/journey/snailCrawl";
+import { createReminderJourney } from "./src/useCases/createReminderJourney";
+import {
+  createInitialCarrierState,
+  getActiveJourney,
+  InMemoryCarrierRepository,
+  listInFlightReminders
+} from "./src/useCases/localCarrierState";
 
 const MOCK_RESTING_POINT: Coordinate = {
   latitude: -33.8688,
@@ -41,10 +49,16 @@ export default function App() {
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
   const [viewport, setViewport] = useState<Viewport>({ height: 0, width: 0 });
   const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
+  const [carrierState, setCarrierState] = useState(() =>
+    createInitialCarrierState()
+  );
+  const [reminderText, setReminderText] = useState("");
+  const [formError, setFormError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
+  const inFlightReminders = listInFlightReminders(carrierState);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +95,7 @@ export default function App() {
     };
   }, []);
 
-  const journey = useMemo(
+  const demoJourney = useMemo(
     () =>
       createPhaseZeroJourney({
         createdAtMs: journeyCreatedAtMs,
@@ -89,6 +103,7 @@ export default function App() {
       }),
     [journeyCreatedAtMs, target]
   );
+  const journey = getActiveJourney(carrierState) ?? demoJourney;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -116,6 +131,26 @@ export default function App() {
       height: event.nativeEvent.layout.height,
       width: event.nativeEvent.layout.width
     });
+  }
+
+  function sendReminder() {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      createReminderJourney(
+        { text: reminderText },
+        {
+          clock: { now: () => Date.now() },
+          locationSource: { currentTarget: () => target },
+          repository
+        }
+      );
+      setCarrierState(repository.snapshot());
+      setReminderText("");
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Reminder failed.");
+    }
   }
 
   return (
@@ -185,19 +220,57 @@ export default function App() {
       </View>
 
       <SafeAreaView style={styles.controls}>
-        <View>
-          <Text style={styles.title}>Carrier Snail</Text>
-          <Text style={styles.meta}>{locationLabel}</Text>
+        <View style={styles.statusRow}>
+          <View>
+            <Text style={styles.title}>Carrier Snail</Text>
+            <Text style={styles.meta}>{locationLabel}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cycle debug time warp"
+            onPress={cycleWarp}
+            style={styles.warpButton}
+          >
+            <Text style={styles.warpValue}>
+              {timeWarpFactor.toLocaleString()}x
+            </Text>
+            <Text style={styles.warpLabel}>warp</Text>
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cycle debug time warp"
-          onPress={cycleWarp}
-          style={styles.warpButton}
-        >
-          <Text style={styles.warpValue}>{timeWarpFactor.toLocaleString()}x</Text>
-          <Text style={styles.warpLabel}>warp</Text>
-        </Pressable>
+        <View style={styles.composerRow}>
+          <TextInput
+            accessibilityLabel="Reminder text"
+            onChangeText={setReminderText}
+            onSubmitEditing={sendReminder}
+            placeholder="buy milk"
+            placeholderTextColor="#7d7a70"
+            returnKeyType="send"
+            style={styles.reminderInput}
+            value={reminderText}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Send reminder"
+            onPress={sendReminder}
+            style={({ pressed }) => [
+              styles.sendButton,
+              pressed ? styles.sendButtonPressed : null
+            ]}
+          >
+            <Text style={styles.sendButtonText}>Send</Text>
+          </Pressable>
+        </View>
+        {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
+        {inFlightReminders.length > 0 ? (
+          <View style={styles.inFlightList}>
+            {inFlightReminders.map((reminder) => (
+              <View key={reminder.reminderId} style={styles.inFlightItem}>
+                <Text style={styles.inFlightText}>{reminder.text}</Text>
+                <Text style={styles.inFlightSnail}>{reminder.snailName}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </SafeAreaView>
     </View>
   );
@@ -228,19 +301,52 @@ function projectCrawlToViewport(progress: number, viewport: Viewport) {
 
 const styles = StyleSheet.create({
   controls: {
-    alignItems: "center",
     backgroundColor: "rgba(249, 247, 238, 0.94)",
     borderTopColor: "rgba(38, 51, 46, 0.12)",
     borderTopWidth: 1,
     bottom: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
     left: 0,
     paddingBottom: 18,
     paddingHorizontal: 18,
     paddingTop: 14,
     position: "absolute",
     right: 0
+  },
+  composerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12
+  },
+  errorText: {
+    color: "#a13d2d",
+    fontSize: 13,
+    marginTop: 8
+  },
+  inFlightItem: {
+    alignItems: "center",
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 9
+  },
+  inFlightList: {
+    gap: 8,
+    marginTop: 10
+  },
+  inFlightSnail: {
+    color: "#5d6d77",
+    fontSize: 12,
+    marginLeft: 10
+  },
+  inFlightText: {
+    color: "#25332e",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600"
   },
   mapShell: {
     flex: 1
@@ -253,6 +359,39 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#edf1e8",
     flex: 1
+  },
+  sendButton: {
+    alignItems: "center",
+    backgroundColor: "#365c8d",
+    borderRadius: 8,
+    minHeight: 44,
+    minWidth: 72,
+    justifyContent: "center",
+    paddingHorizontal: 14
+  },
+  sendButtonPressed: {
+    backgroundColor: "#294870"
+  },
+  sendButtonText: {
+    color: "#f8fafc",
+    fontSize: 15,
+    fontWeight: "700"
+  },
+  reminderInput: {
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(38, 51, 46, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#25332e",
+    flex: 1,
+    fontSize: 16,
+    minHeight: 44,
+    paddingHorizontal: 12
+  },
+  statusRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between"
   },
   title: {
     color: "#25332e",
