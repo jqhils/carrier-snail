@@ -19,6 +19,7 @@ export type LocationSource = {
 
 export type CreateReminderJourneyInput = {
   recurrence?: "daily" | "weekly" | "monthly";
+  snailId?: string;
   text: string;
 };
 
@@ -66,7 +67,11 @@ export function createReminderJourney(
   }
 
   const state = repository.snapshot();
-  const snail = state.snails.find(({ status }) => status === "resting");
+  const snail = input.snailId
+    ? state.snails.find(
+        ({ id, status }) => id === input.snailId && status === "resting"
+      )
+    : state.snails.find(({ status }) => status === "resting");
 
   if (!snail) {
     throw new NoRestingSnailError();

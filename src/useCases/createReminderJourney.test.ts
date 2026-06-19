@@ -1,10 +1,12 @@
 import {
   createInitialCarrierState,
   InMemoryCarrierRepository,
-  listInFlightReminders
+  listInFlightReminders,
+  listStableSnails
 } from "./localCarrierState";
 import {
   createReminderJourney,
+  NoRestingSnailError,
   RecurringReminderRejectedError
 } from "./createReminderJourney";
 import {
@@ -49,6 +51,22 @@ describe("createReminderJourney", () => {
         text: "buy milk"
       }
     ]);
+    expect(listStableSnails(state)).toEqual({
+      capacity: {
+        busyCount: 1,
+        freeCount: 0,
+        totalCount: 1
+      },
+      snails: [
+        {
+          carryingText: "buy milk",
+          id: "garden-1",
+          name: "Garden Snail",
+          status: "on-journey",
+          statusLabel: "On journey"
+        }
+      ]
+    });
   });
 
   it("starts the local journey about 8 km away on a straight geodesic", () => {
@@ -95,5 +113,44 @@ describe("createReminderJourney", () => {
         }
       )
     ).toThrow(RecurringReminderRejectedError);
+  });
+
+  it("rejects a reminder assigned to a snail that is not resting", () => {
+    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
+
+    expect(() =>
+      createReminderJourney(
+        { snailId: "missing-snail", text: "buy milk" },
+        {
+          clock: { now: () => 0 },
+          locationSource: { currentTarget: () => target },
+          repository
+        }
+      )
+    ).toThrow(NoRestingSnailError);
+  });
+
+  it("rejects a second concurrent reminder when the stable has no free snail", () => {
+    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
+
+    createReminderJourney(
+      { text: "buy milk" },
+      {
+        clock: { now: () => 0 },
+        locationSource: { currentTarget: () => target },
+        repository
+      }
+    );
+
+    expect(() =>
+      createReminderJourney(
+        { text: "check passport" },
+        {
+          clock: { now: () => 1000 },
+          locationSource: { currentTarget: () => target },
+          repository
+        }
+      )
+    ).toThrow(NoRestingSnailError);
   });
 });
