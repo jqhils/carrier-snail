@@ -1,20 +1,49 @@
-import type { Coordinate, PhaseZeroJourney } from "../journey/snailCrawl";
+import {
+  BASE_SNAIL_SPEED_METERS_PER_HOUR,
+  type Coordinate,
+  type JourneyQuirk,
+  type PhaseZeroJourney
+} from "../journey/snailCrawl";
 
 export type SnailStatus = "resting" | "on-journey";
 export type ReminderStatus = "in-flight" | "delivered" | "recalled";
 export type JourneyStatus = "in-flight" | "arrived" | "recalled";
 export type EggSource = "earned";
 export type EggStatus = "unhatched";
+export type SnailRarity = "common" | "uncommon" | "rare" | "mythic" | "cursed";
+export type SnailSpeedBand = "garden" | "steady" | "swift" | "mythic";
+export type SnailTemperament = "steady" | "sleepy" | "wanderer" | "cursed";
 
 export type TrailHistoryPoint = {
   coordinate: Coordinate;
   recordedAtMs: number;
 };
 
+export type SnailAppearanceTraits = {
+  bodyColor: string;
+  shellColor: string;
+};
+
+export type SnailTrailTraits = {
+  color: string;
+  persistenceMs: number;
+  texture: "glistening" | "sparkling" | "misty" | "inky";
+};
+
 export type Snail = {
+  appearance: SnailAppearanceTraits;
+  baseSpeedMetersPerHour: number;
   id: string;
+  level: number;
   name: string;
+  quirk: JourneyQuirk;
+  quirkSeed: string;
+  rarity: SnailRarity;
+  reliability: number;
+  speedBand: SnailSpeedBand;
   status: SnailStatus;
+  temperament: SnailTemperament;
+  trail: SnailTrailTraits;
 };
 
 export type Reminder = {
@@ -81,18 +110,37 @@ export interface CarrierRepository {
   snapshot(): CarrierState;
 }
 
+export function createStarterGardenSnail(): Snail {
+  return {
+    appearance: {
+      bodyColor: "#d99f5f",
+      shellColor: "#7b4b34"
+    },
+    baseSpeedMetersPerHour: BASE_SNAIL_SPEED_METERS_PER_HOUR,
+    id: "garden-1",
+    level: 1,
+    name: "Garden Snail",
+    quirk: "none",
+    quirkSeed: "starter-garden-1",
+    rarity: "common",
+    reliability: 0.95,
+    speedBand: "garden",
+    status: "resting",
+    temperament: "steady",
+    trail: {
+      color: "#f5f8ed",
+      persistenceMs: 72 * 60 * 60 * 1000,
+      texture: "glistening"
+    }
+  };
+}
+
 export function createInitialCarrierState(): CarrierState {
   return {
     eggs: [],
     journeys: [],
     reminders: [],
-    snails: [
-      {
-        id: "garden-1",
-        name: "Garden Snail",
-        status: "resting"
-      }
-    ]
+    snails: [createStarterGardenSnail()]
   };
 }
 
@@ -178,7 +226,11 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
       }))
     })),
     reminders: state.reminders.map((reminder) => ({ ...reminder })),
-    snails: state.snails.map((snail) => ({ ...snail }))
+    snails: state.snails.map((snail) => ({
+      ...snail,
+      appearance: { ...snail.appearance },
+      trail: { ...snail.trail }
+    }))
   };
 }
 

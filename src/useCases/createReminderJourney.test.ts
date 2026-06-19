@@ -100,6 +100,34 @@ describe("createReminderJourney", () => {
     );
   });
 
+  it("carries the assigned snail's speed and quirk traits into the journey", () => {
+    const initialState = createInitialCarrierState();
+
+    initialState.snails[0] = {
+      ...initialState.snails[0],
+      baseSpeedMetersPerHour: 64,
+      quirk: "napper",
+      quirkSeed: "sleepy-garden"
+    };
+
+    const repository = new InMemoryCarrierRepository(initialState);
+
+    const { journey } = createReminderJourney(
+      { snailId: "garden-1", text: "check passport" },
+      {
+        clock: { now: () => 0 },
+        locationSource: { currentTarget: () => target },
+        repository
+      }
+    );
+
+    expect(journey).toMatchObject({
+      quirk: "napper",
+      quirkSeed: "sleepy-garden",
+      speedMetersPerHour: 64
+    });
+  });
+
   it("rejects recurring reminders by design", () => {
     const repository = new InMemoryCarrierRepository(createInitialCarrierState());
 
