@@ -98,6 +98,7 @@ export function createReminderJourney(
   };
 
   repository.save({
+    eggs: state.eggs,
     journeys: [...state.journeys, journey],
     reminders: [...state.reminders, reminder],
     snails: state.snails.map((candidate) =>

@@ -48,6 +48,10 @@ class FakeArrivalWorkerRepository implements ArrivalWorkerRepository {
 class FakePushSender implements PushSender {
   readonly arrivals: ArrivalPush[] = [];
 
+  cancelArrival(): void {
+    // Not needed for scheduled completion tests.
+  }
+
   sendArrival(push: ArrivalPush): void {
     this.arrivals.push(push);
   }
@@ -119,6 +123,14 @@ describe("runScheduledArrivalWorker", () => {
       id: "garden-1",
       status: "resting"
     });
+    expect(completed.eggs).toEqual([
+      {
+        earnedAtMs: eta.earliestArrivalAtMs,
+        id: "egg-1",
+        source: "earned",
+        status: "unhatched"
+      }
+    ]);
   });
 });
 

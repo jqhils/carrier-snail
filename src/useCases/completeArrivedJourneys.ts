@@ -1,5 +1,5 @@
 import { getCrawlFrame } from "../journey/snailCrawl";
-import type { CarrierRepository, CarrierState } from "./localCarrierState";
+import type { CarrierRepository, CarrierState, Egg } from "./localCarrierState";
 import type { PushSender } from "./pushSender";
 import type { Clock } from "./createReminderJourney";
 
@@ -17,50 +17,55 @@ export function completeArrivedJourneys({
   const nowMs = clock.now();
   const state = repository.snapshot();
   let completedCount = 0;
+  const completedReminderIds = new Set<string>();
+  const completedSnailIds = new Set<string>();
+  const earnedEggs: Egg[] = [];
+
+  const journeys = state.journeys.map((journey) => {
+    if (journey.status !== "in-flight") {
+      return journey;
+    }
+
+    const frame = getCrawlFrame({
+      journey,
+      nowMs,
+      timeWarpFactor
+    });
+
+    if (!frame.arrived) {
+      return journey;
+    }
+
+    const reminder = state.reminders.find(({ id }) => id === journey.reminderId);
+
+    if (!reminder || reminder.status !== "in-flight") {
+      return journey;
+    }
+
+    completedCount += 1;
+    completedReminderIds.add(reminder.id);
+    completedSnailIds.add(journey.snailId);
+    earnedEggs.push(
+      createEarnedEgg(state.eggs.length + earnedEggs.length + 1, nowMs)
+    );
+    pushSender.sendArrival({
+      reminderId: reminder.id,
+      text: reminder.text,
+      title: "Carrier Snail arrived"
+    });
+
+    return {
+      ...journey,
+      arrivedAtMs: nowMs,
+      status: "arrived" as const
+    };
+  });
 
   const nextState: CarrierState = {
-    journeys: state.journeys.map((journey) => {
-      if (journey.status !== "in-flight") {
-        return journey;
-      }
-
-      const frame = getCrawlFrame({
-        journey,
-        nowMs,
-        timeWarpFactor
-      });
-
-      if (!frame.arrived) {
-        return journey;
-      }
-
-      const reminder = state.reminders.find(({ id }) => id === journey.reminderId);
-
-      if (!reminder || reminder.status !== "in-flight") {
-        return journey;
-      }
-
-      completedCount += 1;
-      pushSender.sendArrival({
-        reminderId: reminder.id,
-        text: reminder.text,
-        title: "Carrier Snail arrived"
-      });
-
-      return {
-        ...journey,
-        arrivedAtMs: nowMs,
-        status: "arrived"
-      };
-    }),
+    eggs: [...state.eggs, ...earnedEggs],
+    journeys,
     reminders: state.reminders.map((reminder) =>
-      state.journeys.some(
-        (journey) =>
-          journey.reminderId === reminder.id &&
-          getCrawlFrame({ journey, nowMs, timeWarpFactor }).arrived &&
-          journey.status === "in-flight" &&
-          reminder.status === "in-flight"
-      )
+      completedReminderIds.has(reminder.id)
         ? {
             ...reminder,
             deliveredAtMs: nowMs,
@@ -69,12 +74,7 @@ export function completeArrivedJourneys({
         : reminder
     ),
     snails: state.snails.map((snail) =>
-      state.journeys.some(
-        (journey) =>
-          journey.snailId === snail.id &&
-          getCrawlFrame({ journey, nowMs, timeWarpFactor }).arrived &&
-          journey.status === "in-flight"
-      )
+      completedSnailIds.has(snail.id)
         ? { ...snail, status: "resting" }
         : snail
     )
@@ -85,4 +85,13 @@ export function completeArrivedJourneys({
   }
 
   return { completedCount };
+}
+
+function createEarnedEgg(sequence: number, earnedAtMs: number): Egg {
+  return {
+    earnedAtMs,
+    id: `egg-${sequence}`,
+    source: "earned",
+    status: "unhatched"
+  };
 }
