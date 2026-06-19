@@ -3,6 +3,7 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import {
   cloneCarrierState,
   type CarrierState,
+  type Egg,
   type JourneyRecord,
   type Reminder,
   type Snail,
@@ -30,6 +31,7 @@ type ReminderRow = {
   created_at: string;
   delivered_at: string | null;
   id: string;
+  recalled_at: string | null;
   snail_id: string;
   status: Reminder["status"];
   text: string;
@@ -40,6 +42,7 @@ type JourneyRow = {
   base_speed_meters_per_hour: number;
   created_at: string;
   id: string;
+  recalled_at: string | null;
   reminder_id: string;
   snail_id: string;
   start_latitude: number;
@@ -48,6 +51,13 @@ type JourneyRow = {
   target_latitude: number;
   target_longitude: number;
   trail_history: TrailHistoryPoint[] | null;
+};
+
+type EggRow = {
+  earned_at: string;
+  id: string;
+  source: Egg["source"];
+  status: Egg["status"];
 };
 
 export class SupabaseCarrierRepository implements BackendCarrierRepository {
@@ -101,7 +111,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
   }
 
   async loadCarrierState(userId: string): Promise<CarrierState> {
-    const [snails, reminders, journeys] = await Promise.all([
+    const [snails, reminders, journeys, eggs] = await Promise.all([
       this.client
         .from("snails")
         .select("id, name, status")
@@ -109,7 +119,9 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
         .order("created_at", { ascending: true }),
       this.client
         .from("reminders")
-        .select("id, snail_id, text, status, created_at, delivered_at")
+        .select(
+          "id, snail_id, text, status, created_at, delivered_at, recalled_at"
+        )
         .eq("user_id", userId)
         .order("created_at", { ascending: true }),
       this.client
@@ -122,6 +134,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
             "status",
             "created_at",
             "arrived_at",
+            "recalled_at",
             "start_latitude",
             "start_longitude",
             "target_latitude",
@@ -131,14 +144,21 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
           ].join(", ")
         )
         .eq("user_id", userId)
+        .order("created_at", { ascending: true }),
+      this.client
+        .from("eggs")
+        .select("id, source, status, earned_at")
+        .eq("user_id", userId)
         .order("created_at", { ascending: true })
     ]);
 
     assertNoSupabaseError(snails.error, "load snails");
     assertNoSupabaseError(reminders.error, "load reminders");
     assertNoSupabaseError(journeys.error, "load journeys");
+    assertNoSupabaseError(eggs.error, "load eggs");
 
     return {
+      eggs: asRows<EggRow>(eggs.data).map(mapEgg),
       journeys: asRows<JourneyRow>(journeys.data).map(mapJourney),
       reminders: asRows<ReminderRow>(reminders.data).map(mapReminder),
       snails: asRows<SnailRow>(snails.data).map(mapSnail)
@@ -171,6 +191,10 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
               ? null
               : toIso(reminder.deliveredAtMs),
           id: reminder.id,
+          recalled_at:
+            reminder.recalledAtMs === undefined
+              ? null
+              : toIso(reminder.recalledAtMs),
           snail_id: reminder.snailId,
           status: reminder.status,
           text: reminder.text,
@@ -190,6 +214,8 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
           base_speed_meters_per_hour: journey.speedMetersPerHour,
           created_at: toIso(journey.createdAtMs),
           id: journey.id,
+          recalled_at:
+            journey.recalledAtMs === undefined ? null : toIso(journey.recalledAtMs),
           reminder_id: journey.reminderId,
           snail_id: journey.snailId,
           start_latitude: journey.start.latitude,
@@ -204,6 +230,21 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       );
 
       assertNoSupabaseError(result.error, "save journeys");
+    }
+
+    if (snapshot.eggs.length > 0) {
+      const result = await this.client.from("eggs").upsert(
+        snapshot.eggs.map((egg) => ({
+          earned_at: toIso(egg.earnedAtMs),
+          id: egg.id,
+          source: egg.source,
+          status: egg.status,
+          user_id: userId
+        })),
+        { onConflict: "user_id,id" }
+      );
+
+      assertNoSupabaseError(result.error, "save eggs");
     }
   }
 }
@@ -229,6 +270,7 @@ function mapReminder(row: ReminderRow): Reminder {
     createdAtMs: fromIso(row.created_at),
     deliveredAtMs: row.delivered_at ? fromIso(row.delivered_at) : undefined,
     id: row.id,
+    recalledAtMs: row.recalled_at ? fromIso(row.recalled_at) : undefined,
     snailId: row.snail_id,
     status: row.status,
     text: row.text
@@ -240,6 +282,7 @@ function mapJourney(row: JourneyRow): JourneyRecord {
     arrivedAtMs: row.arrived_at ? fromIso(row.arrived_at) : undefined,
     createdAtMs: fromIso(row.created_at),
     id: row.id,
+    recalledAtMs: row.recalled_at ? fromIso(row.recalled_at) : undefined,
     reminderId: row.reminder_id,
     snailId: row.snail_id,
     speedMetersPerHour: row.base_speed_meters_per_hour,
@@ -253,6 +296,15 @@ function mapJourney(row: JourneyRow): JourneyRecord {
       longitude: row.target_longitude
     },
     trailHistory: mapTrailHistory(row.trail_history)
+  };
+}
+
+function mapEgg(row: EggRow): Egg {
+  return {
+    earnedAtMs: fromIso(row.earned_at),
+    id: row.id,
+    source: row.source,
+    status: row.status
   };
 }
 

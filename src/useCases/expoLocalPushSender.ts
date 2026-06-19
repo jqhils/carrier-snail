@@ -16,6 +16,11 @@ export async function requestArrivalNotificationPermission(): Promise<void> {
 }
 
 export class ExpoLocalPushSender implements PushSender {
+  cancelArrival(): void {
+    // Local arrivals are immediate notifications today; scheduled backend pushes
+    // are cancelled by the backend adapter that implements this port.
+  }
+
   sendArrival(push: ArrivalPush): void {
     void Notifications.scheduleNotificationAsync({
       content: {

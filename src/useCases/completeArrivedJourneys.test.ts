@@ -15,6 +15,10 @@ const target = {
 class FakePushSender implements PushSender {
   readonly arrivals: ArrivalPush[] = [];
 
+  cancelArrival(): void {
+    // Not needed for completion tests.
+  }
+
   sendArrival(push: ArrivalPush): void {
     this.arrivals.push(push);
   }
@@ -92,6 +96,14 @@ describe("completeArrivedJourneys", () => {
       id: "garden-1",
       status: "resting"
     });
+    expect(state.eggs).toEqual([
+      {
+        earnedAtMs: arrivalMs,
+        id: "egg-1",
+        source: "earned",
+        status: "unhatched"
+      }
+    ]);
   });
 });
 

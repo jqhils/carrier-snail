@@ -5,5 +5,6 @@ export type ArrivalPush = {
 };
 
 export interface PushSender {
+  cancelArrival(reminderId: string): Promise<void> | void;
   sendArrival(push: ArrivalPush): Promise<void> | void;
 }

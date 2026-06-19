@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   LayoutChangeEvent,
   Pressable,
   SafeAreaView,
@@ -52,6 +53,7 @@ import {
   type BackendCarrierRepository,
   type CarrierUser
 } from "./src/useCases/resolveAnonymousCarrierUser";
+import { recallReminder } from "./src/useCases/recallReminder";
 import { updateForegroundTarget } from "./src/useCases/updateForegroundTarget";
 
 const MOCK_RESTING_POINT: Coordinate = {
@@ -257,7 +259,7 @@ export default function App() {
 
       setNowMs(timestamp);
       setCarrierState((currentState) => {
-        if (!getActiveJourney(currentState)) {
+        if (backendSession || !getActiveJourney(currentState)) {
           return currentState;
         }
 
@@ -366,6 +368,64 @@ export default function App() {
     }
   }
 
+  function confirmRecallReminder(reminderId: string) {
+    Alert.alert(
+      "Recall reminder?",
+      "This permanently ends the reminder. The snail returns empty.",
+      [
+        {
+          style: "cancel",
+          text: "Keep"
+        },
+        {
+          onPress: () => {
+            void recallInFlightReminder(reminderId);
+          },
+          style: "destructive",
+          text: "Recall"
+        }
+      ]
+    );
+  }
+
+  async function recallInFlightReminder(reminderId: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      await recallReminder(
+        { reminderId },
+        {
+          clock: { now: () => Date.now() },
+          pushSender,
+          repository
+        }
+      );
+      const nextState = repository.snapshot();
+
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+
+        const loaded = await loadBackendJourneyState({
+          clock: { now: () => Date.now() },
+          repository: backendSession.repository,
+          timeWarpFactor,
+          userId: backendSession.user.id
+        });
+
+        setCarrierState(loaded.carrierState);
+      } else {
+        setCarrierState(nextState);
+      }
+
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Recall failed.");
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -460,7 +520,8 @@ export default function App() {
           <View style={styles.stableHeaderRow}>
             <Text style={styles.stableTitle}>Stable</Text>
             <Text style={styles.stableCapacity}>
-              {stable.capacity.freeCount}/{stable.capacity.totalCount} free
+              {stable.capacity.freeCount}/{stable.capacity.totalCount} free,{" "}
+              {carrierState.eggs.length} eggs
             </Text>
           </View>
           <View style={styles.stableSnailList}>
@@ -562,8 +623,25 @@ export default function App() {
           <View style={styles.inFlightList}>
             {inFlightReminders.map((reminder) => (
               <View key={reminder.reminderId} style={styles.inFlightItem}>
-                <Text style={styles.inFlightText}>{reminder.text}</Text>
-                <Text style={styles.inFlightSnail}>{reminder.snailName}</Text>
+                <View style={styles.inFlightCopy}>
+                  <Text numberOfLines={1} style={styles.inFlightText}>
+                    {reminder.text}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.inFlightSnail}>
+                    {reminder.snailName}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Recall ${reminder.text}`}
+                  onPress={() => confirmRecallReminder(reminder.reminderId)}
+                  style={({ pressed }) => [
+                    styles.recallButton,
+                    pressed ? styles.recallButtonPressed : null
+                  ]}
+                >
+                  <Text style={styles.recallButtonText}>Recall</Text>
+                </Pressable>
               </View>
             ))}
           </View>
@@ -686,9 +764,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
+    gap: 10,
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 9
+  },
+  inFlightCopy: {
+    flex: 1,
+    minWidth: 0
   },
   inFlightList: {
     gap: 8,
@@ -697,11 +780,10 @@ const styles = StyleSheet.create({
   inFlightSnail: {
     color: "#5d6d77",
     fontSize: 12,
-    marginLeft: 10
+    marginTop: 2
   },
   inFlightText: {
     color: "#25332e",
-    flex: 1,
     fontSize: 14,
     fontWeight: "600"
   },
@@ -747,6 +829,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 44,
     paddingHorizontal: 12
+  },
+  recallButton: {
+    alignItems: "center",
+    backgroundColor: "#fff6ef",
+    borderColor: "rgba(161, 61, 45, 0.28)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 68,
+    paddingHorizontal: 10
+  },
+  recallButtonPressed: {
+    backgroundColor: "#f8e5dc"
+  },
+  recallButtonText: {
+    color: "#a13d2d",
+    fontSize: 13,
+    fontWeight: "700"
   },
   statusRow: {
     alignItems: "center",

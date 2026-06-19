@@ -1,8 +1,10 @@
 import type { Coordinate, PhaseZeroJourney } from "../journey/snailCrawl";
 
 export type SnailStatus = "resting" | "on-journey";
-export type ReminderStatus = "in-flight" | "delivered";
-export type JourneyStatus = "in-flight" | "arrived";
+export type ReminderStatus = "in-flight" | "delivered" | "recalled";
+export type JourneyStatus = "in-flight" | "arrived" | "recalled";
+export type EggSource = "earned";
+export type EggStatus = "unhatched";
 
 export type TrailHistoryPoint = {
   coordinate: Coordinate;
@@ -19,6 +21,7 @@ export type Reminder = {
   createdAtMs: number;
   deliveredAtMs?: number;
   id: string;
+  recalledAtMs?: number;
   snailId: string;
   status: ReminderStatus;
   text: string;
@@ -27,13 +30,22 @@ export type Reminder = {
 export type JourneyRecord = PhaseZeroJourney & {
   arrivedAtMs?: number;
   id: string;
+  recalledAtMs?: number;
   reminderId: string;
   snailId: string;
   status: JourneyStatus;
   trailHistory?: TrailHistoryPoint[];
 };
 
+export type Egg = {
+  earnedAtMs: number;
+  id: string;
+  source: EggSource;
+  status: EggStatus;
+};
+
 export type CarrierState = {
+  eggs: Egg[];
   journeys: JourneyRecord[];
   reminders: Reminder[];
   snails: Snail[];
@@ -71,6 +83,7 @@ export interface CarrierRepository {
 
 export function createInitialCarrierState(): CarrierState {
   return {
+    eggs: [],
     journeys: [],
     reminders: [],
     snails: [
@@ -154,6 +167,7 @@ export function getActiveJourney(state: CarrierState): JourneyRecord | undefined
 
 export function cloneCarrierState(state: CarrierState): CarrierState {
   return {
+    eggs: state.eggs?.map((egg) => ({ ...egg })) ?? [],
     journeys: state.journeys.map((journey) => ({
       ...journey,
       start: cloneCoordinate(journey.start),

@@ -72,6 +72,7 @@ export async function runScheduledArrivalWorker({
         reminder,
         snails: state.snails
       });
+      state.eggs.push(createEarnedEgg(state.eggs.length + 1, serverNowMs));
       completedCount += 1;
       changed = true;
     }
@@ -115,4 +116,13 @@ function markJourneyDelivered({
   if (snail) {
     snail.status = "resting";
   }
+}
+
+function createEarnedEgg(sequence: number, earnedAtMs: number) {
+  return {
+    earnedAtMs,
+    id: `egg-${sequence}`,
+    source: "earned" as const,
+    status: "unhatched" as const
+  };
 }
