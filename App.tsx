@@ -43,7 +43,8 @@ import {
   createInitialCarrierState,
   getActiveJourney,
   InMemoryCarrierRepository,
-  listInFlightReminders
+  listInFlightReminders,
+  listStableSnails
 } from "./src/useCases/localCarrierState";
 import { loadBackendJourneyState } from "./src/useCases/loadBackendJourneyState";
 import {
@@ -84,6 +85,8 @@ export default function App() {
   );
   const [reminderText, setReminderText] = useState("");
   const [formError, setFormError] = useState("");
+  const [requestedSelectedSnailId, setRequestedSelectedSnailId] =
+    useState("garden-1");
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null
   );
@@ -95,6 +98,18 @@ export default function App() {
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
   const inFlightReminders = listInFlightReminders(carrierState);
+  const stable = useMemo(
+    () => listStableSnails(carrierState),
+    [carrierState]
+  );
+  const firstRestingSnail = stable.snails.find(
+    (snail) => snail.status === "resting"
+  );
+  const selectedStableSnail = stable.snails.find(
+    (snail) =>
+      snail.id === requestedSelectedSnailId && snail.status === "resting"
+  ) ?? firstRestingSnail;
+  const selectedSnailId = selectedStableSnail?.id ?? "";
   const pushSender = useMemo(() => new ExpoLocalPushSender(), []);
   const backgroundLocationController = useMemo(
     () => new ExpoBackgroundLocationController(),
@@ -291,7 +306,7 @@ export default function App() {
       const repository = new InMemoryCarrierRepository(carrierState);
 
       createReminderJourney(
-        { text: reminderText },
+        { snailId: selectedSnailId || undefined, text: reminderText },
         {
           clock: { now: () => Date.now() },
           locationSource: { currentTarget: () => target },
@@ -441,6 +456,53 @@ export default function App() {
             <Text style={styles.warpLabel}>warp</Text>
           </Pressable>
         </View>
+        <View style={styles.stablePanel}>
+          <View style={styles.stableHeaderRow}>
+            <Text style={styles.stableTitle}>Stable</Text>
+            <Text style={styles.stableCapacity}>
+              {stable.capacity.freeCount}/{stable.capacity.totalCount} free
+            </Text>
+          </View>
+          <View style={styles.stableSnailList}>
+            {stable.snails.map((snail) => {
+              const selected = snail.id === selectedSnailId;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`${snail.name}, ${snail.statusLabel}`}
+                  accessibilityRole="button"
+                  disabled={snail.status !== "resting"}
+                  key={snail.id}
+                  onPress={() => setRequestedSelectedSnailId(snail.id)}
+                  style={({ pressed }) => [
+                    styles.stableSnailItem,
+                    snail.status === "on-journey"
+                      ? styles.stableSnailItemBusy
+                      : null,
+                    selected ? styles.stableSnailItemSelected : null,
+                    pressed ? styles.stableSnailItemPressed : null
+                  ]}
+                >
+                  <View style={styles.stableSnailIdentityRow}>
+                    <Text numberOfLines={1} style={styles.stableSnailName}>
+                      {snail.name}
+                    </Text>
+                    <Text style={styles.stableSnailStatus}>
+                      {snail.statusLabel}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={styles.stableSnailMeta}>
+                    {snail.carryingText
+                      ? `Carrying: ${snail.carryingText}`
+                      : selected
+                        ? "Selected"
+                        : "Ready"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
         <View style={styles.composerRow}>
           <TextInput
             accessibilityLabel="Reminder text"
@@ -455,9 +517,11 @@ export default function App() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Send reminder"
+            disabled={!selectedStableSnail}
             onPress={sendReminder}
             style={({ pressed }) => [
               styles.sendButton,
+              !selectedStableSnail ? styles.sendButtonDisabled : null,
               pressed ? styles.sendButtonPressed : null
             ]}
           >
@@ -665,6 +729,9 @@ const styles = StyleSheet.create({
   sendButtonPressed: {
     backgroundColor: "#294870"
   },
+  sendButtonDisabled: {
+    backgroundColor: "#7c8580"
+  },
   sendButtonText: {
     color: "#f8fafc",
     fontSize: 15,
@@ -685,6 +752,73 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between"
+  },
+  stableCapacity: {
+    color: "#56645e",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  stableHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  stablePanel: {
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 10
+  },
+  stableSnailIdentityRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between"
+  },
+  stableSnailItem: {
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(63, 109, 91, 0.28)",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
+  stableSnailItemBusy: {
+    backgroundColor: "#eef1ed",
+    borderColor: "rgba(86, 100, 94, 0.2)"
+  },
+  stableSnailItemPressed: {
+    backgroundColor: "#eef7f1"
+  },
+  stableSnailItemSelected: {
+    borderColor: "#3f6d5b",
+    borderWidth: 2
+  },
+  stableSnailList: {
+    gap: 8,
+    marginTop: 8
+  },
+  stableSnailMeta: {
+    color: "#56645e",
+    fontSize: 12,
+    marginTop: 3
+  },
+  stableSnailName: {
+    color: "#25332e",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700"
+  },
+  stableSnailStatus: {
+    color: "#3f6d5b",
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  stableTitle: {
+    color: "#25332e",
+    fontSize: 15,
+    fontWeight: "700"
   },
   title: {
     color: "#25332e",

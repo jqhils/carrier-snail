@@ -45,6 +45,25 @@ export type InFlightReminderListItem = {
   text: string;
 };
 
+export type StableSnailListItem = {
+  carryingText?: string;
+  id: string;
+  name: string;
+  status: SnailStatus;
+  statusLabel: string;
+};
+
+export type StableCapacity = {
+  busyCount: number;
+  freeCount: number;
+  totalCount: number;
+};
+
+export type StableSnapshot = {
+  capacity: StableCapacity;
+  snails: StableSnailListItem[];
+};
+
 export interface CarrierRepository {
   save(state: CarrierState): void;
   snapshot(): CarrierState;
@@ -94,6 +113,39 @@ export function listInFlightReminders(
         text: reminder.text
       };
     });
+}
+
+export function listStableSnails(state: CarrierState): StableSnapshot {
+  const snails = state.snails.map((snail) => ({
+    ...stableCarryingDetails(state, snail.id),
+    id: snail.id,
+    name: snail.name,
+    status: snail.status,
+    statusLabel: snail.status === "resting" ? "Resting" : "On journey"
+  }));
+
+  const freeCount = snails.filter(({ status }) => status === "resting").length;
+
+  return {
+    capacity: {
+      busyCount: snails.length - freeCount,
+      freeCount,
+      totalCount: snails.length
+    },
+    snails
+  };
+}
+
+function stableCarryingDetails(
+  state: CarrierState,
+  snailId: string
+): Pick<StableSnailListItem, "carryingText"> {
+  const reminder = state.reminders.find(
+    (candidate) =>
+      candidate.snailId === snailId && candidate.status === "in-flight"
+  );
+
+  return reminder ? { carryingText: reminder.text } : {};
 }
 
 export function getActiveJourney(state: CarrierState): JourneyRecord | undefined {
