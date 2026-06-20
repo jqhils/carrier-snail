@@ -12,17 +12,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { FadeInView } from "../components/FadeInView";
 import { SnailSprite } from "../components/SnailSprite";
 import { getEggRarityPoolOdds } from "../useCases/hatchEgg";
-import type {
-  CarrierState,
-  Egg,
-  EggRarityPool,
-  Snail,
-  StableSnapshot
+import {
+  getStableSnailDetail,
+  type CarrierState,
+  type Egg,
+  type EggRarityPool,
+  type StableSnailDetail,
+  type StableSnapshot
 } from "../useCases/localCarrierState";
 import type {
   PurchaseCatalogProduct,
   PurchaseProductId
 } from "../useCases/purchaseInventory";
+import { levelUpCost } from "../useCases/levelUpSnail";
 import { PURCHASE_FLOOR_DISCLOSURE } from "../useCases/purchaseInventory";
 import { MAX_SNAIL_NAME_LENGTH } from "../useCases/renameSnail";
 import { EmptyTabScreen } from "./EmptyTabScreen";
@@ -38,8 +40,6 @@ type MySnailsScreenProps = {
   onSelectSnail: (snailId: string) => void;
   purchaseCatalog: PurchaseCatalogProduct[];
   selectedCanLevel: boolean;
-  selectedLevelCost: number;
-  selectedOwnedSnail?: Snail;
   selectedSnailId: string;
   stable: StableSnapshot;
   unhatchedEggs: Egg[];
@@ -56,12 +56,15 @@ export function MySnailsScreen({
   onSelectSnail,
   purchaseCatalog,
   selectedCanLevel,
-  selectedLevelCost,
-  selectedOwnedSnail,
   selectedSnailId,
   stable,
   unhatchedEggs
 }: MySnailsScreenProps) {
+  const [detailSnailId, setDetailSnailId] = useState<string | undefined>();
+  const detail = detailSnailId
+    ? getStableSnailDetail(carrierState, detailSnailId)
+    : undefined;
+
   if (stable.snails.length === 0) {
     return (
       <EmptyTabScreen
@@ -69,6 +72,20 @@ export function MySnailsScreen({
         eyebrow="Stable"
         title="My Snails"
         tone="sage"
+      />
+    );
+  }
+
+  if (detail) {
+    return (
+      <SnailDetailView
+        canLevel={detail.id === selectedSnailId && selectedCanLevel}
+        detail={detail}
+        formError={formError}
+        levelCost={levelUpCost(detail)}
+        onBack={() => setDetailSnailId(undefined)}
+        onLevelSelectedSnail={onLevelSelectedSnail}
+        onRenameSnail={onRenameSnail}
       />
     );
   }
@@ -100,11 +117,13 @@ export function MySnailsScreen({
 
             return (
               <Pressable
-                accessibilityLabel={`${snail.name}, ${snail.statusLabel}`}
+                accessibilityLabel={`Open ${snail.name} details, ${snail.statusLabel}`}
                 accessibilityRole="button"
-                disabled={snail.status !== "resting"}
                 key={snail.id}
-                onPress={() => onSelectSnail(snail.id)}
+                onPress={() => {
+                  onSelectSnail(snail.id);
+                  setDetailSnailId(snail.id);
+                }}
                 style={({ pressed }) => [
                   styles.snailItem,
                   snail.status === "on-journey" ? styles.snailItemBusy : null,
@@ -145,36 +164,6 @@ export function MySnailsScreen({
             );
           })}
         </View>
-
-        {selectedOwnedSnail ? (
-          <RenameSnailRow
-            formError={formError}
-            key={selectedOwnedSnail.id}
-            onRenameSnail={onRenameSnail}
-            snail={selectedOwnedSnail}
-          />
-        ) : null}
-
-        {selectedOwnedSnail ? (
-          <View style={styles.levelRow}>
-            <Text numberOfLines={1} style={styles.levelText}>
-              {selectedOwnedSnail.name} Lv {selectedOwnedSnail.level}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Level ${selectedOwnedSnail.name}`}
-              disabled={!selectedCanLevel}
-              onPress={onLevelSelectedSnail}
-              style={({ pressed }) => [
-                styles.levelButton,
-                !selectedCanLevel ? styles.levelButtonDisabled : null,
-                pressed ? styles.levelButtonPressed : null
-              ]}
-            >
-              <Text style={styles.levelButtonText}>Level {selectedLevelCost}</Text>
-            </Pressable>
-          </View>
-        ) : null}
 
         {unhatchedEggs.length > 0 ? (
           <View style={styles.eggList}>
@@ -245,6 +234,132 @@ export function MySnailsScreen({
   );
 }
 
+function SnailDetailView({
+  canLevel,
+  detail,
+  formError,
+  levelCost,
+  onBack,
+  onLevelSelectedSnail,
+  onRenameSnail
+}: {
+  canLevel: boolean;
+  detail: StableSnailDetail;
+  formError: string;
+  levelCost: number;
+  onBack: () => void;
+  onLevelSelectedSnail: () => void;
+  onRenameSnail: (snailId: string, name: string) => void;
+}) {
+  return (
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <FadeInView>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.detailTopBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to My Snails"
+              onPress={onBack}
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed ? styles.backButtonPressed : null
+              ]}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
+            <Text style={styles.detailStatus}>{detail.statusLabel}</Text>
+          </View>
+
+          <View style={styles.detailHero}>
+            <View style={styles.detailSpriteFrame}>
+              <SnailSprite
+                speciesId={detail.speciesId}
+                size={132}
+                walking={detail.status === "on-journey"}
+              />
+            </View>
+            <View style={styles.detailHeroCopy}>
+              <Text style={styles.eyebrow}>{detail.speciesName}</Text>
+              <Text numberOfLines={2} style={styles.detailTitle}>
+                {detail.name}
+              </Text>
+              <Text style={styles.detailLore}>{detail.lore}</Text>
+            </View>
+          </View>
+
+          <RenameSnailRow
+            formError={formError}
+            key={detail.id}
+            onRenameSnail={onRenameSnail}
+            snail={detail}
+          />
+
+          <View style={styles.levelRow}>
+            <View style={styles.levelCopy}>
+              <Text style={styles.renameLabel}>Level</Text>
+              <Text numberOfLines={1} style={styles.levelText}>
+                Lv {detail.level}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Level ${detail.name}`}
+              disabled={!canLevel}
+              onPress={onLevelSelectedSnail}
+              style={({ pressed }) => [
+                styles.levelButton,
+                !canLevel ? styles.levelButtonDisabled : null,
+                pressed ? styles.levelButtonPressed : null
+              ]}
+            >
+              <Text style={styles.levelButtonText}>Level {levelCost}</Text>
+            </Pressable>
+          </View>
+
+          {detail.carryingText ? (
+            <View style={styles.detailCarrying}>
+              <Text style={styles.renameLabel}>Carrying</Text>
+              <Text numberOfLines={2} style={styles.detailCarryingText}>
+                {detail.carryingText}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={styles.detailStatsGrid}>
+            <DetailStat label="Rarity" value={formatLabel(detail.rarity)} />
+            <DetailStat
+              label="Speed"
+              value={`${Math.round(detail.baseSpeedMetersPerHour)} m/h`}
+            />
+            <DetailStat
+              label="Reliability"
+              value={`${Math.round(detail.reliability * 100)}%`}
+            />
+            <DetailStat
+              label="Temperament"
+              value={formatLabel(detail.temperament)}
+            />
+            <DetailStat label="Quirk" value={formatLabel(detail.quirk)} />
+            <DetailStat label="Speed band" value={formatLabel(detail.speedBand)} />
+            <DetailStat
+              label="Trail"
+              value={formatLabel(detail.trail.texture)}
+            />
+            <DetailStat
+              label="Journeys completed"
+              value={String(detail.journeysCompleted)}
+            />
+          </View>
+        </ScrollView>
+      </FadeInView>
+    </SafeAreaView>
+  );
+}
+
 function RenameSnailRow({
   formError,
   onRenameSnail,
@@ -252,7 +367,7 @@ function RenameSnailRow({
 }: {
   formError: string;
   onRenameSnail: (snailId: string, name: string) => void;
-  snail: Snail;
+  snail: Pick<StableSnailDetail, "id" | "name">;
 }) {
   const [renameText, setRenameText] = useState(snail.name);
   const canSave = canSaveRename(renameText, snail.name);
@@ -294,6 +409,19 @@ function RenameSnailRow({
   );
 }
 
+function DetailStat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.detailStat}>
+      <Text numberOfLines={1} style={styles.detailStatLabel}>
+        {label}
+      </Text>
+      <Text numberOfLines={2} style={styles.detailStatValue}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 function formatOddsText(rarityPool: EggRarityPool): string {
   return getEggRarityPoolOdds(rarityPool)
     .map((odd) => `${Math.round(odd.probability * 100)}% ${odd.rarity}`)
@@ -314,6 +442,13 @@ function formatPurchaseDetail(product: PurchaseCatalogProduct): string {
   return product.description;
 }
 
+function formatLabel(value: string): string {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function canSaveRename(name: string, currentName: string): boolean {
   const trimmed = name.trim();
 
@@ -325,6 +460,25 @@ function canSaveRename(name: string, currentName: string): boolean {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    alignItems: "center",
+    backgroundColor: "#f4f0e3",
+    borderColor: "rgba(37, 51, 46, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 68,
+    paddingHorizontal: 10
+  },
+  backButtonPressed: {
+    backgroundColor: "#e6e0d1"
+  },
+  backButtonText: {
+    color: "#25332e",
+    fontSize: 13,
+    fontWeight: "800"
+  },
   buyButton: {
     alignItems: "center",
     backgroundColor: "#365c8d",
@@ -358,6 +512,99 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     paddingHorizontal: 18,
     paddingTop: 20
+  },
+  detailCarrying: {
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(63, 109, 91, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 14,
+    padding: 12
+  },
+  detailCarryingText: {
+    color: "#25332e",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 19
+  },
+  detailHero: {
+    alignItems: "center",
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(63, 109, 91, 0.2)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 18,
+    padding: 14
+  },
+  detailHeroCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  detailLore: {
+    color: "#56645e",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8
+  },
+  detailSpriteFrame: {
+    alignItems: "center",
+    aspectRatio: 1,
+    backgroundColor: "#edf1e8",
+    borderColor: "rgba(63, 109, 91, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    maxWidth: 148,
+    width: "38%"
+  },
+  detailStat: {
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(43, 58, 52, 0.12)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: "48%",
+    flexGrow: 1,
+    minHeight: 72,
+    paddingHorizontal: 11,
+    paddingVertical: 10
+  },
+  detailStatLabel: {
+    color: "#6d5a46",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  },
+  detailStatsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 9,
+    marginTop: 14
+  },
+  detailStatValue: {
+    color: "#25332e",
+    fontSize: 15,
+    fontWeight: "800",
+    lineHeight: 19,
+    marginTop: 6
+  },
+  detailStatus: {
+    color: "#3f6d5b",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  detailTitle: {
+    color: "#25332e",
+    fontSize: 26,
+    fontWeight: "900",
+    lineHeight: 31,
+    marginTop: 4
+  },
+  detailTopBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between"
   },
   eggCopy: {
     flex: 1,
@@ -434,6 +681,10 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     fontSize: 13,
     fontWeight: "700"
+  },
+  levelCopy: {
+    flex: 1,
+    minWidth: 0
   },
   levelRow: {
     alignItems: "center",

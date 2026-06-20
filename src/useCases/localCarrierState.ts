@@ -173,6 +173,17 @@ export type StableSnailListItem = {
   statusLabel: string;
 };
 
+export type StableSnailDetail = StableSnailListItem & {
+  journeysCompleted: number;
+  lore: string;
+  quirk: JourneyQuirk;
+  rarity: SnailRarity;
+  reliability: number;
+  speedBand: SnailSpeedBand;
+  temperament: SnailTemperament;
+  trail: SnailTrailTraits;
+};
+
 export type StableCapacity = {
   busyCount: number;
   emptySlotCount: number;
@@ -307,6 +318,39 @@ export function listStableSnails(state: CarrierState): StableSnapshot {
       totalCount: snails.length + emptySlotCount
     },
     snails
+  };
+}
+
+export function getStableSnailDetail(
+  state: CarrierState,
+  snailId: string
+): StableSnailDetail | undefined {
+  const snail = state.snails.find((candidate) => candidate.id === snailId);
+
+  if (!snail) {
+    return undefined;
+  }
+
+  const species = getSnailSpecies(snail.speciesId);
+
+  return {
+    ...stableCarryingDetails(state, snail.id),
+    baseSpeedMetersPerHour: snail.baseSpeedMetersPerHour,
+    id: snail.id,
+    journeysCompleted: snail.journeysCompleted,
+    level: snail.level,
+    lore: species.lore,
+    name: snail.name,
+    quirk: snail.quirk,
+    rarity: snail.rarity,
+    reliability: snail.reliability,
+    speciesId: snail.speciesId,
+    speciesName: species.displayName,
+    speedBand: snail.speedBand,
+    status: snail.status,
+    statusLabel: snail.status === "resting" ? "Resting" : "On journey",
+    temperament: snail.temperament,
+    trail: { ...snail.trail }
   };
 }
 

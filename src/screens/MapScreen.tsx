@@ -275,8 +275,10 @@ export function MapScreen({
   );
   const firstRestingSnail = restingStableSnails[0];
   const selectedStableSnail = stable.snails.find(
-    (snail) =>
-      snail.id === requestedSelectedSnailId && snail.status === "resting"
+    (snail) => snail.id === requestedSelectedSnailId
+  ) ?? firstRestingSnail ?? stable.snails[0];
+  const selectedRestingStableSnail = restingStableSnails.find(
+    (snail) => snail.id === requestedSelectedSnailId
   ) ?? firstRestingSnail;
   const selectedSnailId = selectedStableSnail?.id ?? "";
   const selectedOwnedSnail = carrierState.snails.find(
@@ -1375,8 +1377,6 @@ export function MapScreen({
           onSelectSnail={setRequestedSelectedSnailId}
           purchaseCatalog={purchaseCatalog}
           selectedCanLevel={selectedCanLevel}
-          selectedLevelCost={selectedLevelCost}
-          selectedOwnedSnail={selectedOwnedSnail}
           selectedSnailId={selectedSnailId}
           stable={stable}
           unhatchedEggs={unhatchedEggs}
@@ -1413,7 +1413,7 @@ export function MapScreen({
           }}
           onStartEdit={startEditingToDo}
           restingSnails={restingStableSnails}
-          selectedStableSnail={selectedStableSnail}
+          selectedStableSnail={selectedRestingStableSnail}
           toDoItems={toDoItems}
           toDoText={toDoText}
         />
