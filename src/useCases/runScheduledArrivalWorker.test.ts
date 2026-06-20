@@ -215,7 +215,7 @@ function createBackendTodoJourneyState(text: string): CarrierState {
   );
 
   assignSnailToToDo(
-    { todoId: todo.id },
+    { snailId: "garden-1", todoId: todo.id },
     {
       clock: { now: () => 0 },
       locationSource: { currentTarget: () => target },

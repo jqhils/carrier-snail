@@ -162,10 +162,13 @@ export type InFlightReminderListItem = {
 };
 
 export type StableSnailListItem = {
+  baseSpeedMetersPerHour: number;
   carryingText?: string;
   id: string;
+  level: number;
   name: string;
   speciesId: SnailSpeciesId;
+  speciesName: string;
   status: SnailStatus;
   statusLabel: string;
 };
@@ -283,9 +286,12 @@ export function listInFlightReminders(
 export function listStableSnails(state: CarrierState): StableSnapshot {
   const snails = state.snails.map((snail) => ({
     ...stableCarryingDetails(state, snail.id),
+    baseSpeedMetersPerHour: snail.baseSpeedMetersPerHour,
     id: snail.id,
+    level: snail.level,
     name: snail.name,
     speciesId: snail.speciesId,
+    speciesName: getSnailSpecies(snail.speciesId).displayName,
     status: snail.status,
     statusLabel: snail.status === "resting" ? "Resting" : "On journey"
   }));

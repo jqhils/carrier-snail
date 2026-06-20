@@ -1,4 +1,6 @@
+import { useState } from "react";
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,7 +20,7 @@ type ToDosScreenProps = {
   editingText: string;
   editingTodoId?: string;
   formError: string;
-  onAssignSnail: (todoId: string) => void;
+  onAssignSnail: (todoId: string, snailId: string) => void;
   onCancelEdit: () => void;
   onChangeEditingText: (text: string) => void;
   onChangeToDoText: (text: string) => void;
@@ -28,6 +30,7 @@ type ToDosScreenProps = {
   onRecallToDo: (todoId: string) => void;
   onSaveEdit: () => void;
   onStartEdit: (todo: ToDoListItem) => void;
+  restingSnails: StableSnailListItem[];
   selectedStableSnail?: StableSnailListItem;
   toDoItems: ToDoListItem[];
   toDoText: string;
@@ -48,10 +51,26 @@ export function ToDosScreen({
   onRecallToDo,
   onSaveEdit,
   onStartEdit,
+  restingSnails,
   selectedStableSnail,
   toDoItems,
   toDoText
 }: ToDosScreenProps) {
+  const [pickerTodo, setPickerTodo] = useState<ToDoListItem | null>(null);
+
+  function closePicker() {
+    setPickerTodo(null);
+  }
+
+  function chooseSnail(snailId: string) {
+    if (!pickerTodo) {
+      return;
+    }
+
+    onAssignSnail(pickerTodo.id, snailId);
+    closePicker();
+  }
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <FadeInView>
@@ -206,7 +225,7 @@ export function ToDosScreen({
                             accessibilityRole="button"
                             accessibilityLabel={`Send a snail for ${todo.text}`}
                             disabled={!canSend}
-                            onPress={() => onAssignSnail(todo.id)}
+                            onPress={() => setPickerTodo(todo)}
                             style={({ pressed }) => [
                               styles.smallButton,
                               !canSend ? styles.smallButtonDisabled : null,
@@ -268,6 +287,66 @@ export function ToDosScreen({
           </View>
         )}
       </ScrollView>
+      <Modal
+        animationType="slide"
+        onRequestClose={closePicker}
+        transparent
+        visible={pickerTodo !== null}
+      >
+        <View style={styles.pickerBackdrop}>
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHeader}>
+              <View style={styles.pickerTitleBlock}>
+                <Text style={styles.pickerEyebrow}>Carrier</Text>
+                <Text numberOfLines={1} style={styles.pickerTitle}>
+                  Choose a snail
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel="Cancel snail selection"
+                accessibilityRole="button"
+                onPress={closePicker}
+                style={({ pressed }) => [
+                  styles.pickerCancelButton,
+                  pressed ? styles.pickerCancelButtonPressed : null
+                ]}
+              >
+                <Text style={styles.pickerCancelText}>Cancel</Text>
+              </Pressable>
+            </View>
+            <View style={styles.pickerList}>
+              {restingSnails.map((snail) => (
+                <Pressable
+                  accessibilityLabel={`Send ${snail.name} for ${
+                    pickerTodo?.text ?? "to-do"
+                  }`}
+                  accessibilityRole="button"
+                  key={snail.id}
+                  onPress={() => chooseSnail(snail.id)}
+                  style={({ pressed }) => [
+                    styles.pickerSnailRow,
+                    selectedStableSnail?.id === snail.id
+                      ? styles.pickerSnailRowSelected
+                      : null,
+                    pressed ? styles.pickerSnailRowPressed : null
+                  ]}
+                >
+                  <SnailSprite speciesId={snail.speciesId} size={52} />
+                  <View style={styles.pickerSnailCopy}>
+                    <Text numberOfLines={1} style={styles.pickerSnailName}>
+                      {snail.name}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.pickerSnailMeta}>
+                      {snail.speciesName} · Lv {snail.level} ·{" "}
+                      {Math.round(snail.baseSpeedMetersPerHour)} m/h
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
       </FadeInView>
     </SafeAreaView>
   );
@@ -387,6 +466,98 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginTop: 7
+  },
+  pickerBackdrop: {
+    backgroundColor: "rgba(20, 28, 24, 0.38)",
+    flex: 1,
+    justifyContent: "flex-end"
+  },
+  pickerCancelButton: {
+    alignItems: "center",
+    backgroundColor: "#f4f0e3",
+    borderColor: "rgba(37, 51, 46, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    paddingHorizontal: 10
+  },
+  pickerCancelButtonPressed: {
+    backgroundColor: "#e6e0d1"
+  },
+  pickerCancelText: {
+    color: "#25332e",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  pickerEyebrow: {
+    color: "#8a6f4f",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase"
+  },
+  pickerHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between"
+  },
+  pickerList: {
+    gap: 9,
+    marginTop: 14
+  },
+  pickerSheet: {
+    backgroundColor: "#f8f6ed",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    paddingBottom: 28,
+    paddingHorizontal: 18,
+    paddingTop: 16
+  },
+  pickerSnailCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  pickerSnailMeta: {
+    color: "#56645e",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 3
+  },
+  pickerSnailName: {
+    color: "#25332e",
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  pickerSnailRow: {
+    alignItems: "center",
+    backgroundColor: "#fffdf6",
+    borderColor: "rgba(63, 109, 91, 0.22)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 68,
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
+  pickerSnailRowPressed: {
+    backgroundColor: "#eef7f1"
+  },
+  pickerSnailRowSelected: {
+    borderColor: "#3f6d5b",
+    borderWidth: 2
+  },
+  pickerTitle: {
+    color: "#25332e",
+    fontSize: 20,
+    fontWeight: "900",
+    lineHeight: 24
+  },
+  pickerTitleBlock: {
+    flex: 1,
+    minWidth: 0
   },
   primaryButton: {
     alignItems: "center",

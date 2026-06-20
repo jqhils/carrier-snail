@@ -100,7 +100,7 @@ export function createToDo(
 }
 
 export function assignSnailToToDo(
-  input: { snailId?: string; todoId: string },
+  input: { snailId: string; todoId: string },
   {
     clock,
     locationSource,
@@ -358,13 +358,15 @@ function findToDo(state: CarrierState, todoId: string): ToDo {
 
 function findRestingSnail(
   state: CarrierState,
-  snailId: string | undefined
+  snailId: string
 ): Snail | undefined {
-  return snailId
-    ? state.snails.find(
-        ({ id, status }) => id === snailId && status === "resting"
-      )
-    : state.snails.find(({ status }) => status === "resting");
+  if (snailId.trim().length === 0) {
+    return undefined;
+  }
+
+  return state.snails.find(
+    ({ id, status }) => id === snailId && status === "resting"
+  );
 }
 
 function findActiveJourneyForToDo(

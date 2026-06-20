@@ -41,9 +41,12 @@ describe("stable state", () => {
     });
     expect(stable.snails).toEqual([
       {
+        baseSpeedMetersPerHour: 48,
         id: "garden-1",
+        level: 1,
         name: "Garden Snail",
         speciesId: "garden",
+        speciesName: "Garden Snail",
         status: "resting",
         statusLabel: "Resting"
       }
