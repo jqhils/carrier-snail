@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeInView } from "../components/FadeInView";
 import type { StableSnailListItem } from "../useCases/localCarrierState";
 import type { ToDoListItem } from "../useCases/todoUseCases";
 
@@ -52,6 +53,7 @@ export function ToDosScreen({
 }: ToDosScreenProps) {
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <FadeInView>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -248,6 +250,7 @@ export function ToDosScreen({
           </View>
         )}
       </ScrollView>
+      </FadeInView>
     </SafeAreaView>
   );
 }

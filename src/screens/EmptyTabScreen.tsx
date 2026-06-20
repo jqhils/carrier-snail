@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeInView } from "../components/FadeInView";
+
 type EmptyTabScreenProps = {
   body: string;
   eyebrow: string;
@@ -39,6 +41,7 @@ export function EmptyTabScreen({
       edges={["top", "left", "right"]}
       style={[styles.screen, { backgroundColor: palette.background }]}
     >
+      <FadeInView>
       <View style={styles.content}>
         <View
           style={[
@@ -56,6 +59,7 @@ export function EmptyTabScreen({
           <Text style={styles.body}>{body}</Text>
         </View>
       </View>
+      </FadeInView>
     </SafeAreaView>
   );
 }

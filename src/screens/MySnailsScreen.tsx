@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeInView } from "../components/FadeInView";
 import { getEggRarityPoolOdds } from "../useCases/hatchEgg";
 import type {
   CarrierState,
@@ -60,6 +61,7 @@ export function MySnailsScreen({
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <FadeInView>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -206,6 +208,7 @@ export function MySnailsScreen({
           ))}
         </View>
       </ScrollView>
+      </FadeInView>
     </SafeAreaView>
   );
 }
