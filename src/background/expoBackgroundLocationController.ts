@@ -57,4 +57,12 @@ export class ExpoBackgroundLocationController
       timeInterval: policy.minimumIntervalMs
     });
   }
+
+  async stopLowPowerUpdates(): Promise<void> {
+    if (
+      await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK_NAME)
+    ) {
+      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK_NAME);
+    }
+  }
 }

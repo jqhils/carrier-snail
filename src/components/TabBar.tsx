@@ -10,7 +10,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export type BottomTabId = "snails" | "map" | "todos" | "notifications";
+export type BottomTabId =
+  | "snails"
+  | "map"
+  | "todos"
+  | "notifications"
+  | "settings";
 
 type TabIconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -24,7 +29,8 @@ const TABS: BottomTab[] = [
   { icon: "snail", id: "snails", label: "My Snails" },
   { icon: "map-marker", id: "map", label: "Map" },
   { icon: "format-list-checks", id: "todos", label: "To Dos" },
-  { icon: "bell", id: "notifications", label: "Notifications" }
+  { icon: "bell", id: "notifications", label: "Notifications" },
+  { icon: "cog", id: "settings", label: "Settings" }
 ];
 
 type TabBarProps = {
