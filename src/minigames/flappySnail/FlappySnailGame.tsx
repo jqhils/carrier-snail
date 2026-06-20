@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Canvas,
   Circle,
@@ -20,7 +19,9 @@ import {
   View
 } from "react-native";
 
+import type { GameComponentProps } from "../types";
 import {
+  applyFlappyModifier,
   createInitialState,
   defaultConfig,
   restart,
@@ -30,84 +31,62 @@ import {
   type FlappyState
 } from "./flappyEngine";
 
-const BEST_STORAGE_KEY = "flappySnail.best";
-
-// Red Bull energy palette, reusing the app's cream/ink tones.
+// Fixed accents (obstacles, sky, ground). The snail's shell/body come from the
+// chosen character, so every snail looks different; the spiral is cream so it
+// reads on any shell color.
 const COLORS = {
-  skyTop: "#bfe3ff",
-  skyBottom: "#eaf7ff",
-  grass: "#9bc15a",
-  grassTop: "#cdeb8f",
   canBody: "#10218b",
   canCap: "#d9dee8",
-  gold: "#ffc400",
-  red: "#e10600",
-  navy: "#10218b",
-  body: "#fbe7c6",
-  bodyShade: "#e7cfa1",
   cream: "#fff4d3",
+  gold: "#ffc400",
+  grass: "#9bc15a",
+  grassTop: "#cdeb8f",
   ink: "#3c2a1f",
+  navy: "#10218b",
+  skyBottom: "#eaf7ff",
+  skyTop: "#bfe3ff",
   white: "#ffffff"
 };
 
-export type FlappyResult = {
-  multiplier: number;
-  score: number;
-};
-
-type Props = {
-  onClose?: () => void;
-  onUseBoost?: (result: FlappyResult) => void;
-};
-
-// Snapshot the loop publishes for rendering. Refs drive the simulation;
-// React state drives the paint, so render never reads a ref.
 type ViewModel = {
   game: FlappyState;
   wingBeat: number;
 };
 
-export function FlappySnailGame({ onClose, onUseBoost }: Props) {
-  const { width, height } = useWindowDimensions();
+export function FlappySnailGame({
+  character,
+  onExit,
+  onResult
+}: GameComponentProps) {
+  const { height, width } = useWindowDimensions();
+  // The character's passive power-up merges into the base config here.
   const config = useMemo<FlappyConfig>(
-    () => defaultConfig(width, height),
-    [width, height]
+    () => applyFlappyModifier(defaultConfig(width, height), character.modifier),
+    [width, height, character]
   );
 
   const stateRef = useRef<FlappyState>(createInitialState(config));
   const flapRef = useRef(false);
   const frameRef = useRef(0);
+  const onResultRef = useRef(onResult);
   const [view, setView] = useState<ViewModel>(() => ({
     game: createInitialState(config),
     wingBeat: 0
   }));
 
-  // Rebuild state if the viewport changes (e.g. rotation) before play starts.
+  useEffect(() => {
+    onResultRef.current = onResult;
+  }, [onResult]);
+
+  // Rebuild before play if the viewport or character changes.
   useEffect(() => {
     if (stateRef.current.phase === "ready") {
-      stateRef.current = createInitialState(config, stateRef.current.best);
+      stateRef.current = createInitialState(config);
       setView({ game: stateRef.current, wingBeat: 0 });
     }
   }, [config]);
 
-  // Load persisted best once.
-  useEffect(() => {
-    let active = true;
-    AsyncStorage.getItem(BEST_STORAGE_KEY)
-      .then((raw) => {
-        const value = raw ? Number.parseInt(raw, 10) : 0;
-        if (active && Number.isFinite(value)) {
-          stateRef.current.best = Math.max(stateRef.current.best, value);
-          setView((current) => ({ ...current, game: stateRef.current }));
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Fixed-step game loop driven by the animation frame clock.
+  // Fixed-step loop. On death we report the run up to the hub (XP + reward).
   useEffect(() => {
     let raf = 0;
     let mounted = true;
@@ -123,10 +102,13 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
       stateRef.current = step(stateRef.current, config, { flap });
 
       if (previousPhase === "playing" && stateRef.current.phase === "dead") {
-        void AsyncStorage.setItem(
-          BEST_STORAGE_KEY,
-          String(stateRef.current.best)
-        ).catch(() => undefined);
+        const finalScore = stateRef.current.score;
+        onResultRef.current({
+          characterId: character.id,
+          gameId: "flappy",
+          rewardMultiplier: scoreToSpeedMultiplier(finalScore),
+          score: finalScore
+        });
       }
 
       frameRef.current += 1;
@@ -143,11 +125,11 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
       mounted = false;
       cancelAnimationFrame(raf);
     };
-  }, [config]);
+  }, [config, character.id]);
 
   function handleTap() {
     if (stateRef.current.phase === "dead") {
-      return; // dead screen uses explicit buttons
+      return;
     }
     flapRef.current = true;
   }
@@ -172,7 +154,6 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
   return (
     <View style={styles.fill}>
       <Canvas style={styles.fill}>
-        {/* sky */}
         <Rect x={0} y={0} width={config.width} height={config.height}>
           <LinearGradient
             start={vec(0, 0)}
@@ -181,7 +162,6 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
           />
         </Rect>
 
-        {/* pipes as energy cans */}
         {state.pipes.map((pipe, index) => {
           const topHeight = pipe.gapY - config.pipeGap / 2;
           const bottomY = pipe.gapY + config.pipeGap / 2;
@@ -205,7 +185,6 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
           );
         })}
 
-        {/* snail */}
         <Group
           transform={[
             { translateX: config.snailX },
@@ -213,7 +192,6 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
             { rotate: tiltRad }
           ]}
         >
-          {/* wings */}
           <Group transform={[{ translateY: -2 }, { rotate: wingBeat }]}>
             <Path path={wing} color={COLORS.white} />
             <Path
@@ -224,14 +202,13 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
             />
           </Group>
 
-          {/* foot / body */}
           <RoundedRect
             x={-20}
             y={2}
             width={40}
             height={16}
             r={8}
-            color={COLORS.body}
+            color={character.bodyColor}
           />
           <RoundedRect
             x={-20}
@@ -239,12 +216,11 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
             width={40}
             height={6}
             r={3}
-            color={COLORS.bodyShade}
+            color="rgba(0, 0, 0, 0.12)"
           />
-          <Circle cx={15} cy={4} r={9} color={COLORS.body} />
+          <Circle cx={15} cy={4} r={9} color={character.bodyColor} />
 
-          {/* shell */}
-          <Circle cx={-3} cy={-4} r={17} color={COLORS.red} />
+          <Circle cx={-3} cy={-4} r={17} color={character.shellColor} />
           <Circle
             cx={-3}
             cy={-4}
@@ -256,15 +232,14 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
           <Group transform={[{ translateX: -3 }, { translateY: -4 }]}>
             <Path
               path={spiral}
-              color={COLORS.navy}
+              color={COLORS.cream}
               style="stroke"
               strokeWidth={3}
               strokeCap="round"
             />
           </Group>
-          <Circle cx={3} cy={-10} r={4.2} color={COLORS.cream} />
+          <Circle cx={3} cy={-10} r={4.2} color={COLORS.white} />
 
-          {/* eye stalks + eyes */}
           <Line
             p1={vec(17, -2)}
             p2={vec(24, -15)}
@@ -285,7 +260,6 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
           <Circle cx={16.6} cy={-17.6} r={2.4} color={COLORS.ink} />
         </Group>
 
-        {/* ground */}
         <Rect
           x={0}
           y={groundY}
@@ -302,10 +276,8 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
         />
       </Canvas>
 
-      {/* tap layer */}
       <Pressable style={styles.fill} onPress={handleTap} />
 
-      {/* HUD */}
       {state.phase !== "ready" ? (
         <Text style={styles.score} pointerEvents="none">
           {score}
@@ -314,8 +286,12 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
 
       {state.phase === "ready" ? (
         <View style={styles.readyWrap} pointerEvents="none">
-          <Text style={styles.title}>REDBULL SNAIL</Text>
-          <Text style={styles.subtitle}>Tap to flap</Text>
+          <Text style={styles.title}>{character.name.toUpperCase()}</Text>
+          <Text style={styles.subtitle}>{character.tagline}</Text>
+          {character.powerUp ? (
+            <Text style={styles.powerUp}>POWER-UP · {character.powerUp}</Text>
+          ) : null}
+          <Text style={styles.hint}>Tap to flap</Text>
         </View>
       ) : null}
 
@@ -323,61 +299,32 @@ export function FlappySnailGame({ onClose, onUseBoost }: Props) {
         <View style={styles.overlay}>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Wings clipped</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statBlock}>
-                <Text style={styles.statLabel}>Score</Text>
-                <Text style={[styles.statValue, { color: COLORS.red }]}>
-                  {score}
-                </Text>
-              </View>
-              <View style={styles.statBlock}>
-                <Text style={styles.statLabel}>Best</Text>
-                <Text style={[styles.statValue, { color: COLORS.navy }]}>
-                  {state.best}
-                </Text>
-              </View>
-            </View>
+            <Text style={styles.statLabel}>Score</Text>
+            <Text style={styles.statValue}>{score}</Text>
             <Text style={styles.boostText}>
-              Snail boost ×{multiplier.toFixed(2)}
+              Earned ×{multiplier.toFixed(2)} snail boost
             </Text>
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => onUseBoost?.({ multiplier, score })}
+              onPress={playAgain}
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.primaryButtonText}>
-                Use ×{multiplier.toFixed(2)} boost
-              </Text>
+              <Text style={styles.primaryButtonText}>Play again</Text>
             </Pressable>
-
-            <View style={styles.secondaryRow}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={playAgain}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  pressed ? styles.pressed : null
-                ]}
-              >
-                <Text style={styles.secondaryButtonText}>Play again</Text>
-              </Pressable>
-              {onClose ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onClose}
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    pressed ? styles.pressed : null
-                  ]}
-                >
-                  <Text style={styles.secondaryButtonText}>Close</Text>
-                </Pressable>
-              ) : null}
-            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onExit}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>Back to games</Text>
+            </Pressable>
           </View>
         </View>
       ) : null}
@@ -470,7 +417,7 @@ const styles = StyleSheet.create({
     color: "#3f6d5b",
     fontSize: 16,
     fontWeight: "800",
-    marginTop: 14,
+    marginTop: 12,
     textAlign: "center"
   },
   card: {
@@ -491,18 +438,31 @@ const styles = StyleSheet.create({
   fill: {
     ...ABSOLUTE_FILL
   },
+  hint: {
+    color: "#5a6b7a",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 18
+  },
   overlay: {
     ...ABSOLUTE_FILL,
     alignItems: "center",
     backgroundColor: "rgba(16, 33, 139, 0.18)",
     justifyContent: "center"
   },
+  powerUp: {
+    color: "#e10600",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    marginTop: 10
+  },
   pressed: {
     opacity: 0.85
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: COLORS.red,
+    backgroundColor: "#e10600",
     borderRadius: 10,
     marginTop: 18,
     paddingVertical: 13
@@ -534,7 +494,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#e8edf6",
     borderRadius: 10,
-    flex: 1,
+    marginTop: 10,
     paddingVertical: 11
   },
   secondaryButtonText: {
@@ -542,39 +502,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700"
   },
-  secondaryRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10
-  },
-  statBlock: {
-    alignItems: "center",
-    flex: 1
-  },
   statLabel: {
     color: "#2a2118",
     fontSize: 14,
-    fontWeight: "700"
+    fontWeight: "700",
+    marginTop: 14,
+    textAlign: "center"
   },
   statValue: {
-    fontSize: 40,
+    color: "#e10600",
+    fontSize: 44,
     fontWeight: "800",
-    marginTop: 2
-  },
-  statsRow: {
-    flexDirection: "row",
-    marginTop: 18
+    textAlign: "center"
   },
   subtitle: {
     color: "#5a6b7a",
     fontSize: 16,
     fontWeight: "600",
-    marginTop: 8
+    marginTop: 8,
+    textAlign: "center"
   },
   title: {
     color: COLORS.navy,
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: "900",
-    letterSpacing: 1
+    letterSpacing: 1,
+    textAlign: "center"
   }
 });

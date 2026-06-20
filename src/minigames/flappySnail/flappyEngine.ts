@@ -213,3 +213,24 @@ export function restart(state: FlappyState, config: FlappyConfig): FlappyState {
 export function scoreToSpeedMultiplier(score: number): number {
   return Math.min(4, 1 + score * 0.08);
 }
+
+// Merge a character's passive power-up into a base config. Scales default to 1
+// (no change), so a cosmetic-only snail with an empty modifier plays exactly
+// like the baseline. This is the single hook a character uses to alter Flappy.
+export function applyFlappyModifier(
+  config: FlappyConfig,
+  modifier: {
+    flapScale?: number;
+    gapScale?: number;
+    gravityScale?: number;
+    pipeSpeedScale?: number;
+  }
+): FlappyConfig {
+  return {
+    ...config,
+    flapVelocity: config.flapVelocity * (modifier.flapScale ?? 1),
+    gravity: config.gravity * (modifier.gravityScale ?? 1),
+    pipeGap: config.pipeGap * (modifier.gapScale ?? 1),
+    pipeSpeed: config.pipeSpeed * (modifier.pipeSpeedScale ?? 1)
+  };
+}

@@ -1,4 +1,5 @@
 import {
+  applyFlappyModifier,
   collides,
   createInitialState,
   defaultConfig,
@@ -123,5 +124,22 @@ describe("flappy engine — determinism & rewards", () => {
     expect(scoreToSpeedMultiplier(0)).toBe(1);
     expect(scoreToSpeedMultiplier(10)).toBeCloseTo(1.8);
     expect(scoreToSpeedMultiplier(999)).toBe(4);
+  });
+});
+
+describe("flappy engine — power-up modifier", () => {
+  it("leaves config untouched for an empty (cosmetic) modifier", () => {
+    const base = defaultConfig(400, 600);
+    expect(applyFlappyModifier(base, {})).toEqual(base);
+  });
+
+  it("makes the snail floatier and flap stronger with the redbull modifier", () => {
+    const base = defaultConfig(400, 600);
+    const wings = applyFlappyModifier(base, { flapScale: 1.08, gravityScale: 0.8 });
+
+    expect(wings.gravity).toBeLessThan(base.gravity);
+    // flapVelocity is negative; a stronger flap is more negative
+    expect(wings.flapVelocity).toBeLessThan(base.flapVelocity);
+    expect(wings.pipeSpeed).toBe(base.pipeSpeed);
   });
 });

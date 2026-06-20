@@ -1,105 +1,45 @@
-# Carrier Snail
+# Snail Games hub
 
-Carrier Snail is an Expo/React Native app where reminders crawl across a real
-map at snail speed. The constitution in `specs/` is the source of truth; the
-Delivery Floor must never be bypassed.
+The whole "Games" tab, built behind one mount point. Drop these onto a scratch
+branch off `game/redbull-snail` (they overwrite the older flappySnail files).
 
-## Local development
+## Files
+    src/minigames/
+      types.ts             Shared contracts (Character, GameModifier, GameResult, GameComponentProps)
+      characters.ts        Roster. Only the Redbull snail has a live power-up; rest are cosmetic
+      characters.test.ts
+      gamesCatalog.ts      Game list (Flappy live; 2048 / Snake = coming soon)
+      progress.ts          Pure XP/leaderboard reducer (the progression seam)
+      progress.test.ts
+      GamesHub.tsx         The Games tab: picker + game list + leaderboard. Launches games
+      flappySnail/
+        flappyEngine.ts        + applyFlappyModifier() merges a character's power-up into config
+        flappyEngine.test.ts
+        FlappySnailGame.tsx    Refactored to GameComponentProps (character / onExit / onResult)
+    GamesHarnessApp.tsx    Throwaway: renders <GamesHub/> full-screen so you can run it standalone
 
-Install dependencies:
+## See it on the Simulator / phone
+On a scratch branch off game/redbull-snail (real App.tsx stays safe there):
 
-```sh
-npm install
-```
+    git checkout game/redbull-snail
+    git checkout -b game/games-hub
+    # ...drop these files in...
+    cp GamesHarnessApp.tsx App.tsx      # scratch branch only — swaps the app to the hub
+    npm run ios                         # regenerates ios/, no signing hassle on Simulator
 
-Run the green gate:
+The hub does NOT pop up by itself — it's a screen you open. The harness just makes
+the hub the entire app so you can run it without the rest of the template existing.
 
-```sh
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
+## Real integration (one line, your teammate's tab navigator)
+    import { GamesHub } from "./src/minigames/GamesHub";
+    // <GamesHub onApplyReward={(result) => applyToJourney(result.rewardMultiplier)} />
 
-Run the Phase 0 native dev build:
+onApplyReward is optional and bubbles a finished run up to the host so the map
+journey can speed up. The hub owns XP/leaderboard internally; games just report scores.
 
-```sh
-npm run ios
-# or
-npm run android
-```
+## Adding a game later
+Write a component to GameComponentProps ({ character, onExit, onResult }), add an
+entry to gamesCatalog.ts, and launch it from GamesHub. Nothing else changes.
 
-MapLibre React Native is native code and does not run in Expo Go or on web — use
-a dev build (`npm run ios` / `npm run android`).
-
-### Map basemap (important)
-
-The default style, `https://demotiles.maplibre.org/style.json`, is a **keyless
-placeholder** with only low-zoom world data — it shows continents, not streets,
-so the app frames it out to a world view. For a real city-level basemap (and to
-see the snail crawl on actual roads), set a free
-[MapTiler](https://cloud.maptiler.com) style + key in `.env`:
-
-```sh
-EXPO_PUBLIC_MAP_STYLE_URL=https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_MAPTILER_KEY
-```
-
-Self-hosted Protomaps on Cloudflare R2 is the keyless, zero-egress option for
-scale (see `specs/tech-stack.md`).
-
-### Running on a physical device
-
-A dev build downloads its JS from Metro on every launch, so **Metro must be
-running** (`npx expo start`, or the terminal left open by `npm run android`), and
-the phone must be able to reach it: put the phone on the **same Wi-Fi as your
-computer**, or keep it on USB and run `adb reverse tcp:8081 tcp:8081`. A white
-screen followed by an error almost always means Metro isn't running or isn't
-reachable — not a code problem.
-
-## Backend spine
-
-Issue #4 adds the Supabase foundation without requiring credentials for local
-demo mode. To exercise backend persistence, apply the migration in
-`supabase/migrations/` to a Supabase project and set:
-
-```sh
-EXPO_PUBLIC_SUPABASE_URL=...
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-```
-
-When those values are absent, the app keeps using the existing in-memory local
-state.
-
-## Backend arrival worker
-
-The scheduled arrival path lives in `runScheduledArrivalWorker`. It evaluates
-pending journeys from the repository, uses the server `Clock` plus the Delivery
-Floor ETA, sends exactly one arrival push through `PushSender`, then persists the
-arrived journey, delivered reminder, and resting snail state.
-
-Local/dev verification does not need real push credentials:
-
-```sh
-npm test -- --runTestsByPath src/useCases/runScheduledArrivalWorker.test.ts
-```
-
-Production scheduling should run the same use-case with a service-role Supabase
-client, `SupabaseCarrierRepository`, and a `PushSender` implementation that
-delivers through Expo Push.
-
-## Foreground target updates
-
-Foreground location updates run through `updateForegroundTarget`, which rounds
-samples to roughly 50 m before persistence, re-aims active journeys from their
-stored parameters, and retains only the latest target plus a short trail history.
-
-## Optional background location
-
-Background re-aiming is opt-in. The app asks for foreground permission first,
-then background permission with plain copy that says the mode is optional and
-coarse. If background permission is denied, foreground-only re-aiming still
-works.
-
-The Expo adapter uses `expo-task-manager` with balanced accuracy, 500 m movement
-spacing, deferred updates, and automatic pausing. It requires a native dev build
-or release build; Expo Go does not support background location.
+NOTE: the old wire-flappy-into-app.patch is obsolete — do not apply it. The hub
+replaces wiring Flappy directly into App.tsx.
