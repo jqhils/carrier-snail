@@ -151,6 +151,7 @@ function createWatchState({
   snails: Snail[];
 }): CarrierState {
   return {
+    arrivals: [],
     eggs: [],
     inventory: { cosmetics: [] },
     journeys,
@@ -174,7 +175,8 @@ function createWatchState({
     ],
     snails,
     softCurrency: { slime: 0 },
-    stableSlots: { purchased: 0 }
+    stableSlots: { purchased: 0 },
+    todos: []
   };
 }
 

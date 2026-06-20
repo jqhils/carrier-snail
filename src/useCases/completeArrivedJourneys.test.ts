@@ -6,6 +6,7 @@ import { createReminderJourney } from "./createReminderJourney";
 import { completeArrivedJourneys } from "./completeArrivedJourneys";
 import type { ArrivalPush, PushSender } from "./pushSender";
 import { distanceMeters } from "../journey/snailCrawl";
+import { assignSnailToToDo, createToDo } from "./todoUseCases";
 
 const target = {
   latitude: -33.8688,
@@ -106,6 +107,55 @@ describe("completeArrivedJourneys", () => {
         rarityPool: "earned-basic",
         source: "earned",
         status: "unhatched"
+      }
+    ]);
+  });
+
+  it("records an unseen inbox arrival for a carried to-do while keeping it open", () => {
+    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
+    const pushSender = new FakePushSender();
+    const { todo } = createToDo(
+      { text: "check passport" },
+      { clock: { now: () => 0 }, repository }
+    );
+    const { journey } = assignSnailToToDo(
+      { todoId: todo.id },
+      {
+        clock: { now: () => 0 },
+        locationSource: { currentTarget: () => target },
+        repository
+      }
+    );
+    const arrivalMs =
+      (journeyDistanceHours(journey) + 1) * 60 * 60 * 1000;
+
+    completeArrivedJourneys({
+      clock: { now: () => arrivalMs },
+      pushSender,
+      repository
+    });
+    const state = repository.snapshot();
+
+    expect(pushSender.arrivals).toEqual([
+      {
+        reminderId: todo.id,
+        text: "check passport",
+        title: "Carrier Snail arrived"
+      }
+    ]);
+    expect(state.todos[0]).toMatchObject({
+      id: todo.id,
+      status: "open"
+    });
+    expect(state.arrivals).toEqual([
+      {
+        arrivedAtMs: arrivalMs,
+        id: "arrival-1",
+        journeyId: journey.id,
+        snailId: "garden-1",
+        snailName: "Garden Snail",
+        text: "check passport",
+        todoId: todo.id
       }
     ]);
   });

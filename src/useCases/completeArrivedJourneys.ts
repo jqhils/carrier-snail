@@ -1,7 +1,13 @@
 import { getCrawlFrame } from "../journey/snailCrawl";
-import type { CarrierRepository, CarrierState, Egg } from "./localCarrierState";
+import {
+  type ArrivalNotification,
+  type CarrierRepository,
+  type CarrierState,
+  type Egg
+} from "./localCarrierState";
 import type { PushSender } from "./pushSender";
 import type { Clock } from "./createReminderJourney";
+import { createArrivalNotification } from "./arrivalInboxUseCases";
 
 export function completeArrivedJourneys({
   clock,
@@ -20,6 +26,7 @@ export function completeArrivedJourneys({
   const completedReminderIds = new Set<string>();
   const completedSnailIds = new Set<string>();
   const earnedEggs: Egg[] = [];
+  const arrivals: ArrivalNotification[] = [];
 
   const journeys = state.journeys.map((journey) => {
     if (journey.status !== "in-flight") {
@@ -36,21 +43,48 @@ export function completeArrivedJourneys({
       return journey;
     }
 
-    const reminder = state.reminders.find(({ id }) => id === journey.reminderId);
+    const todo = journey.todoId
+      ? state.todos.find(({ id }) => id === journey.todoId)
+      : undefined;
+    const reminder = journey.reminderId
+      ? state.reminders.find(({ id }) => id === journey.reminderId)
+      : undefined;
+    const delivery = todo
+      ? todo.status === "open"
+        ? { id: todo.id, text: todo.text, todoId: todo.id }
+        : undefined
+      : reminder && reminder.status === "in-flight"
+        ? { id: reminder.id, reminderId: reminder.id, text: reminder.text }
+        : undefined;
 
-    if (!reminder || reminder.status !== "in-flight") {
+    if (!delivery) {
       return journey;
     }
 
     completedCount += 1;
-    completedReminderIds.add(reminder.id);
+    if (reminder) {
+      completedReminderIds.add(reminder.id);
+    }
     completedSnailIds.add(journey.snailId);
     earnedEggs.push(
       createEarnedEgg(state.eggs.length + earnedEggs.length + 1, nowMs)
     );
+    arrivals.push(
+      createArrivalNotification({
+        arrivedAtMs: nowMs,
+        journey,
+        reminderId: delivery.reminderId,
+        sequence: state.arrivals.length + arrivals.length + 1,
+        snailName:
+          state.snails.find(({ id }) => id === journey.snailId)?.name ??
+          "Unknown snail",
+        text: delivery.text,
+        todoId: delivery.todoId
+      })
+    );
     pushSender.sendArrival({
-      reminderId: reminder.id,
-      text: reminder.text,
+      reminderId: delivery.id,
+      text: delivery.text,
       title: "Carrier Snail arrived"
     });
 
@@ -62,6 +96,7 @@ export function completeArrivedJourneys({
   });
 
   const nextState: CarrierState = {
+    arrivals: [...state.arrivals, ...arrivals],
     eggs: [...state.eggs, ...earnedEggs],
     inventory: state.inventory,
     journeys,
@@ -89,7 +124,8 @@ export function completeArrivedJourneys({
     softCurrency: {
       slime: (state.softCurrency?.slime ?? 0) + completedCount
     },
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   };
 
   if (completedCount > 0) {

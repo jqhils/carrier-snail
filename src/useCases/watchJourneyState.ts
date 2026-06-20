@@ -113,13 +113,22 @@ export function buildJourneyWatchState({
   const journeys = state.journeys
     .filter((journey) => journey.status === "in-flight")
     .flatMap((journey) => {
-      const reminder = state.reminders.find(
-        (candidate) =>
-          candidate.id === journey.reminderId &&
-          candidate.status === "in-flight"
-      );
+      const todo = journey.todoId
+        ? state.todos.find(
+            (candidate) =>
+              candidate.id === journey.todoId && candidate.status === "open"
+          )
+        : undefined;
+      const reminder = journey.reminderId
+        ? state.reminders.find(
+            (candidate) =>
+              candidate.id === journey.reminderId &&
+              candidate.status === "in-flight"
+          )
+        : undefined;
+      const reminderText = todo?.text ?? reminder?.text;
 
-      if (!reminder) {
+      if (!reminderText) {
         return [];
       }
 
@@ -129,7 +138,7 @@ export function buildJourneyWatchState({
         createWatchJourneySnapshot({
           clock,
           journey,
-          reminderText: reminder.text,
+          reminderText,
           scrubProgress: scrubProgressByJourneyId[journey.id],
           snail,
           timeWarpFactor
@@ -210,7 +219,7 @@ function createWatchJourneySnapshot({
       journey.target
     ],
     preview,
-    reminderId: journey.reminderId,
+    reminderId: journey.reminderId ?? journey.todoId ?? journey.id,
     reminderText,
     snailId: journey.snailId,
     snailName: snail?.name ?? "Unknown snail",

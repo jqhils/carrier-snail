@@ -7,6 +7,7 @@ import {
 
 export type SnailStatus = "resting" | "on-journey";
 export type ReminderStatus = "in-flight" | "delivered" | "recalled";
+export type ToDoStatus = "open" | "done";
 export type JourneyStatus = "in-flight" | "arrived" | "recalled";
 export type EggSource = "earned" | "purchased";
 export type EggRarityPool = "earned-basic" | "paid-premium";
@@ -65,6 +66,18 @@ export type OnboardingState = {
   completedAtMs?: number;
 };
 
+export type ArrivalNotification = {
+  arrivedAtMs: number;
+  id: string;
+  journeyId: string;
+  reminderId?: string;
+  seenAtMs?: number;
+  snailId: string;
+  snailName: string;
+  text: string;
+  todoId?: string;
+};
+
 export type Snail = {
   appearance: SnailAppearanceTraits;
   baseSpeedMetersPerHour: number;
@@ -93,13 +106,22 @@ export type Reminder = {
   text: string;
 };
 
+export type ToDo = {
+  createdAtMs: number;
+  doneAtMs?: number;
+  id: string;
+  status: ToDoStatus;
+  text: string;
+};
+
 export type JourneyRecord = PhaseZeroJourney & {
   arrivedAtMs?: number;
   id: string;
   recalledAtMs?: number;
-  reminderId: string;
+  reminderId?: string;
   snailId: string;
   status: JourneyStatus;
+  todoId?: string;
   trailHistory?: TrailHistoryPoint[];
 };
 
@@ -114,6 +136,7 @@ export type Egg = {
 };
 
 export type CarrierState = {
+  arrivals: ArrivalNotification[];
   eggs: Egg[];
   inventory: Inventory;
   journeys: JourneyRecord[];
@@ -123,6 +146,7 @@ export type CarrierState = {
   snails: Snail[];
   softCurrency: SoftCurrencyBalance;
   stableSlots: StableSlots;
+  todos: ToDo[];
 };
 
 export type InFlightReminderListItem = {
@@ -185,6 +209,7 @@ export function createStarterGardenSnail(): Snail {
 
 export function createInitialCarrierState(): CarrierState {
   return {
+    arrivals: [],
     eggs: [],
     inventory: { cosmetics: [] },
     journeys: [],
@@ -193,7 +218,8 @@ export function createInitialCarrierState(): CarrierState {
     reminders: [],
     snails: [createStarterGardenSnail()],
     softCurrency: { slime: 0 },
-    stableSlots: { purchased: 0 }
+    stableSlots: { purchased: 0 },
+    todos: []
   };
 }
 
@@ -216,6 +242,28 @@ export class InMemoryCarrierRepository implements CarrierRepository {
 export function listInFlightReminders(
   state: CarrierState
 ): InFlightReminderListItem[] {
+  const fromTodos = state.journeys
+    .filter((journey) => journey.status === "in-flight")
+    .flatMap((journey) => {
+      const todo = state.todos.find(({ id }) => id === journey.todoId);
+
+      if (!todo || todo.status === "done") {
+        return [];
+      }
+
+      const snail = state.snails.find(({ id }) => id === journey.snailId);
+
+      return [{
+        reminderId: todo.id,
+        snailName: snail?.name ?? "Unknown snail",
+        text: todo.text
+      }];
+    });
+
+  if (fromTodos.length > 0 || state.todos.length > 0) {
+    return fromTodos;
+  }
+
   return state.reminders
     .filter((reminder) => reminder.status === "in-flight")
     .map((reminder) => {
@@ -256,6 +304,18 @@ function stableCarryingDetails(
   state: CarrierState,
   snailId: string
 ): Pick<StableSnailListItem, "carryingText"> {
+  const journey = state.journeys.find(
+    (candidate) =>
+      candidate.snailId === snailId && candidate.status === "in-flight"
+  );
+  const todo = journey
+    ? state.todos.find((candidate) => candidate.id === journey.todoId)
+    : undefined;
+
+  if (todo && todo.status === "open") {
+    return { carryingText: todo.text };
+  }
+
   const reminder = state.reminders.find(
     (candidate) =>
       candidate.snailId === snailId && candidate.status === "in-flight"
@@ -270,6 +330,7 @@ export function getActiveJourney(state: CarrierState): JourneyRecord | undefined
 
 export function cloneCarrierState(state: CarrierState): CarrierState {
   return {
+    arrivals: state.arrivals?.map((arrival) => ({ ...arrival })) ?? [],
     eggs: state.eggs?.map((egg) => ({ ...egg })) ?? [],
     inventory: {
       cosmetics:
@@ -299,7 +360,8 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
     },
     stableSlots: {
       purchased: state.stableSlots?.purchased ?? 0
-    }
+    },
+    todos: state.todos?.map((todo) => ({ ...todo })) ?? []
   };
 }
 

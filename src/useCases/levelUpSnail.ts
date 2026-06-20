@@ -50,6 +50,7 @@ export function levelUpSnail(
   const leveledSnail = applyLevelGrowth(snail);
 
   repository.save({
+    arrivals: state.arrivals,
     eggs: state.eggs,
     inventory: state.inventory,
     journeys: state.journeys,
@@ -62,7 +63,8 @@ export function levelUpSnail(
     softCurrency: {
       slime: state.softCurrency.slime - cost
     },
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   });
 
   return { snail: leveledSnail };

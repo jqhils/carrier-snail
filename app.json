@@ -17,7 +17,8 @@
           "locationAlwaysAndWhenInUsePermission": "Optional coarse background location lets Carrier Snail re-aim while the app is closed. Denying it keeps foreground-only mode.",
           "locationWhenInUsePermission": "Carrier Snail uses coarse location while open so snails know where to crawl."
         }
-      ]
+      ],
+      "./plugins/with-user-leave-hint-fix"
     ],
     "ios": {
       "supportsTablet": true,

@@ -11,6 +11,7 @@ import {
   type ArrivalWorkerRepository,
   runScheduledArrivalWorker
 } from "./runScheduledArrivalWorker";
+import { assignSnailToToDo, createToDo } from "./todoUseCases";
 
 const target = {
   latitude: -33.8688,
@@ -136,6 +137,56 @@ describe("runScheduledArrivalWorker", () => {
       }
     ]);
   });
+
+  it("delivers a to-do journey while keeping the to-do open", async () => {
+    const state = createBackendTodoJourneyState("check passport");
+    const repository = new FakeArrivalWorkerRepository({
+      "carrier-user-1": state
+    });
+    const pushSender = new FakePushSender();
+    const journey = state.journeys[0];
+    const eta = computeServerJourneyEta({
+      clock: { now: () => 0 },
+      journey
+    });
+
+    const result = await runScheduledArrivalWorker({
+      clock: { now: () => eta.earliestArrivalAtMs },
+      pushSender,
+      repository
+    });
+    const completed = repository.snapshot("carrier-user-1");
+
+    expect(result.completedCount).toBe(1);
+    expect(pushSender.arrivals).toEqual([
+      {
+        reminderId: "todo-1",
+        text: "check passport",
+        title: "Carrier Snail arrived"
+      }
+    ]);
+    expect(completed.todos[0]).toMatchObject({
+      id: "todo-1",
+      status: "open"
+    });
+    expect(completed.arrivals).toEqual([
+      {
+        arrivedAtMs: eta.earliestArrivalAtMs,
+        id: "arrival-1",
+        journeyId: "journey-1",
+        snailId: "garden-1",
+        snailName: "Garden Snail",
+        text: "check passport",
+        todoId: "todo-1"
+      }
+    ]);
+    expect(completed.journeys[0]).toMatchObject({
+      arrivedAtMs: eta.earliestArrivalAtMs,
+      status: "arrived",
+      todoId: "todo-1"
+    });
+    expect(completed.snails[0].status).toBe("resting");
+  });
 });
 
 function createBackendJourneyState(text: string): CarrierState {
@@ -143,6 +194,28 @@ function createBackendJourneyState(text: string): CarrierState {
 
   createReminderJourney(
     { text },
+    {
+      clock: { now: () => 0 },
+      locationSource: { currentTarget: () => target },
+      repository
+    }
+  );
+
+  return repository.snapshot();
+}
+
+function createBackendTodoJourneyState(text: string): CarrierState {
+  const repository = new InMemoryCarrierRepository(createInitialCarrierState());
+  const { todo } = createToDo(
+    { text },
+    {
+      clock: { now: () => 0 },
+      repository
+    }
+  );
+
+  assignSnailToToDo(
+    { todoId: todo.id },
     {
       clock: { now: () => 0 },
       locationSource: { currentTarget: () => target },

@@ -108,6 +108,7 @@ export function hatchEgg(
   const hatchedAtMs = clock.now();
 
   repository.save({
+    arrivals: state.arrivals,
     eggs: state.eggs.map((candidate) =>
       candidate.id === egg.id
         ? {
@@ -125,7 +126,8 @@ export function hatchEgg(
     reminders: state.reminders,
     snails: [...state.snails, snail],
     softCurrency: state.softCurrency,
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   });
 
   return { snail };

@@ -36,6 +36,7 @@ describe("loadBackendJourneyState", () => {
   it("loads active journey state from backend parameters using the injected clock", async () => {
     const baseJourney = createPhaseZeroJourney({ createdAtMs: 0, target });
     const backendState: CarrierState = {
+      arrivals: [],
       eggs: [],
       inventory: { cosmetics: [] },
       journeys: [
@@ -67,7 +68,8 @@ describe("loadBackendJourneyState", () => {
       ],
       purchases: [],
       softCurrency: { slime: 0 },
-      stableSlots: { purchased: 0 }
+      stableSlots: { purchased: 0 },
+      todos: []
     };
     const repository = new FakeBackendCarrierRepository(backendState);
 
