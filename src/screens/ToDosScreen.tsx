@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeInView } from "../components/FadeInView";
 import type { StableSnailListItem } from "../useCases/localCarrierState";
 import type { ToDoListItem } from "../useCases/todoUseCases";
 
@@ -52,13 +53,14 @@ export function ToDosScreen({
 }: ToDosScreenProps) {
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <FadeInView>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>To Dos</Text>
+          <Text style={styles.eyebrow}>Your list</Text>
           <Text style={styles.title}>To Dos</Text>
           <Text style={styles.subtitle}>
             Limitless thoughts. Snails only leave when you send one.
@@ -248,6 +250,7 @@ export function ToDosScreen({
           </View>
         )}
       </ScrollView>
+      </FadeInView>
     </SafeAreaView>
   );
 }
@@ -311,9 +314,9 @@ const styles = StyleSheet.create({
   },
   emptyBody: {
     color: "#56645e",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 5
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6
   },
   emptyList: {
     backgroundColor: "#f8f6ed",
@@ -325,7 +328,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: "#25332e",
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: "800"
   },
   errorText: {
@@ -337,7 +340,7 @@ const styles = StyleSheet.create({
     color: "#8a6f4f",
     fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0,
+    letterSpacing: 0.8,
     textTransform: "uppercase"
   },
   ghostButton: {

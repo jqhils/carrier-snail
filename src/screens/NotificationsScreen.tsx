@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeInView } from "../components/FadeInView";
 import type { ArrivalInboxItem } from "../useCases/arrivalInboxUseCases";
 
 type NotificationsScreenProps = {
@@ -21,6 +22,7 @@ export function NotificationsScreen({
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <FadeInView>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -63,6 +65,7 @@ export function NotificationsScreen({
           </View>
         )}
       </ScrollView>
+      </FadeInView>
     </SafeAreaView>
   );
 }
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
     color: "#557363",
     fontSize: 12,
     fontWeight: "900",
-    letterSpacing: 0,
+    letterSpacing: 0.8,
     textTransform: "uppercase"
   },
   header: {

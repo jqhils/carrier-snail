@@ -1,6 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { ComponentProps } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { type ComponentProps, useState } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type BottomTabId = "snails" | "map" | "todos" | "notifications";
@@ -26,6 +33,60 @@ type TabBarProps = {
   onChangeTab: (tab: BottomTabId) => void;
 };
 
+function TabBarItem({
+  onPress,
+  selected,
+  showDot,
+  tab
+}: {
+  onPress: () => void;
+  selected: boolean;
+  showDot: boolean;
+  tab: BottomTab;
+}) {
+  const [scale] = useState(() => new Animated.Value(1));
+
+  const pressTo = (toValue: number) => {
+    Animated.timing(scale, {
+      duration: 120,
+      easing: Easing.out(Easing.quad),
+      toValue,
+      useNativeDriver: true
+    }).start();
+  };
+
+  return (
+    <Pressable
+      accessibilityLabel={tab.label}
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      onPressIn={() => pressTo(0.94)}
+      onPressOut={() => pressTo(1)}
+      style={[styles.tab, selected ? styles.tabSelected : null]}
+    >
+      <Animated.View
+        style={[styles.tabContent, { transform: [{ scale }] }]}
+      >
+        <View style={styles.iconSlot}>
+          <MaterialCommunityIcons
+            color={selected ? "#2f604e" : "#64736c"}
+            name={tab.icon}
+            size={23}
+          />
+          {showDot ? <View style={styles.notificationDot} /> : null}
+        </View>
+        <Text
+          numberOfLines={1}
+          style={[styles.tabLabel, selected ? styles.tabLabelSelected : null]}
+        >
+          {tab.label}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function TabBar({
   activeTab,
   hasUnseenNotifications = false,
@@ -35,49 +96,18 @@ export function TabBar({
 
   return (
     <View
-      style={[
-        styles.shell,
-        { paddingBottom: Math.max(insets.bottom, 10) }
-      ]}
+      style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 10) }]}
     >
       <View style={styles.tabs}>
-        {TABS.map((tab) => {
-          const selected = tab.id === activeTab;
-          const showDot = tab.id === "notifications" && hasUnseenNotifications;
-
-          return (
-            <Pressable
-              accessibilityLabel={tab.label}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              key={tab.id}
-              onPress={() => onChangeTab(tab.id)}
-              style={({ pressed }) => [
-                styles.tab,
-                selected ? styles.tabSelected : null,
-                pressed ? styles.tabPressed : null
-              ]}
-            >
-              <View style={styles.iconSlot}>
-                <MaterialCommunityIcons
-                  color={selected ? "#2f604e" : "#64736c"}
-                  name={tab.icon}
-                  size={23}
-                />
-                {showDot ? <View style={styles.notificationDot} /> : null}
-              </View>
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.tabLabel,
-                  selected ? styles.tabLabelSelected : null
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {TABS.map((tab) => (
+          <TabBarItem
+            key={tab.id}
+            onPress={() => onChangeTab(tab.id)}
+            selected={tab.id === activeTab}
+            showDot={tab.id === "notifications" && hasUnseenNotifications}
+            tab={tab}
+          />
+        ))}
       </View>
     </View>
   );
@@ -112,12 +142,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 8,
     flex: 1,
-    gap: 2,
     justifyContent: "center",
     minHeight: 54,
     minWidth: 0,
     paddingHorizontal: 4,
     paddingVertical: 5
+  },
+  tabContent: {
+    alignItems: "center",
+    gap: 2
   },
   tabLabel: {
     color: "#64736c",
@@ -127,9 +160,6 @@ const styles = StyleSheet.create({
   tabLabelSelected: {
     color: "#2f604e",
     fontWeight: "800"
-  },
-  tabPressed: {
-    backgroundColor: "#e8ede2"
   },
   tabSelected: {
     backgroundColor: "#dfeee4"
