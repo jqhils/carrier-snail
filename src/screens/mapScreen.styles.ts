@@ -1,6 +1,42 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
+  peekBar: {
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(63, 109, 91, 0.18)",
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8
+  },
+  peekHandle: {
+    alignSelf: "center",
+    backgroundColor: "rgba(63, 109, 91, 0.35)",
+    borderRadius: 2,
+    height: 4,
+    width: 34
+  },
+  peekTextBlock: {
+    minWidth: 0
+  },
+  peekTitle: {
+    color: "#26352f",
+    fontSize: 15,
+    fontWeight: "800"
+  },
+  peekEta: {
+    color: "#5f6e66",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2
+  },
+  panelHandleHit: {
+    alignItems: "center",
+    paddingBottom: 10,
+    paddingTop: 2
+  },
   backgroundLocationButton: {
     alignItems: "center",
     backgroundColor: "#3f6d5b",

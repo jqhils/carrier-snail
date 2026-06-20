@@ -443,9 +443,14 @@ export function MapScreen({
       watchScrubProgress
     ]
   );
-  const selectedWatchJourney = selectedWatchJourneyId
+  const effectiveSelectedJourneyId =
+    selectedWatchJourneyId ??
+    (watchState.journeys.length === 1
+      ? watchState.journeys[0].journeyId
+      : undefined);
+  const selectedWatchJourney = effectiveSelectedJourneyId
     ? watchState.journeys.find(
-        ({ journeyId }) => journeyId === selectedWatchJourneyId
+        ({ journeyId }) => journeyId === effectiveSelectedJourneyId
       )
     : undefined;
   const selectedJourneySnail = selectedWatchJourney
@@ -1016,21 +1021,6 @@ export function MapScreen({
               </Text>
             </View>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              detailsCollapsed ? "Show map details" : "Hide map details"
-            }
-            onPress={() => setDetailsCollapsed((value) => !value)}
-            style={({ pressed }) => [
-              styles.mapToggle,
-              pressed && styles.mapTogglePressed
-            ]}
-          >
-            <Text style={styles.mapToggleText}>
-              {detailsCollapsed ? "Show details" : "Hide details"}
-            </Text>
-          </Pressable>
         </View>
 
         <SafeAreaView style={styles.controls}>
@@ -1039,16 +1029,40 @@ export function MapScreen({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.statusRow}>
-                <View style={styles.titleBlock}>
-                  <Text numberOfLines={1} style={styles.meta}>
-                    {locationLabel}
-                  </Text>
-                </View>
-              </View>
-
-              {detailsCollapsed ? null : (
+              {detailsCollapsed ? (
+                <Pressable
+                  accessibilityLabel="Expand snail details"
+                  accessibilityRole="button"
+                  onPress={() => setDetailsCollapsed(false)}
+                  style={styles.peekBar}
+                >
+                  <View style={styles.peekHandle} />
+                  <View style={styles.peekTextBlock}>
+                    <Text numberOfLines={1} style={styles.peekTitle}>
+                      {selectedWatchJourney
+                        ? selectedWatchJourney.snailName
+                        : watchState.journeys.length > 0
+                          ? "Tap a snail to watch"
+                          : "No snails out right now"}
+                    </Text>
+                    {selectedWatchJourney ? (
+                      <Text numberOfLines={1} style={styles.peekEta}>
+                        {selectedWatchJourney.etaRange.copy}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              ) : (
                 <View style={styles.watchPanel}>
+                  <Pressable
+                    accessibilityLabel="Collapse snail details"
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    onPress={() => setDetailsCollapsed(true)}
+                    style={styles.panelHandleHit}
+                  >
+                    <View style={styles.peekHandle} />
+                  </Pressable>
                   <View style={styles.watchHeaderRow}>
                     <View style={styles.watchTitleBlock}>
                       <Text style={styles.watchKicker}>
@@ -1117,11 +1131,16 @@ export function MapScreen({
                       </Text>
                     </>
                   ) : (
-                    <Text numberOfLines={3} style={styles.watchEta}>
-                      {watchState.journeys.length > 0
-                        ? "Tap a snail on the map, or choose one below."
-                        : "No snail is carrying a thought right now."}
-                    </Text>
+                    <>
+                      <Text numberOfLines={3} style={styles.watchEta}>
+                        {watchState.journeys.length > 0
+                          ? "Tap a snail on the map, or choose one below to watch its crawl."
+                          : "No snail is carrying a thought yet. Send one from your To Dos."}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.watchMeta}>
+                        Snails crawl toward {locationLabel.toLowerCase()}.
+                      </Text>
+                    </>
                   )}
 
                   {watchState.journeys.length > 0 ? (
