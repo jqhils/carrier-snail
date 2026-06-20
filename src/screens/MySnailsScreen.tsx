@@ -1,4 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
@@ -16,14 +24,17 @@ import type {
   PurchaseProductId
 } from "../useCases/purchaseInventory";
 import { PURCHASE_FLOOR_DISCLOSURE } from "../useCases/purchaseInventory";
+import { MAX_SNAIL_NAME_LENGTH } from "../useCases/renameSnail";
 import { EmptyTabScreen } from "./EmptyTabScreen";
 
 type MySnailsScreenProps = {
   canPurchase: boolean;
   carrierState: CarrierState;
+  formError: string;
   onBuyProduct: (productId: PurchaseProductId) => void;
   onHatchEgg: (eggId: string) => void;
   onLevelSelectedSnail: () => void;
+  onRenameSnail: (snailId: string, name: string) => void;
   onSelectSnail: (snailId: string) => void;
   purchaseCatalog: PurchaseCatalogProduct[];
   selectedCanLevel: boolean;
@@ -37,9 +48,11 @@ type MySnailsScreenProps = {
 export function MySnailsScreen({
   canPurchase,
   carrierState,
+  formError,
   onBuyProduct,
   onHatchEgg,
   onLevelSelectedSnail,
+  onRenameSnail,
   onSelectSnail,
   purchaseCatalog,
   selectedCanLevel,
@@ -134,6 +147,15 @@ export function MySnailsScreen({
         </View>
 
         {selectedOwnedSnail ? (
+          <RenameSnailRow
+            formError={formError}
+            key={selectedOwnedSnail.id}
+            onRenameSnail={onRenameSnail}
+            snail={selectedOwnedSnail}
+          />
+        ) : null}
+
+        {selectedOwnedSnail ? (
           <View style={styles.levelRow}>
             <Text numberOfLines={1} style={styles.levelText}>
               {selectedOwnedSnail.name} Lv {selectedOwnedSnail.level}
@@ -223,6 +245,55 @@ export function MySnailsScreen({
   );
 }
 
+function RenameSnailRow({
+  formError,
+  onRenameSnail,
+  snail
+}: {
+  formError: string;
+  onRenameSnail: (snailId: string, name: string) => void;
+  snail: Snail;
+}) {
+  const [renameText, setRenameText] = useState(snail.name);
+  const canSave = canSaveRename(renameText, snail.name);
+
+  return (
+    <View style={styles.renameRow}>
+      <View style={styles.renameCopy}>
+        <Text style={styles.renameLabel}>Custom name</Text>
+        <TextInput
+          accessibilityLabel={`Rename ${snail.name}`}
+          maxLength={MAX_SNAIL_NAME_LENGTH}
+          onChangeText={setRenameText}
+          placeholder={snail.name}
+          placeholderTextColor="#7d7a70"
+          returnKeyType="done"
+          style={styles.renameInput}
+          value={renameText}
+        />
+        {formError ? (
+          <Text numberOfLines={2} style={styles.renameError}>
+            {formError}
+          </Text>
+        ) : null}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Save name for ${snail.name}`}
+        disabled={!canSave}
+        onPress={() => onRenameSnail(snail.id, renameText)}
+        style={({ pressed }) => [
+          styles.renameButton,
+          !canSave ? styles.renameButtonDisabled : null,
+          pressed ? styles.renameButtonPressed : null
+        ]}
+      >
+        <Text style={styles.renameButtonText}>Save</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function formatOddsText(rarityPool: EggRarityPool): string {
   return getEggRarityPoolOdds(rarityPool)
     .map((odd) => `${Math.round(odd.probability * 100)}% ${odd.rarity}`)
@@ -241,6 +312,16 @@ function formatPurchaseDetail(product: PurchaseCatalogProduct): string {
   }
 
   return product.description;
+}
+
+function canSaveRename(name: string, currentName: string): boolean {
+  const trimmed = name.trim();
+
+  return (
+    trimmed.length > 0 &&
+    trimmed.length <= MAX_SNAIL_NAME_LENGTH &&
+    trimmed !== currentName
+  );
 }
 
 const styles = StyleSheet.create({
@@ -388,6 +469,62 @@ const styles = StyleSheet.create({
     color: "#25332e",
     fontSize: 13,
     fontWeight: "800"
+  },
+  renameButton: {
+    alignItems: "center",
+    backgroundColor: "#3f6d5b",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 40,
+    minWidth: 64,
+    paddingHorizontal: 12
+  },
+  renameButtonDisabled: {
+    backgroundColor: "#7c8580"
+  },
+  renameButtonPressed: {
+    backgroundColor: "#315547"
+  },
+  renameButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  renameCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  renameError: {
+    color: "#a13d2d",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 5
+  },
+  renameInput: {
+    backgroundColor: "#fdfcf5",
+    borderColor: "rgba(38, 51, 46, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#25332e",
+    fontSize: 15,
+    minHeight: 40,
+    paddingHorizontal: 10
+  },
+  renameLabel: {
+    color: "#6d5a46",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 6,
+    textTransform: "uppercase"
+  },
+  renameRow: {
+    alignItems: "flex-end",
+    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 12
   },
   screen: {
     backgroundColor: "#edf1e8",

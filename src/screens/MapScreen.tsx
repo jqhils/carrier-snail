@@ -70,6 +70,7 @@ import {
   purchaseInventory,
   type PurchaseProductId
 } from "../useCases/purchaseInventory";
+import { renameSnail } from "../useCases/renameSnail";
 import {
   createInitialCarrierState,
   getActiveJourney,
@@ -916,6 +917,24 @@ export function MapScreen({
     }
   }
 
+  async function renameOwnedSnail(snailId: string, name: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+      const result = renameSnail(
+        { name, snailId },
+        {
+          repository
+        }
+      );
+
+      await persistNextCarrierState(repository.snapshot());
+      setRequestedSelectedSnailId(result.snail.id);
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Rename failed.");
+    }
+  }
+
   async function buyCatalogProduct(productId: PurchaseProductId) {
     if (!entitlementProvider) {
       setFormError("RevenueCat API keys are required for purchases.");
@@ -1340,6 +1359,7 @@ export function MapScreen({
         <MySnailsScreen
           canPurchase={!!entitlementProvider}
           carrierState={carrierState}
+          formError={formError}
           onBuyProduct={(productId) => {
             void buyCatalogProduct(productId);
           }}
@@ -1348,6 +1368,9 @@ export function MapScreen({
           }}
           onLevelSelectedSnail={() => {
             void levelSelectedSnail();
+          }}
+          onRenameSnail={(snailId, name) => {
+            void renameOwnedSnail(snailId, name);
           }}
           onSelectSnail={setRequestedSelectedSnailId}
           purchaseCatalog={purchaseCatalog}
