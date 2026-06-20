@@ -20,33 +20,33 @@ something I enjoy returning to, not a void.
 
 ## Solution
 
-Carrier Snail delivers every reminder by a **snail** that physically crawls
-across a **real map** toward my live location at genuine snail speed
-(~0.03 mph ≈ 48 m/hour). When I set a reminder, I assign a snail from my
-**stable**; it **spawns ~8 km away** and sets off, leaving a glistening
-**slime trail** that lingers and fades. There are **no notifications until it
-arrives** — then exactly **one push**. There is no speed-up button. A
-server-enforced **Delivery Floor** guarantees nothing ever arrives sooner than
-24 hours (and never under ~40% of its honest travel time), so the app can never
-become a same-day tool — no matter my snail's speed, level, or spending.
+Carrier Snail keeps a limitless **to-do** list. Any to-do can be assigned to a
+**snail** that physically crawls across a **real map** toward my live location at
+genuine snail speed (~0.03 mph ≈ 48 m/hour). When I send a snail from my
+**stable**, it **spawns ~8 km away** and sets off, leaving a glistening **slime
+trail** that lingers and fades. There are **no notifications until it arrives** —
+then exactly **one push**. There is no speed-up button. A server-enforced
+**Delivery Floor** guarantees nothing ever arrives sooner than 24 hours (and
+never under ~40% of its honest travel time), so the app can never become a
+same-day tool — no matter my snail's speed, level, or spending.
 
-The reminders that survive the **journey** are the ones that were real. The
-snails are collectible — a finite stable I grow by completing journeys and
+The to-dos that still matter after the **journey** are the ones that were real.
+The snails are collectible — a finite stable I grow by completing journeys and
 hatching **eggs**, each snail agonizingly slow in its own way — so the waiting
 becomes something to tend and enjoy.
 
 ## User Stories
 
-**Setting & managing reminders**
+**Setting & managing to-dos**
 
-1. As a reminder-setter, I want to write a short reminder (a line of text), so that I can capture a thought to return to me later.
-2. As a reminder-setter, I want to assign a snail from my stable to carry it, so that I choose who delivers it and how.
-3. As a reminder-setter, I want to see how many snails are free versus busy before I commit, so that I understand my remaining capacity.
-4. As a reminder-setter, I want the snail to set off from a point ~8 km away, so that even a reminder set at home becomes a real journey.
+1. As a reminder-setter, I want to write a short to-do (a line of text) without assigning a snail, so that I can capture a thought without consuming stable capacity.
+2. As a reminder-setter, I want to assign a snail from my stable to carry a to-do, so that I choose who delivers it and how.
+3. As a reminder-setter, I want to see how many snails are free versus busy before I send one, so that I understand my remaining journey capacity.
+4. As a reminder-setter, I want the snail to set off from a point ~8 km away, so that even a to-do sent at home becomes a real journey.
 5. As a reminder-setter, I want an optimistic, honest estimate ("~next week") rather than a promised deadline, so that my expectations are set without a false guarantee.
-6. As a reminder-setter, I want to recall a reminder at any time — freeing the snail and ending the reminder — so that I can deliberately let go of a thought.
-7. As a reminder-setter, I want to be warned that recall permanently ends the reminder and the snail returns empty, so that I don't discard something by accident.
-8. As a reminder-setter, I want to see all my in-flight reminders in one list, so that I know what is currently on its way.
+6. As a reminder-setter, I want to recall a snail at any time, freeing the snail while keeping the to-do open, so that I can change my mind without losing the thought.
+7. As a reminder-setter, I want delete and completion to be separate actions from recall, so that bringing a snail home never discards a to-do by accident.
+8. As a reminder-setter, I want to see all my to-dos with open, carrying, arrived, and done states, so that I know what is currently on its way and what is still mine to close.
 
 **The journey & watching**
 
@@ -56,7 +56,7 @@ becomes something to tend and enjoy.
 12. As a reminder-setter, I want the snail to leave a slime trail that lingers and slowly fades, so that I can see the record of its pursuit.
 13. As a reminder-setter, I want the snail to head toward the places I come to rest, so that it converges on me through my habits rather than my every step.
 14. As a reminder-setter, I want to open the app any time and see exactly where my snail is and where it is heading, so that I trust the journey despite there being no guaranteed deadline.
-15. As a reminder-setter, I want to see multiple snails on the same map when I have several reminders in flight, so that I can take in my whole correspondence at a glance.
+15. As a reminder-setter, I want to see multiple snails on the same map when I have several to-dos in flight, so that I can take in my whole correspondence at a glance.
 16. As a reminder-setter, I want a snail's position to be consistent whether I check now or in three days, so that the journey feels authoritative and real.
 17. As a reminder-setter, I want a snail that may wander a long time if I keep moving (the eternal chase), so that delivery is earned, never automatic.
 
@@ -64,24 +64,24 @@ becomes something to tend and enjoy.
 
 18. As a reminder-setter, I want exactly one push when the snail finally arrives, so that I am interrupted only at the moment that matters.
 19. As a reminder-setter, I want no notifications of any kind before arrival, so that the app never nags me.
-20. As a reminder-setter, I want the arrival to show my original reminder text, so that I receive the exact thought I sent.
-21. As a reminder-setter, I want the arrival push to fire even when the app is closed, so that I actually receive my reminders.
+20. As a reminder-setter, I want the arrival to show my original to-do text, so that I receive the exact thought I sent.
+21. As a reminder-setter, I want the arrival push to fire even when the app is closed, so that I actually receive carried to-dos.
 22. As a snail-keeper, I want the delivering snail to return to my stable on arrival, so that it becomes available again.
 23. As a snail-keeper, I want to receive an egg when a journey completes, so that sincere use grows my collection.
 
 **The Delivery Floor**
 
-24. As a reminder-setter, I want a guarantee that no reminder ever arrives sooner than the Floor (≥24 h and ≥40% of honest distance-time), so that the app can never become a same-day reminder tool.
+24. As a reminder-setter, I want a guarantee that no carried to-do ever arrives sooner than the Floor (≥24 h and ≥40% of honest distance-time), so that the app can never become a same-day reminder tool.
 25. As a player, I want the Floor to hold regardless of my snail's speed, level, or any purchase, so that money can never buy urgency.
 26. As a reminder-setter, I want the Floor enforced server-side, so that no client trick or device-clock change can cheat it.
 
 **The stable & collection**
 
 27. As a snail-keeper, I want a stable showing every snail I own, so that I can admire and manage my collection.
-28. As a snail-keeper, I want my stable size to set how many reminders I can have in flight at once, so that collecting snails has real mechanical value.
+28. As a snail-keeper, I want my stable size to set how many to-dos I can have in flight at once, so that collecting snails has real mechanical value.
 29. As a snail-keeper, I want to see which snails are resting versus out on a journey, so that I know what is available.
 30. As a snail-keeper, I want each snail to have a name and identity, so that I form an attachment to it.
-31. As a new user, I want to be given a starter Garden Snail during onboarding, so that I can send my first reminder immediately.
+31. As a new user, I want to be given a starter Garden Snail during onboarding, so that I can send my first carried to-do immediately.
 
 **Snail variety & quirks**
 
@@ -104,7 +104,7 @@ becomes something to tend and enjoy.
 
 43. As a player, I want to buy eggs with money, so that I can grow my collection faster if I choose.
 44. As a player, I want to buy cosmetic snails and trails, so that I can personalize my collection.
-45. As a player, I want to buy additional stable slots, so that I can hold more reminders in flight.
+45. As a player, I want to buy additional stable slots, so that I can hold more journeys in flight.
 46. As a player, I want purchases to never let me beat the Delivery Floor, so that I trust the app is not selling me urgency.
 47. As a player, I want my purchases and entitlements to persist across devices, so that I never lose what I paid for.
 
@@ -119,7 +119,7 @@ becomes something to tend and enjoy.
 **Onboarding & first run**
 
 53. As a new user, I want a first-run flow explaining the snail premise and the one-push-on-arrival rule, so that I understand what I am signing up for.
-54. As a new user, I want to send my first reminder within minutes, so that I feel the magic immediately.
+54. As a new user, I want to send my first carried to-do within minutes, so that I feel the magic immediately.
 55. As a new user, I want to grant location with a clear explanation of why, so that I consent meaningfully.
 
 **Demo & development (internal)**
@@ -166,13 +166,13 @@ ETA and rescheduled whenever the target updates. No mid-journey notifications of
 any kind.
 
 **Eternal chase & recall.** There is no force-arrive; a snail may chase
-indefinitely if the user keeps moving. **Recall** is always available: it ends
-the reminder, cancels the scheduled push, and returns the snail to the stable
-empty.
+indefinitely if the user keeps moving. **Recall** is always available: it cancels
+the scheduled push, returns the snail to the stable empty, and keeps the to-do
+open. Completion and deletion are separate manual actions.
 
 **Stable & assignment.** The stable is finite. A snail is **busy for its entire
-journey**, so stable size equals maximum concurrent reminders. Stable slots are
-purchasable.
+journey**, so stable size equals maximum concurrent journeys, not maximum to-dos.
+Stable slots are purchasable.
 
 **Snails & progression.** Rarity tiers (common Garden → mythic racer, plus a
 cursed line). Four variety axes: speed band, behavior quirks, temperament/
@@ -184,9 +184,10 @@ hatch into randomized snails from a rarity pool (gacha) with **disclosed odds**.
 Speed scales with rarity/level/spend, always bounded by the Floor.
 
 **The single test/extension seam: the use-case layer.** All server-authoritative
-behavior is expressed as use-cases — `createReminder`, `assignSnail`, `recall`,
-`completeJourney`, `hatchEgg`, `levelUpSnail`, `purchase`, plus a journey-state
-query — driven against injectable **ports**:
+behavior is expressed as use-cases — `createToDo`, `assignSnailToToDo`,
+`unassignSnail`, `completeToDo`, `deleteToDo`, `completeJourney`, `hatchEgg`,
+`levelUpSnail`, `purchase`, plus a journey-state query — driven against
+injectable **ports**:
 
 - `Clock` — supplies "now"; advanceable in tests, drives the production
   time-warp, and is the authoritative time source (client clock ignored).
@@ -199,11 +200,12 @@ The HTTP/transport and UI/render layers stay thin and delegate to these
 use-cases; they hold no business logic and are not separate seams.
 
 **Schema (high level).** Entities: `user`; `snail` (rarity, level, base speed,
-quirk seed, temperament, cosmetics, status: resting/on-journey); `reminder`
-(text, status); `journey` (snail ref, start point, target, base speed, quirk
-seed, created-at, status); `egg` (rarity-pool ref, source: earned/purchased);
-`inventory`/`entitlement`; `stable_slots`. Coarse location is held as the
-journey's current target plus a short trail history, not a durable location log.
+quirk seed, temperament, cosmetics, status: resting/on-journey); `todo` (text,
+status: open/done); `journey` (to-do ref, snail ref, start point, target, base
+speed, quirk seed, created-at, status); `egg` (rarity-pool ref, source:
+earned/purchased); `inventory`/`entitlement`; `stable_slots`. Coarse location is
+held as the journey's current target plus a short trail history, not a durable
+location log.
 
 **Stack.** Expo / React Native (TypeScript); MapLibre (`maplibre-react-native`)
 with tiles from MapTiler → self-hosted Protomaps on Cloudflare R2; React Native
@@ -232,12 +234,14 @@ push was scheduled, that a reward was granted — not internal call shapes.
   - Position interpolation is correct and monotonic in time except where a quirk
     intends otherwise.
 - **Use-case layer — tested through the one seam**, with all ports faked:
-  - Creating a reminder spawns a journey ~8 km out and assigns a busy snail;
-    capacity is gated by stable size.
+  - Creating a to-do consumes no snail and does not create a journey.
+  - Assigning a snail to a to-do spawns a journey ~8 km out and marks the snail
+    busy; concurrent journeys are gated by stable size.
   - Advancing the `Clock` produces correct positions and, at the clamped ETA,
     fires **exactly one** arrival push — and **never before the Floor**.
   - On completion, the snail returns to the stable and an egg is granted.
-  - **Recall** ends the reminder, cancels the scheduled push, and frees the snail.
+  - **Recall** cancels the scheduled push, frees the snail, and keeps the to-do
+    open.
   - **Eternal chase**: a continuously-moving target never force-arrives.
   - `hatchEgg` draws from the rarity pool; `levelUpSnail` raises speed within the
     ceiling but never below the Floor; `purchase` grants entitlements and **never
@@ -253,7 +257,7 @@ directly, for pure modules), and should avoid asserting on internals.
 
 ## Out of Scope
 
-- **Recurring reminders** — rejected by design (manufactured urgency).
+- **Recurring reminders or recurring to-dos** — rejected by design (manufactured urgency).
 - **Mid-journey notifications** of any kind.
 - **Same-day / any sub-Floor delivery** — impossible at any price.
 - **Routing / road-following** — straight geodesic only.

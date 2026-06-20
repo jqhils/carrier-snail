@@ -125,7 +125,8 @@ export function hatchEgg(
     reminders: state.reminders,
     snails: [...state.snails, snail],
     softCurrency: state.softCurrency,
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   });
 
   return { snail };

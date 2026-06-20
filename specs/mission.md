@@ -5,18 +5,19 @@
 
 ## One line
 
-A reminder app where every reminder is physically carried to you by a snail
-crawling across a real map at real snail speed (~0.03 mph ≈ 48 m/hour). You set
-"buy milk"; a snail sets off and arrives, optimistically, next week. No progress
-notifications. One push, when it finally arrives.
+A calm to-do app where any to-do can be physically carried to you by a snail
+crawling across a real map at real snail speed (~0.03 mph ≈ 48 m/hour). You
+write "buy milk"; when it deserves a carrier, a snail sets off and arrives,
+optimistically, next week. No progress notifications. One push, when it finally
+arrives.
 
 ## Why it exists — the thesis
 
 Almost nothing you "urgently" remind yourself of actually mattered. A week-long
-delivery is a filter: the reminders that survive the journey were the only ones
-that were ever real. Carrier Snail is a **sincere absurd tool** — the absurdity
-is the *method*, not a gag. It is for people who want to set fewer, realer
-reminders and feel calmer for it.
+delivery is a filter: the to-dos that still matter when the snail arrives were
+the only ones that were ever real. Carrier Snail is a **sincere absurd tool** —
+the absurdity is the *method*, not a gag. It is for people who want to keep
+fewer, realer obligations and feel calmer for it.
 
 If it's genuinely time-sensitive, this is the wrong app. On purpose.
 
@@ -30,14 +31,14 @@ toward *a few days*. It never approaches *today*.
 The one inviolable law that keeps the soul alive while the economy breathes:
 
 > ### The Delivery Floor
-> No reminder, carried by any snail, at any level, for any amount of money, can
+> No carried to-do, moved by any snail, at any level, for any amount of money, can
 > **ever** arrive sooner than a hard floor:
 > - **At least 24 hours**, and
 > - **never under ~40% of its honest distance-time** (the time the journey would
 >   take at base snail speed).
 >
 > Money and grind can buy a nicer, slightly-less-glacial menagerie. They can
-> **never** buy urgency. Carrier Snail can never become a same-day reminder app.
+> **never** buy urgency. Carrier Snail can never become a same-day delivery app.
 > The Floor is enforced server-side; no client can cheat the clock.
 
 *(24h and 40% are tunable defaults, not arbitrary forever-constants — but the
@@ -45,9 +46,10 @@ Floor itself is not optional.)*
 
 ## The core experience
 
-1. Set a reminder (a short line of text).
-2. Assign a snail from your stable. It **spawns ~8 km away** and sets off
-   toward your live location.
+1. Write a to-do (a short line of text). To-dos are limitless and do not need a
+   snail until you send one.
+2. Assign a snail from your stable when the to-do deserves a carrier. It
+   **spawns ~8 km away** and sets off toward your live location.
 3. It chases the places you come to **rest** — home, desk, bed. A snail moving
    at 48 m/hour only closes distance when you hold still. This is intended: the
    snail creeps toward your stillness.
@@ -74,16 +76,17 @@ Floor itself is not optional.)*
    urgency. It has no home here.
 6. **The eternal chase is allowed.** A snail may wander a long time if you keep
    moving. We make that beautiful, not a failure state. **Recall** is always
-   available: cancel the reminder, the snail comes home empty, the thought is
-   released on purpose.
+   available: the snail comes home empty and the to-do stays open. Completing or
+   deleting the to-do is a separate, deliberate action.
 
 ## The collection — your stable of snails
 
 A finite stable, à la Roost's flock. The collection is not decoration; it has
 mechanical teeth:
 
-- **A snail is busy for its entire journey.** One in-flight reminder occupies one
-  snail. So your stable size *is* how many reminders you can hold at once.
+- **A snail is busy for its entire journey.** One in-flight to-do occupies one
+  snail. So your stable size *is* how many journeys you can run at once, while
+  the to-do list itself remains limitless.
   Collecting snails literally expands your capacity. Slowness has a cost; the
   collection is the relief valve.
 - **Snails vary across four axes:**
@@ -124,7 +127,7 @@ that:
 
 ## What success looks like
 
-- People set fewer, realer reminders — and feel calmer for it.
+- People keep fewer, realer to-dos — and feel calmer for it.
 - A stable they're genuinely fond of. Watching a snail close the final 100 m
   feels like an event worth stopping for.
 - The Delivery Floor never breaks. Not once.

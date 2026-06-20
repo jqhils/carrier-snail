@@ -62,7 +62,8 @@ export function levelUpSnail(
     softCurrency: {
       slime: state.softCurrency.slime - cost
     },
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   });
 
   return { snail: leveledSnail };
