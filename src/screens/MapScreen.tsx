@@ -34,6 +34,10 @@ import {
   buildJourneyPolyline,
   type GeoTrailSegment
 } from "../journey/journeyPolyline";
+import {
+  buildTrailLineProperties,
+  REMAINING_PATH_STYLE
+} from "../journey/trailStyle";
 import { SupabaseAnonymousAuthProvider } from "../backend/supabaseAnonymousAuthProvider";
 import { SupabaseCarrierRepository } from "../backend/supabaseCarrierRepository";
 import {
@@ -1070,17 +1074,27 @@ export function MapScreen({
                     <GeoJSONSource
                       data={lineStringCollection(
                         [polyline.remaining],
-                        "rgba(120, 132, 120, 0.45)"
+                        REMAINING_PATH_STYLE.lineColor
                       )}
                       id={`remaining-${id}`}
                     >
+                      <Layer
+                        id={`remaining-casing-${id}`}
+                        layout={{ "line-cap": "round" }}
+                        paint={{
+                          "line-color": REMAINING_PATH_STYLE.casingColor,
+                          "line-dasharray": REMAINING_PATH_STYLE.lineDasharray,
+                          "line-width": REMAINING_PATH_STYLE.casingWidth
+                        }}
+                        type="line"
+                      />
                       <Layer
                         id={`remaining-line-${id}`}
                         layout={{ "line-cap": "round" }}
                         paint={{
                           "line-color": ["get", "color"],
-                          "line-dasharray": [1.5, 2.5],
-                          "line-width": 2
+                          "line-dasharray": REMAINING_PATH_STYLE.lineDasharray,
+                          "line-width": REMAINING_PATH_STYLE.lineWidth
                         }}
                         type="line"
                       />
@@ -1094,11 +1108,29 @@ export function MapScreen({
                     id={`trail-${id}`}
                   >
                     <Layer
+                      id={`trail-casing-${id}`}
+                      layout={{ "line-cap": "round", "line-join": "round" }}
+                      paint={{
+                        "line-color": ["get", "casingColor"],
+                        "line-width": 10
+                      }}
+                      type="line"
+                    />
+                    <Layer
                       id={`trail-line-${id}`}
                       layout={{ "line-cap": "round", "line-join": "round" }}
                       paint={{
-                        "line-color": ["get", "color"],
-                        "line-width": 5
+                        "line-color": ["get", "lineColor"],
+                        "line-width": 6
+                      }}
+                      type="line"
+                    />
+                    <Layer
+                      id={`trail-highlight-${id}`}
+                      layout={{ "line-cap": "round", "line-join": "round" }}
+                      paint={{
+                        "line-color": ["get", "highlightColor"],
+                        "line-width": 2
                       }}
                       type="line"
                     />
@@ -1474,17 +1506,24 @@ function trailSegmentCollection(
   hexColor: string
 ): GeoJSON.FeatureCollection {
   return {
-    features: segments.map((segment) => ({
-      geometry: {
-        coordinates: [
-          [segment.from.longitude, segment.from.latitude],
-          [segment.to.longitude, segment.to.latitude]
-        ],
-        type: "LineString"
-      },
-      properties: { color: hexToRgba(hexColor, segment.opacity) },
-      type: "Feature"
-    })),
+    features: segments.map((segment) => {
+      const properties = buildTrailLineProperties({
+        segmentOpacity: segment.opacity,
+        speciesTrailColor: hexColor
+      });
+
+      return {
+        geometry: {
+          coordinates: [
+            [segment.from.longitude, segment.from.latitude],
+            [segment.to.longitude, segment.to.latitude]
+          ],
+          type: "LineString"
+        },
+        properties,
+        type: "Feature"
+      };
+    }),
     type: "FeatureCollection"
   };
 }
@@ -1504,16 +1543,6 @@ function lineStringCollection(
     })),
     type: "FeatureCollection"
   };
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const normalized = hex.replace("#", "");
-  const red = Number.parseInt(normalized.slice(0, 2), 16);
-  const green = Number.parseInt(normalized.slice(2, 4), 16);
-  const blue = Number.parseInt(normalized.slice(4, 6), 16);
-  const safeAlpha = Math.max(0, Math.min(1, alpha));
-
-  return `rgba(${red}, ${green}, ${blue}, ${safeAlpha})`;
 }
 
 function formatDistance(distanceMeters: number): string {
