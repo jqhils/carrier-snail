@@ -874,8 +874,10 @@ export function MapScreen({
 
       setRequestedSelectedSnailId(result.snail.id);
       setFormError("");
+      return result.snail;
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Hatch failed.");
+      return undefined;
     }
   }
 
@@ -1365,9 +1367,7 @@ export function MapScreen({
           onBuyProduct={(productId) => {
             void buyCatalogProduct(productId);
           }}
-          onHatchEgg={(eggId) => {
-            void hatchCarrierEgg(eggId);
-          }}
+          onHatchEgg={hatchCarrierEgg}
           onLevelSelectedSnail={() => {
             void levelSelectedSnail();
           }}
