@@ -107,6 +107,40 @@ unit-tested — note where on-device verification is needed.
 - Build on the existing map work (camera-on-user, MapTiler, overlays); don't
   rewrite it.
 
+## Design quality bar (impeccable-derived)
+
+Every screen must clear this bar. The UI is judged **on-device**, not by the
+green gate. Source: the `impeccable` design skill, translated to React Native
+(impeccable is web/CSS-native, so its *principles* transfer, not its CSS
+mechanics or browser tooling).
+
+- **Character over generic.** Pass the "AI slop" test: if this could be any app's
+  tab bar + lists, it has failed. Lean into Carrier Snail's voice, calm,
+  unhurried, a little whimsical (it is, after all, snails). Preserve and elevate
+  the existing soft sage/cream palette, warm snail tones, and the blue accent;
+  don't reach for generic SaaS styling.
+- **Hierarchy.** Type scale with real contrast (≥1.25 between steps) plus weight,
+  not a flat scale. One clear focal point per screen.
+- **Spacing rhythm.** Vary spacing on purpose; identical padding everywhere is
+  monotony. Group related things tightly, separate unrelated things generously.
+- **Calm motion.** Tab changes, the Details-panel collapse, list updates: ease-out
+  (Reanimated; quart/quint/expo), short, no bounce or elastic. Animate transform
+  and opacity, not layout. Nothing that manufactures urgency.
+- **Neutrals are tinted**, never pure black/white; tint toward the brand hue.
+- **Absolute bans** (rewrite the element if tempted): coloured side-stripe accent
+  borders; fake gradient text; glassmorphism by default; the big-number "hero
+  metric" card; endless identical card grids (the Stable and the To-Do list each
+  need their own rhythm, not a generic card wall); reaching for a modal first
+  (prefer inline, the Details panel, or progressive disclosure).
+- **Copy.** Every word earns its place; no restated headings. **No em dashes** in
+  UI copy (use commas, colons, periods, parentheses). Hold the calm voice.
+- **Empty states are designed, not blank.** The deselected Map Details, an empty
+  To-Do list, an empty Notifications inbox, a near-empty starter stable: each is a
+  deliberate, characterful state.
+
+The tab bar itself: clear active/inactive states using the existing palette (not
+a red), labels always legible, safe-area aware.
+
 ## Out of scope
 
 - A navigation library (hand-rolled state by decision).
