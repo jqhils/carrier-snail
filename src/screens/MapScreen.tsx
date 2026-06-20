@@ -243,7 +243,7 @@ export function MapScreen({
   const [backgroundLocationMode, setBackgroundLocationMode] =
     useState<BackgroundLocationMode>("foreground-only");
   const [selectedWatchJourneyId, setSelectedWatchJourneyId] = useState<
-    string | undefined
+    string | null | undefined
   >(undefined);
   const [watchScrubProgress, setWatchScrubProgress] = useState<
     number | undefined
@@ -514,7 +514,7 @@ export function MapScreen({
           selectedWatchJourneyId && watchScrubProgress !== undefined
             ? { [selectedWatchJourneyId]: watchScrubProgress }
             : undefined,
-        selectedJourneyId: selectedWatchJourneyId,
+        selectedJourneyId: selectedWatchJourneyId ?? undefined,
         state: carrierState,
         timeWarpFactor
       }),
@@ -526,11 +526,14 @@ export function MapScreen({
       watchScrubProgress
     ]
   );
+  // `undefined` = no explicit choice yet → auto-select a lone snail; `null` =
+  // explicitly deselected (sticks); a string = explicitly selected.
   const effectiveSelectedJourneyId =
-    selectedWatchJourneyId ??
-    (watchState.journeys.length === 1
-      ? watchState.journeys[0].journeyId
-      : undefined);
+    selectedWatchJourneyId === undefined
+      ? watchState.journeys.length === 1
+        ? watchState.journeys[0].journeyId
+        : undefined
+      : selectedWatchJourneyId;
   const selectedWatchJourney = effectiveSelectedJourneyId
     ? watchState.journeys.find(
         ({ journeyId }) => journeyId === effectiveSelectedJourneyId
@@ -955,7 +958,11 @@ export function MapScreen({
   }
 
   function selectWatchJourney(journeyId: string) {
-    setSelectedWatchJourneyId(journeyId);
+    // Tapping the snail that's already showing deselects it (and sticks, even if
+    // it's the only one out).
+    setSelectedWatchJourneyId(
+      effectiveSelectedJourneyId === journeyId ? null : journeyId
+    );
     setWatchScrubProgress(undefined);
   }
 
