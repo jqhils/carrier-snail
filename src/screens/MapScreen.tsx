@@ -41,6 +41,7 @@ import {
 } from "../backend/supabaseClient";
 import { createRevenueCatEntitlementProvider } from "../payments/revenueCatEntitlementProvider";
 import { completeArrivedJourneys } from "../useCases/completeArrivedJourneys";
+import { registerRemoteArrivalPushToken } from "../useCases/registerRemoteArrivalPush";
 import {
   hasUnseenArrivals,
   listArrivalInboxItems,
@@ -371,6 +372,14 @@ export function MapScreen({
 
       setBackendSession({ repository, user });
       setCarrierState(initialState);
+
+      // Register this device for closed-app arrival push. No-op (stays on local
+      // notifications) until an EAS projectId + FCM are configured; its own catch
+      // keeps a token-save hiccup from tripping the local-fallback path above.
+      const pushToken = await registerRemoteArrivalPushToken();
+      if (pushToken) {
+        await repository.savePushToken(user.id, pushToken).catch(() => undefined);
+      }
     }
 
     loadBackendState().catch((error) => {

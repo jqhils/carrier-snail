@@ -64,7 +64,8 @@ export async function runScheduledArrivalWorker({
         pushSender.sendArrival({
           reminderId: delivery.id,
           text: delivery.text,
-          title: "Carrier Snail arrived"
+          title: "Carrier Snail arrived",
+          userId
         })
       );
 

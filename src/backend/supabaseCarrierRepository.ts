@@ -161,6 +161,15 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     return mapCarrierUser(inserted.data as CarrierUserRow);
   }
 
+  async savePushToken(userId: string, token: string): Promise<void> {
+    const result = await this.client
+      .from("carrier_users")
+      .update({ push_token: token })
+      .eq("id", userId);
+
+    assertNoSupabaseError(result.error, "save push token");
+  }
+
   async loadCarrierState(userId: string): Promise<CarrierState> {
     const [userState, snails, reminders, todos, journeys, eggs, arrivals] =
       await Promise.all([
