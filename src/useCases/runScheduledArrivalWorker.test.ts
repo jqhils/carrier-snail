@@ -169,6 +169,17 @@ describe("runScheduledArrivalWorker", () => {
       id: "todo-1",
       status: "open"
     });
+    expect(completed.arrivals).toEqual([
+      {
+        arrivedAtMs: eta.earliestArrivalAtMs,
+        id: "arrival-1",
+        journeyId: "journey-1",
+        snailId: "garden-1",
+        snailName: "Garden Snail",
+        text: "check passport",
+        todoId: "todo-1"
+      }
+    ]);
     expect(completed.journeys[0]).toMatchObject({
       arrivedAtMs: eta.earliestArrivalAtMs,
       status: "arrived",

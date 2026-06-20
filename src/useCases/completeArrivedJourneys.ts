@@ -1,7 +1,13 @@
 import { getCrawlFrame } from "../journey/snailCrawl";
-import type { CarrierRepository, CarrierState, Egg } from "./localCarrierState";
+import {
+  type ArrivalNotification,
+  type CarrierRepository,
+  type CarrierState,
+  type Egg
+} from "./localCarrierState";
 import type { PushSender } from "./pushSender";
 import type { Clock } from "./createReminderJourney";
+import { createArrivalNotification } from "./arrivalInboxUseCases";
 
 export function completeArrivedJourneys({
   clock,
@@ -20,6 +26,7 @@ export function completeArrivedJourneys({
   const completedReminderIds = new Set<string>();
   const completedSnailIds = new Set<string>();
   const earnedEggs: Egg[] = [];
+  const arrivals: ArrivalNotification[] = [];
 
   const journeys = state.journeys.map((journey) => {
     if (journey.status !== "in-flight") {
@@ -44,10 +51,10 @@ export function completeArrivedJourneys({
       : undefined;
     const delivery = todo
       ? todo.status === "open"
-        ? { id: todo.id, text: todo.text }
+        ? { id: todo.id, text: todo.text, todoId: todo.id }
         : undefined
       : reminder && reminder.status === "in-flight"
-        ? { id: reminder.id, text: reminder.text }
+        ? { id: reminder.id, reminderId: reminder.id, text: reminder.text }
         : undefined;
 
     if (!delivery) {
@@ -61,6 +68,19 @@ export function completeArrivedJourneys({
     completedSnailIds.add(journey.snailId);
     earnedEggs.push(
       createEarnedEgg(state.eggs.length + earnedEggs.length + 1, nowMs)
+    );
+    arrivals.push(
+      createArrivalNotification({
+        arrivedAtMs: nowMs,
+        journey,
+        reminderId: delivery.reminderId,
+        sequence: state.arrivals.length + arrivals.length + 1,
+        snailName:
+          state.snails.find(({ id }) => id === journey.snailId)?.name ??
+          "Unknown snail",
+        text: delivery.text,
+        todoId: delivery.todoId
+      })
     );
     pushSender.sendArrival({
       reminderId: delivery.id,
@@ -76,6 +96,7 @@ export function completeArrivedJourneys({
   });
 
   const nextState: CarrierState = {
+    arrivals: [...state.arrivals, ...arrivals],
     eggs: [...state.eggs, ...earnedEggs],
     inventory: state.inventory,
     journeys,
