@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Carrier Snail",
+    "slug": "carrier-snail",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true,
+          "locationAlwaysAndWhenInUsePermission": "Optional coarse background location lets Carrier Snail re-aim while the app is closed. Denying it keeps foreground-only mode.",
+          "locationWhenInUsePermission": "Carrier Snail uses coarse location while open so snails know where to crawl."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jqhils.carriersnail",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Optional coarse background location lets Carrier Snail re-aim while the app is closed. Denying it keeps foreground-only mode.",
+        "NSLocationWhenInUseUsageDescription": "Carrier Snail uses coarse location while open so snails know where to crawl."
+      }
+    },
+    "android": {
+      "package": "com.jqhils.carriersnail",
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "permissions": [
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "extra": {
+      "mapStyleUrl": "https://demotiles.maplibre.org/style.json"
+    }
+  }
+}
