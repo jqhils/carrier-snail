@@ -1,6 +1,42 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
+  recenterFab: {
+    alignItems: "center",
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(47, 96, 78, 0.2)",
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 3,
+    height: 48,
+    justifyContent: "center",
+    position: "absolute",
+    right: 16,
+    shadowColor: "#1c2a22",
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    width: 48
+  },
+  recenterFabPressed: {
+    backgroundColor: "#eceadd"
+  },
+  userDot: {
+    backgroundColor: "#365c8d",
+    borderColor: "#f6faf6",
+    borderRadius: 8,
+    borderWidth: 3,
+    height: 16,
+    width: 16
+  },
+  userDotHalo: {
+    alignItems: "center",
+    backgroundColor: "rgba(54, 92, 141, 0.18)",
+    borderRadius: 22,
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
   peekBar: {
     backgroundColor: "#f8f6ed",
     borderColor: "rgba(63, 109, 91, 0.18)",

@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Camera,
   type CameraRef,
@@ -213,16 +214,17 @@ export function MapScreen({
     [detailsCollapsed, sheetDrag, sheetTranslateY, snapSheet]
   );
   const cameraRef = useRef<CameraRef>(null);
+  const [hasLocationFix, setHasLocationFix] = useState(false);
 
-  useEffect(() => {
-    // Keep the camera centred on the user's location at an appropriate zoom,
-    // recentring when a fresh coarse location arrives.
+  // One-shot recentre. The camera otherwise stays where the user left it (it does
+  // NOT auto-follow live updates), so panning isn't fought.
+  function recenterOnUser() {
     cameraRef.current?.easeTo({
       center: [target.longitude, target.latitude],
-      duration: 600,
+      duration: 500,
       zoom: MAP_DEFAULT_ZOOM
     });
-  }, [target.latitude, target.longitude]);
+  }
   const [carrierState, setCarrierState] = useState(() =>
     createInitialCarrierState()
   );
@@ -348,36 +350,63 @@ export function MapScreen({
 
   useEffect(() => {
     let cancelled = false;
+    let subscription: Location.LocationSubscription | undefined;
+    let centeredOnFirstFix = false;
 
-    async function readCoarseLocation() {
-      const permission = await Location.getForegroundPermissionsAsync();
+    // Continuously track coarse location while the app is foreground; each update
+    // moves `target`, which the re-aim effect below picks up so the snail keeps
+    // adjusting course. Coarse + a distance interval keeps it light.
+    async function startTracking() {
+      const existing = await Location.getForegroundPermissionsAsync();
+      let granted = existing.status === Location.PermissionStatus.GRANTED;
 
-      if (permission.status !== Location.PermissionStatus.GRANTED) {
+      if (!granted) {
+        const requested = await Location.requestForegroundPermissionsAsync();
+        granted = requested.status === Location.PermissionStatus.GRANTED;
+      }
+
+      if (!granted || cancelled) {
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Lowest
-      });
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Low,
+          distanceInterval: 10,
+          timeInterval: 5000
+        },
+        (position) => {
+          if (cancelled) {
+            return;
+          }
 
-      if (cancelled) {
-        return;
-      }
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
 
-      setTarget({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude
-      });
-      setLocationLabel("Coarse current location");
+          setTarget(coords);
+          setLocationLabel("Live location");
+          setHasLocationFix(true);
+
+          if (!centeredOnFirstFix) {
+            centeredOnFirstFix = true;
+            cameraRef.current?.easeTo({
+              center: [coords.longitude, coords.latitude],
+              duration: 600,
+              zoom: MAP_DEFAULT_ZOOM
+            });
+          }
+        }
+      );
     }
 
-    readCoarseLocation().catch(() => {
-      setLocationLabel("Mock resting point");
-    });
+    startTracking().catch(() => undefined);
     requestArrivalNotificationPermission().catch(() => undefined);
 
     return () => {
       cancelled = true;
+      subscription?.remove();
     };
   }, []);
 
@@ -988,7 +1017,17 @@ export function MapScreen({
               }}
               ref={cameraRef}
             />
-            {crawlGeo.map(({ id, polyline, snail, target: crawlTarget }) => {
+            {hasLocationFix ? (
+              <Marker
+                id="user-location"
+                lngLat={[target.longitude, target.latitude]}
+              >
+                <View style={styles.userDotHalo}>
+                  <View style={styles.userDot} />
+                </View>
+              </Marker>
+            ) : null}
+            {crawlGeo.map(({ id, polyline, snail }) => {
               const canSelectJourney = watchState.journeys.some(
                 (journey) => journey.journeyId === id
               );
@@ -1033,12 +1072,6 @@ export function MapScreen({
                     />
                   </GeoJSONSource>
                   <Marker
-                    id={`target-${id}`}
-                    lngLat={[crawlTarget.longitude, crawlTarget.latitude]}
-                  >
-                    <View style={styles.targetMarker} />
-                  </Marker>
-                  <Marker
                     id={`snail-${id}`}
                     lngLat={[polyline.snail.longitude, polyline.snail.latitude]}
                   >
@@ -1074,6 +1107,24 @@ export function MapScreen({
                 streets
               </Text>
             </View>
+          ) : null}
+          {hasLocationFix ? (
+            <Pressable
+              accessibilityLabel="Recenter on your location"
+              accessibilityRole="button"
+              onPress={recenterOnUser}
+              style={({ pressed }) => [
+                styles.recenterFab,
+                { bottom: SHEET_PEEK_HEIGHT + 16 },
+                pressed ? styles.recenterFabPressed : null
+              ]}
+            >
+              <MaterialCommunityIcons
+                color="#2f604e"
+                name="crosshairs-gps"
+                size={22}
+              />
+            </Pressable>
           ) : null}
         </View>
 
