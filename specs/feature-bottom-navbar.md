@@ -97,6 +97,19 @@ unit-tested — note where on-device verification is needed.
    deselected: minimal default). Repurpose the Expand toggle to collapse the
    Details panel. Final pass + on-device check. ✅ Feature is complete and feels
    finished.
+6. **Design polish pass.** With every surface built, critique each screen against
+   the **Design quality bar** above and fix what falls short — the tab bar, My
+   Snails, Map + Details, To Dos, Notifications, and **every empty state**.
+   Tighten type hierarchy and spacing rhythm; make all motion calm ease-out
+   (Reanimated); purge any absolute-ban pattern that crept in; fix UI copy (no em
+   dashes, no restated headings, hold the calm voice); make each empty state a
+   designed, characterful moment. Keep the green gate green throughout. Because
+   design is **not unit-testable**, this phase produces a short per-screen review
+   (what was checked, what changed, a screenshot where possible) and **flags the
+   work for human on-device sign-off** rather than self-certifying it on the green
+   gate. ✅ Every screen clears the Design quality bar; a per-screen design review
+   accompanies the PR; the feature looks finished and unmistakably Carrier Snail,
+   not generic.
 
 ## Decided defaults (low-ambiguity)
 
