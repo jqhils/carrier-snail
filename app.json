@@ -18,7 +18,8 @@
           "locationWhenInUsePermission": "Carrier Snail uses coarse location while open so snails know where to crawl."
         }
       ],
-      "./plugins/with-user-leave-hint-fix"
+      "./plugins/with-user-leave-hint-fix",
+      "expo-font"
     ],
     "ios": {
       "supportsTablet": true,
