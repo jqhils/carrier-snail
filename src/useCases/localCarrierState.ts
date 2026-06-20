@@ -1,9 +1,14 @@
 import {
-  BASE_SNAIL_SPEED_METERS_PER_HOUR,
   type Coordinate,
   type JourneyQuirk,
   type PhaseZeroJourney
 } from "../journey/snailCrawl";
+import {
+  getDefaultSnailSpeciesIdForRarity,
+  getSnailSpecies,
+  isSnailSpeciesId,
+  type SnailSpeciesId
+} from "./snailSpecies";
 
 export type SnailStatus = "resting" | "on-journey";
 export type ReminderStatus = "in-flight" | "delivered" | "recalled";
@@ -91,6 +96,7 @@ export type Snail = {
   rarity: SnailRarity;
   reliability: number;
   speedBand: SnailSpeedBand;
+  speciesId: SnailSpeciesId;
   status: SnailStatus;
   temperament: SnailTemperament;
   trail: SnailTrailTraits;
@@ -181,29 +187,25 @@ export interface CarrierRepository {
 }
 
 export function createStarterGardenSnail(): Snail {
+  const species = getSnailSpecies("garden");
+
   return {
-    appearance: {
-      bodyColor: "#d99f5f",
-      shellColor: "#7b4b34"
-    },
-    baseSpeedMetersPerHour: BASE_SNAIL_SPEED_METERS_PER_HOUR,
+    appearance: { ...species.appearanceTint },
+    baseSpeedMetersPerHour: species.baseSpeedMetersPerHour,
     experiencePoints: 0,
     id: "garden-1",
     journeysCompleted: 0,
     level: 1,
-    name: "Garden Snail",
-    quirk: "none",
+    name: species.displayName,
+    quirk: species.quirk,
     quirkSeed: "starter-garden-1",
-    rarity: "common",
-    reliability: 0.95,
-    speedBand: "garden",
+    rarity: species.rarity,
+    reliability: species.reliability,
+    speedBand: species.speedBand,
+    speciesId: species.id,
     status: "resting",
-    temperament: "steady",
-    trail: {
-      color: "#f5f8ed",
-      persistenceMs: 72 * 60 * 60 * 1000,
-      texture: "glistening"
-    }
+    temperament: species.temperament,
+    trail: { ...species.trail }
   };
 }
 
@@ -350,11 +352,7 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
     },
     purchases: state.purchases?.map((purchase) => ({ ...purchase })) ?? [],
     reminders: state.reminders.map((reminder) => ({ ...reminder })),
-    snails: state.snails.map((snail) => ({
-      ...snail,
-      appearance: { ...snail.appearance },
-      trail: { ...snail.trail }
-    })),
+    snails: state.snails.map(cloneSnail),
     softCurrency: {
       slime: state.softCurrency?.slime ?? 0
     },
@@ -362,6 +360,20 @@ export function cloneCarrierState(state: CarrierState): CarrierState {
       purchased: state.stableSlots?.purchased ?? 0
     },
     todos: state.todos?.map((todo) => ({ ...todo })) ?? []
+  };
+}
+
+function cloneSnail(snail: Snail): Snail {
+  const legacySnail = snail as Snail & { speciesId?: unknown };
+  const speciesId = isSnailSpeciesId(legacySnail.speciesId)
+    ? legacySnail.speciesId
+    : getDefaultSnailSpeciesIdForRarity(snail.rarity);
+
+  return {
+    ...snail,
+    appearance: { ...snail.appearance },
+    speciesId,
+    trail: { ...snail.trail }
   };
 }
 
