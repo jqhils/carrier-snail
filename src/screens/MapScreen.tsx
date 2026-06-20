@@ -60,8 +60,6 @@ import {
 } from "../useCases/levelUpSnail";
 import {
   completeOnboarding,
-  FIRST_RUN_ONBOARDING_STEPS,
-  LOCATION_PRIVACY_PLAIN_LANGUAGE,
   shouldShowOnboarding
 } from "../useCases/onboarding";
 import {
@@ -143,11 +141,15 @@ type BackendSession = {
 
 type MapScreenProps = {
   activeTab: BottomTabId;
+  completeOnboardingSignal: number;
+  onOnboardingVisibleChange: (visible: boolean) => void;
   onUnseenNotificationsChange: (hasUnseen: boolean) => void;
 };
 
 export function MapScreen({
   activeTab,
+  completeOnboardingSignal,
+  onOnboardingVisibleChange,
   onUnseenNotificationsChange
 }: MapScreenProps) {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
@@ -232,6 +234,10 @@ export function MapScreen({
     (egg) => egg.status === "unhatched"
   );
   const onboardingVisible = shouldShowOnboarding(carrierState);
+
+  useEffect(() => {
+    onOnboardingVisibleChange(onboardingVisible);
+  }, [onboardingVisible, onOnboardingVisibleChange]);
   const purchaseCatalog = useMemo(() => getPurchaseCatalog(), []);
   const entitlementProvider = useMemo(
     () =>
@@ -586,6 +592,17 @@ export function MapScreen({
       );
     }
   }
+
+  // Bridge: App bumps completeOnboardingSignal on the onboarding "Start" tap;
+  // this runs the async, persisting completion. A user-triggered one-shot, not a
+  // render hotpath, so the hook lints below are deliberate.
+  useEffect(() => {
+    if (completeOnboardingSignal > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void finishOnboarding();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completeOnboardingSignal]);
 
   async function enableBackgroundLocation() {
     setBackgroundLocationBusy(true);
@@ -1029,45 +1046,6 @@ export function MapScreen({
                   </Text>
                 </View>
               </View>
-              {onboardingVisible ? (
-                <View style={styles.onboardingPanel}>
-                  <View style={styles.onboardingHeaderRow}>
-                    <View style={styles.onboardingTitleBlock}>
-                      <Text style={styles.onboardingKicker}>First delivery</Text>
-                      <Text numberOfLines={1} style={styles.onboardingTitle}>
-                        Garden Snail is ready
-                      </Text>
-                    </View>
-                    <View style={styles.onboardingSnailBadge}>
-                      <Text style={styles.onboardingSnailBadgeText}>1</Text>
-                    </View>
-                  </View>
-                  <View style={styles.onboardingStepList}>
-                    {FIRST_RUN_ONBOARDING_STEPS.map((step, index) => (
-                      <View key={step} style={styles.onboardingStep}>
-                        <Text style={styles.onboardingStepNumber}>{index + 1}</Text>
-                        <Text style={styles.onboardingStepText}>{step}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <Text style={styles.onboardingPrivacy}>
-                    {LOCATION_PRIVACY_PLAIN_LANGUAGE}
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Start with Garden Snail"
-                    onPress={finishOnboarding}
-                    style={({ pressed }) => [
-                      styles.onboardingButton,
-                      pressed ? styles.onboardingButtonPressed : null
-                    ]}
-                  >
-                    <Text style={styles.onboardingButtonText}>
-                      Start with Garden Snail
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : null}
 
               {detailsCollapsed ? null : (
                 <View style={styles.watchPanel}>
