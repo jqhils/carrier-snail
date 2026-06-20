@@ -98,6 +98,7 @@ describe("to-do use-cases", () => {
       expect.objectContaining({
         id: todo.id,
         snailName: "Garden Snail",
+        snailSpeciesId: "garden",
         status: "in-transit",
         text: "water fern"
       })

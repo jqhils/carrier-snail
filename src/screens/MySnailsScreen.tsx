@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { SnailSprite } from "../components/SnailSprite";
 import { getEggRarityPoolOdds } from "../useCases/hatchEgg";
 import type {
   CarrierState,
@@ -98,26 +99,35 @@ export function MySnailsScreen({
                   pressed ? styles.snailItemPressed : null
                 ]}
               >
-                <View style={styles.snailIdentityRow}>
-                  <Text numberOfLines={1} style={styles.snailName}>
-                    {snail.name}
-                  </Text>
-                  <Text style={styles.snailStatus}>{snail.statusLabel}</Text>
+                <View style={styles.snailRow}>
+                  <SnailSprite
+                    speciesId={snail.speciesId}
+                    size={56}
+                    walking={snail.status === "on-journey"}
+                  />
+                  <View style={styles.snailCopy}>
+                    <View style={styles.snailIdentityRow}>
+                      <Text numberOfLines={1} style={styles.snailName}>
+                        {snail.name}
+                      </Text>
+                      <Text style={styles.snailStatus}>{snail.statusLabel}</Text>
+                    </View>
+                    <Text numberOfLines={1} style={styles.snailMeta}>
+                      {snail.carryingText
+                        ? `Carrying: ${snail.carryingText}`
+                        : selected
+                          ? "Selected"
+                          : "Ready"}
+                    </Text>
+                    {ownedSnail ? (
+                      <Text numberOfLines={1} style={styles.snailStats}>
+                        Lv {ownedSnail.level} · {ownedSnail.rarity} ·{" "}
+                        {Math.round(ownedSnail.baseSpeedMetersPerHour)} m/h ·{" "}
+                        {Math.round(ownedSnail.reliability * 100)}%
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
-                <Text numberOfLines={1} style={styles.snailMeta}>
-                  {snail.carryingText
-                    ? `Carrying: ${snail.carryingText}`
-                    : selected
-                      ? "Selected"
-                      : "Ready"}
-                </Text>
-                {ownedSnail ? (
-                  <Text numberOfLines={1} style={styles.snailStats}>
-                    Lv {ownedSnail.level} · {ownedSnail.rarity} ·{" "}
-                    {Math.round(ownedSnail.baseSpeedMetersPerHour)} m/h ·{" "}
-                    {Math.round(ownedSnail.reliability * 100)}%
-                  </Text>
-                ) : null}
               </Pressable>
             );
           })}
@@ -421,6 +431,10 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "space-between"
   },
+  snailCopy: {
+    flex: 1,
+    minWidth: 0
+  },
   snailItem: {
     backgroundColor: "#f8f6ed",
     borderColor: "rgba(63, 109, 91, 0.28)",
@@ -464,6 +478,11 @@ const styles = StyleSheet.create({
     color: "#3f6d5b",
     fontSize: 12,
     fontWeight: "700"
+  },
+  snailRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
   },
   title: {
     color: "#25332e",

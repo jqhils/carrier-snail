@@ -165,6 +165,7 @@ export type StableSnailListItem = {
   carryingText?: string;
   id: string;
   name: string;
+  speciesId: SnailSpeciesId;
   status: SnailStatus;
   statusLabel: string;
 };
@@ -284,6 +285,7 @@ export function listStableSnails(state: CarrierState): StableSnapshot {
     ...stableCarryingDetails(state, snail.id),
     id: snail.id,
     name: snail.name,
+    speciesId: snail.speciesId,
     status: snail.status,
     statusLabel: snail.status === "resting" ? "Resting" : "On journey"
   }));

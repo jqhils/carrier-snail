@@ -43,6 +43,7 @@ describe("stable state", () => {
       {
         id: "garden-1",
         name: "Garden Snail",
+        speciesId: "garden",
         status: "resting",
         statusLabel: "Resting"
       }

@@ -48,6 +48,7 @@ describe("arrival inbox use-cases", () => {
         id: "arrival-1",
         seen: true,
         snailName: "Garden Snail",
+        snailSpeciesId: "garden",
         text: "buy milk"
       }
     ]);
