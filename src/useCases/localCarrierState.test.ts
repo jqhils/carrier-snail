@@ -1,5 +1,6 @@
 import {
   createInitialCarrierState,
+  InMemoryCarrierRepository,
   listStableSnails
 } from "./localCarrierState";
 
@@ -19,6 +20,7 @@ describe("stable state", () => {
       rarity: "common",
       reliability: 0.95,
       speedBand: "garden",
+      speciesId: "garden",
       temperament: "steady",
       trail: {
         color: "#f5f8ed",
@@ -45,5 +47,37 @@ describe("stable state", () => {
         statusLabel: "Resting"
       }
     ]);
+  });
+
+  it("normalizes legacy snails without species by rarity", () => {
+    const initialState = createInitialCarrierState();
+    const legacyRareSnail = {
+      ...initialState.snails[0],
+      appearance: {
+        bodyColor: "#abcdef",
+        shellColor: "#123456"
+      },
+      id: "legacy-rare",
+      name: "Old Blue",
+      rarity: "rare" as const
+    };
+
+    delete (legacyRareSnail as { speciesId?: string }).speciesId;
+
+    const repository = new InMemoryCarrierRepository({
+      ...initialState,
+      snails: [legacyRareSnail]
+    });
+    const [snail] = repository.snapshot().snails;
+
+    expect(snail).toMatchObject({
+      appearance: {
+        bodyColor: "#abcdef",
+        shellColor: "#123456"
+      },
+      name: "Old Blue",
+      rarity: "rare",
+      speciesId: "uni-sydney"
+    });
   });
 });

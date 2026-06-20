@@ -11,6 +11,7 @@ import {
   computeServerJourneyEta,
   type ComputeServerJourneyEtaInput
 } from "./computeServerJourneyEta";
+import { SNAIL_SPECIES_CATALOG } from "./snailSpecies";
 
 const target = {
   latitude: -33.8688,
@@ -115,6 +116,44 @@ describe("computeServerJourneyEta", () => {
           expect(durationMs).toBeGreaterThanOrEqual(Math.floor(honestFloorMs));
         }
       }
+    }
+  });
+
+  it("keeps every catalog species above the Delivery Floor", () => {
+    const createdAtMs = 123456;
+    const distantTarget = destinationCoordinate({
+      bearingDegrees: 38,
+      distanceMeters: 8000,
+      from: target
+    });
+
+    for (const species of SNAIL_SPECIES_CATALOG) {
+      const journey = {
+        ...createPhaseZeroJourney({
+          createdAtMs,
+          speedMetersPerHour: species.baseSpeedMetersPerHour,
+          target: distantTarget
+        }),
+        id: `journey-${species.id}`,
+        reminderId: `reminder-${species.id}`,
+        snailId: `snail-${species.id}`,
+        status: "in-flight" as const
+      };
+      const eta = computeServerJourneyEta({
+        clock: { now: () => createdAtMs },
+        journey,
+        speedModifiers: {
+          levelMultiplier: 20,
+          rarityMultiplier: 12,
+          spendMultiplier: 1000
+        }
+      });
+      const durationMs = eta.earliestArrivalAtMs - createdAtMs;
+
+      expect(durationMs).toBeGreaterThanOrEqual(DELIVERY_FLOOR_MINIMUM_MS);
+      expect(durationMs).toBeGreaterThanOrEqual(
+        Math.floor(eta.honestDistanceTimeMs * HONEST_DISTANCE_FLOOR_RATIO)
+      );
     }
   });
 });

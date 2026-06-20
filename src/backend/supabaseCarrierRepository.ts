@@ -16,6 +16,10 @@ import {
   type ToDo,
   type TrailHistoryPoint
 } from "../useCases/localCarrierState";
+import {
+  getDefaultSnailSpeciesIdForRarity,
+  isSnailSpeciesId
+} from "../useCases/snailSpecies";
 import type {
   AuthenticatedUser,
   BackendCarrierRepository,
@@ -49,6 +53,7 @@ type SnailRow = {
   rarity: Snail["rarity"];
   reliability: number;
   speed_band: Snail["speedBand"];
+  species_id: unknown;
   status: Snail["status"];
   temperament: Snail["temperament"];
   trail_traits: unknown;
@@ -188,6 +193,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
               "speed_band",
               "reliability",
               "quirk",
+              "species_id",
               "appearance",
               "trail_traits"
             ].join(", ")
@@ -322,6 +328,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
           rarity: snail.rarity,
           reliability: snail.reliability,
           speed_band: snail.speedBand,
+          species_id: snail.speciesId,
           status: snail.status,
           temperament: snail.temperament,
           trail_traits: snail.trail,
@@ -533,10 +540,20 @@ function mapSnail(row: SnailRow): Snail {
     rarity: row.rarity ?? fallback.rarity,
     reliability: finiteNumber(row.reliability) ?? fallback.reliability,
     speedBand: row.speed_band ?? fallback.speedBand,
+    speciesId: mapSpeciesId(row.species_id, row.rarity ?? fallback.rarity),
     status: row.status,
     temperament: row.temperament ?? fallback.temperament,
     trail: mapTrail(row.trail_traits, fallback.trail)
   };
+}
+
+function mapSpeciesId(
+  value: unknown,
+  rarity: Snail["rarity"]
+): Snail["speciesId"] {
+  return isSnailSpeciesId(value)
+    ? value
+    : getDefaultSnailSpeciesIdForRarity(rarity);
 }
 
 function mapInventory(value: unknown): Inventory {

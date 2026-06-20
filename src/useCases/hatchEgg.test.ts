@@ -8,6 +8,7 @@ import {
   hatchEgg,
   selectRarityFromOdds
 } from "./hatchEgg";
+import { getSnailSpecies } from "./snailSpecies";
 
 describe("hatchEgg", () => {
   it("discloses earned egg odds and draws rarity at odds boundaries", () => {
@@ -50,6 +51,39 @@ describe("hatchEgg", () => {
       status: "hatched"
     });
     expect(state.snails).toContainEqual(result.snail);
+  });
+
+  it("deterministically hatches a species from the rolled rarity", () => {
+    const firstRepository = new InMemoryCarrierRepository(stateWithEarnedEgg());
+    const secondRepository = new InMemoryCarrierRepository(stateWithEarnedEgg());
+
+    const first = hatchEgg(
+      { eggId: "egg-1", randomUnit: () => 0.75 },
+      {
+        clock: { now: () => 5000 },
+        repository: firstRepository
+      }
+    );
+    const second = hatchEgg(
+      { eggId: "egg-1", randomUnit: () => 0.75 },
+      {
+        clock: { now: () => 5000 },
+        repository: secondRepository
+      }
+    );
+    const species = getSnailSpecies(first.snail.speciesId);
+
+    expect(first.snail.speciesId).toBe(second.snail.speciesId);
+    expect(species.rarity).toBe("uncommon");
+    expect(first.snail).toMatchObject({
+      baseSpeedMetersPerHour: species.baseSpeedMetersPerHour,
+      name: species.displayName,
+      rarity: "uncommon",
+      reliability: species.reliability,
+      speedBand: species.speedBand,
+      temperament: species.temperament,
+      trail: species.trail
+    });
   });
 });
 
