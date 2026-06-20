@@ -8,9 +8,6 @@ import {
   type BottomTabId
 } from "./src/components/TabBar";
 import { MapScreen } from "./src/screens/MapScreen";
-import { MySnailsScreen } from "./src/screens/MySnailsScreen";
-import { NotificationsScreen } from "./src/screens/NotificationsScreen";
-import { ToDosScreen } from "./src/screens/ToDosScreen";
 
 const DEFAULT_TAB: BottomTabId = "map";
 
@@ -22,17 +19,7 @@ export default function App() {
       <View style={styles.app}>
         <StatusBar style="dark" />
         <View style={styles.content}>
-          <View
-            style={[
-              styles.screenSlot,
-              activeTab !== "map" ? styles.hiddenScreen : null
-            ]}
-          >
-            <MapScreen />
-          </View>
-          {activeTab === "snails" ? <MySnailsScreen /> : null}
-          {activeTab === "todos" ? <ToDosScreen /> : null}
-          {activeTab === "notifications" ? <NotificationsScreen /> : null}
+          <MapScreen activeTab={activeTab} />
         </View>
         <TabBar activeTab={activeTab} onChangeTab={setActiveTab} />
       </View>
@@ -46,12 +33,6 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    flex: 1
-  },
-  hiddenScreen: {
-    display: "none"
-  },
-  screenSlot: {
     flex: 1
   }
 });
