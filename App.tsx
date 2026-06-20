@@ -97,6 +97,13 @@ const MOCK_RESTING_POINT: Coordinate = {
 const MAP_STYLE_URL =
   process.env.EXPO_PUBLIC_MAP_STYLE_URL ??
   "https://demotiles.maplibre.org/style.json";
+// The default demotiles style is a keyless placeholder with only low-zoom world
+// data (no streets). Frame it out to the world so it shows *something*; real
+// providers (MapTiler/Protomaps) get a city-level view to see the journey.
+const USING_PLACEHOLDER_BASEMAP = MAP_STYLE_URL.includes(
+  "demotiles.maplibre.org"
+);
+const MAP_DEFAULT_ZOOM = USING_PLACEHOLDER_BASEMAP ? 1.6 : 11.4;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
 const REVENUECAT_ANDROID_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
@@ -128,6 +135,9 @@ export default function App() {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
   const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
+  const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
+    "loading"
+  );
   const [carrierState, setCarrierState] = useState(() =>
     createInitialCarrierState()
   );
@@ -763,12 +773,14 @@ export default function App() {
           attributionPosition={{ bottom: 10, right: 10 }}
           logo={false}
           mapStyle={MAP_STYLE_URL}
+          onDidFailLoadingMap={() => setMapStatus("failed")}
+          onDidFinishLoadingStyle={() => setMapStatus("ready")}
           style={StyleSheet.absoluteFill}
         >
           <Camera
             initialViewState={{
               center: [mapCenter.longitude, mapCenter.latitude],
-              zoom: 11.4
+              zoom: MAP_DEFAULT_ZOOM
             }}
           />
           {crawlGeo.map(({ id, polyline, snail, target: crawlTarget }) => (
@@ -832,6 +844,21 @@ export default function App() {
             </Fragment>
           ))}
         </Map>
+        {mapStatus === "failed" ? (
+          <View pointerEvents="none" style={styles.mapNotice}>
+            <Text style={styles.mapNoticeTitle}>Map couldn’t load</Text>
+            <Text style={styles.mapNoticeBody}>
+              Check your connection — the snail still knows where it’s going.
+            </Text>
+          </View>
+        ) : USING_PLACEHOLDER_BASEMAP ? (
+          <View pointerEvents="none" style={styles.mapHint}>
+            <Text style={styles.mapHintText}>
+              Demo basemap · set EXPO_PUBLIC_MAP_STYLE_URL to a MapTiler style for
+              streets
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <SafeAreaView style={styles.controls}>
@@ -1576,6 +1603,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     minWidth: 0
+  },
+  mapHint: {
+    backgroundColor: "rgba(20, 28, 24, 0.72)",
+    borderRadius: 8,
+    bottom: 10,
+    left: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    position: "absolute",
+    right: 10
+  },
+  mapHintText: {
+    color: "#eef3ec",
+    fontSize: 12,
+    textAlign: "center"
+  },
+  mapNotice: {
+    alignItems: "center",
+    backgroundColor: "rgba(20, 28, 24, 0.55)",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    padding: 20,
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  mapNoticeBody: {
+    color: "#dfe6df",
+    fontSize: 13,
+    marginTop: 4,
+    textAlign: "center"
+  },
+  mapNoticeTitle: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700"
   },
   mapShell: {
     flex: 1
