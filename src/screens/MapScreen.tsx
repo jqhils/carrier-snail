@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Camera,
@@ -62,6 +63,14 @@ import {
 } from "../useCases/expoLocalPushSender";
 import { hatchEgg } from "../useCases/hatchEgg";
 import {
+  buildMapStyleUrl,
+  coerceMapSkinId,
+  DEFAULT_MAP_SKIN_ID,
+  DEMO_MAP_STYLE_URL,
+  MAP_SKIN_OPTIONS,
+  type MapSkinId
+} from "../useCases/mapSkins";
+import {
   levelUpCost,
   levelUpSnail
 } from "../useCases/levelUpSnail";
@@ -110,16 +119,10 @@ const MOCK_RESTING_POINT: Coordinate = {
   longitude: 151.2093
 };
 
-const MAP_STYLE_URL =
-  process.env.EXPO_PUBLIC_MAP_STYLE_URL ??
-  "https://demotiles.maplibre.org/style.json";
-// The default demotiles style is a keyless placeholder with only low-zoom world
-// data (no streets). Frame it out to the world so it shows *something*; real
-// providers (MapTiler/Protomaps) get a city-level view to see the journey.
-const USING_PLACEHOLDER_BASEMAP = MAP_STYLE_URL.includes(
-  "demotiles.maplibre.org"
-);
-const MAP_DEFAULT_ZOOM = USING_PLACEHOLDER_BASEMAP ? 1.6 : 13;
+const FALLBACK_MAP_STYLE_URL =
+  process.env.EXPO_PUBLIC_MAP_STYLE_URL ?? DEMO_MAP_STYLE_URL;
+const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY;
+const MAP_SKIN_STORAGE_KEY = "carrier-snail.map-skin";
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
 const REVENUECAT_ANDROID_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
@@ -171,6 +174,8 @@ export function MapScreen({
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
+  const [selectedMapSkinId, setSelectedMapSkinId] =
+    useState<MapSkinId>(DEFAULT_MAP_SKIN_ID);
   const [detailsCollapsed, setDetailsCollapsed] = useState(true);
   const [sheetTranslateY] = useState(
     () => new Animated.Value(SHEET_COLLAPSED_OFFSET)
@@ -221,6 +226,21 @@ export function MapScreen({
   );
   const cameraRef = useRef<CameraRef>(null);
   const [hasLocationFix, setHasLocationFix] = useState(false);
+  const mapStyleUrl = useMemo(
+    () =>
+      buildMapStyleUrl({
+        fallbackStyleUrl: FALLBACK_MAP_STYLE_URL,
+        mapTilerKey: MAPTILER_KEY,
+        selectedSkinId: selectedMapSkinId
+      }),
+    [selectedMapSkinId]
+  );
+  // The default demotiles style is a keyless placeholder with only low-zoom
+  // world data (no streets). Frame it out to the world so it shows something;
+  // real MapTiler skins get a city-level view to see the journey.
+  const usingPlaceholderBasemap = mapStyleUrl.includes("demotiles.maplibre.org");
+  const mapDefaultZoom = usingPlaceholderBasemap ? 1.6 : 13;
+  const mapTilerKeyAvailable = !!MAPTILER_KEY?.trim();
 
   // One-shot recentre. The camera otherwise stays where the user left it (it does
   // NOT auto-follow live updates), so panning isn't fought.
@@ -228,7 +248,7 @@ export function MapScreen({
     cameraRef.current?.easeTo({
       center: [target.longitude, target.latitude],
       duration: 500,
-      zoom: MAP_DEFAULT_ZOOM
+      zoom: mapDefaultZoom
     });
   }
   const [carrierState, setCarrierState] = useState(() =>
@@ -359,6 +379,28 @@ export function MapScreen({
 
   useEffect(() => {
     let cancelled = false;
+
+    AsyncStorage.getItem(MAP_SKIN_STORAGE_KEY)
+      .then((value) => {
+        if (!cancelled) {
+          setSelectedMapSkinId(coerceMapSkinId(value));
+        }
+      })
+      .catch((error) => {
+        console.warn(
+          `Carrier Snail map skin preference unavailable. ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     let subscription: Location.LocationSubscription | undefined;
     let centeredOnFirstFix = false;
 
@@ -403,7 +445,7 @@ export function MapScreen({
             cameraRef.current?.easeTo({
               center: [coords.longitude, coords.latitude],
               duration: 600,
-              zoom: MAP_DEFAULT_ZOOM
+              zoom: mapDefaultZoom
             });
           }
         }
@@ -417,7 +459,7 @@ export function MapScreen({
       cancelled = true;
       subscription?.remove();
     };
-  }, []);
+  }, [mapDefaultZoom]);
 
   useEffect(() => {
     const supabase = createCarrierSupabaseClient();
@@ -623,6 +665,28 @@ export function MapScreen({
     const currentIndex = allowedWarps.indexOf(timeWarpFactor);
     const nextWarp = allowedWarps[(currentIndex + 1) % allowedWarps.length] ?? 1;
     setRequestedWarp(nextWarp);
+  }
+
+  function selectMapSkin(skinId: MapSkinId) {
+    const nextMapStyleUrl = buildMapStyleUrl({
+      fallbackStyleUrl: FALLBACK_MAP_STYLE_URL,
+      mapTilerKey: MAPTILER_KEY,
+      selectedSkinId: skinId
+    });
+
+    setSelectedMapSkinId(skinId);
+
+    if (nextMapStyleUrl !== mapStyleUrl) {
+      setMapStatus("loading");
+    }
+
+    void AsyncStorage.setItem(MAP_SKIN_STORAGE_KEY, skinId).catch((error) => {
+      console.warn(
+        `Carrier Snail map skin preference could not be saved. ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    });
   }
 
   async function createToDoFromInput() {
@@ -1040,8 +1104,9 @@ export function MapScreen({
         <View style={styles.mapShell}>
           <Map
             attributionPosition={{ bottom: 10, right: 10 }}
+            key={mapStyleUrl}
             logo={false}
-            mapStyle={MAP_STYLE_URL}
+            mapStyle={mapStyleUrl}
             onDidFailLoadingMap={() => setMapStatus("failed")}
             onDidFinishLoadingStyle={() => setMapStatus("ready")}
             style={StyleSheet.absoluteFill}
@@ -1049,7 +1114,7 @@ export function MapScreen({
             <Camera
               initialViewState={{
                 center: [target.longitude, target.latitude],
-                zoom: MAP_DEFAULT_ZOOM
+                zoom: mapDefaultZoom
               }}
               ref={cameraRef}
             />
@@ -1169,11 +1234,10 @@ export function MapScreen({
                 Check your connection. The snail still knows where it’s going.
               </Text>
             </View>
-          ) : USING_PLACEHOLDER_BASEMAP ? (
+          ) : usingPlaceholderBasemap ? (
             <View pointerEvents="none" style={styles.mapHint}>
               <Text style={styles.mapHintText}>
-                Demo basemap · set EXPO_PUBLIC_MAP_STYLE_URL to a MapTiler style for
-                streets
+                Demo basemap · set EXPO_PUBLIC_MAPTILER_KEY to unlock map skins
               </Text>
             </View>
           ) : null}
@@ -1463,8 +1527,12 @@ export function MapScreen({
         <SettingsScreen
           backgroundLocationBusy={backgroundLocationBusy}
           backgroundLocationMode={backgroundLocationMode}
+          mapSkinOptions={MAP_SKIN_OPTIONS}
+          mapTilerKeyAvailable={mapTilerKeyAvailable}
           onCycleWarp={cycleWarp}
+          onSelectMapSkin={selectMapSkin}
           onToggleBackgroundLocation={toggleBackgroundLocation}
+          selectedMapSkinId={selectedMapSkinId}
           timeWarpFactor={timeWarpFactor}
         />
       ) : null}
