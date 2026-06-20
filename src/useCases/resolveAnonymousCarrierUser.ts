@@ -37,3 +37,21 @@ export async function resolveAnonymousCarrierUser({
 
   return repository.ensureUser(authUser, clock.now());
 }
+
+/**
+ * Resolves the anonymous Carrier user, or returns null when the backend is
+ * configured but unavailable — e.g. anonymous sign-ins are disabled on the
+ * Supabase project, or a network error. Lets callers fall back to local mode
+ * instead of throwing (and, in background tasks, instead of failing the task).
+ */
+export async function tryResolveAnonymousCarrierUser(deps: {
+  authProvider: AnonymousAuthProvider;
+  clock: Clock;
+  repository: BackendCarrierRepository;
+}): Promise<CarrierUser | null> {
+  try {
+    return await resolveAnonymousCarrierUser(deps);
+  } catch {
+    return null;
+  }
+}

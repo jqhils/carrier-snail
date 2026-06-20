@@ -5,7 +5,7 @@ import { SupabaseAnonymousAuthProvider } from "../backend/supabaseAnonymousAuthP
 import { SupabaseCarrierRepository } from "../backend/supabaseCarrierRepository";
 import { createCarrierSupabaseClient } from "../backend/supabaseClient";
 import type { Coordinate } from "../journey/snailCrawl";
-import { resolveAnonymousCarrierUser } from "../useCases/resolveAnonymousCarrierUser";
+import { tryResolveAnonymousCarrierUser } from "../useCases/resolveAnonymousCarrierUser";
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
 
 export const BACKGROUND_LOCATION_TASK_NAME =
@@ -27,7 +27,12 @@ export function defineCarrierSnailBackgroundLocationTask(): void {
       return;
     }
 
-    await updateTargetFromBackgroundCoordinate(coordinate);
+    try {
+      await updateTargetFromBackgroundCoordinate(coordinate);
+    } catch {
+      // Backend unavailable or misconfigured — skip this background update.
+      // Foreground re-aiming still works; never fail the background task.
+    }
   });
 }
 
@@ -42,11 +47,15 @@ async function updateTargetFromBackgroundCoordinate(
 
   const repository = new SupabaseCarrierRepository(supabase);
   const authProvider = new SupabaseAnonymousAuthProvider(supabase);
-  const user = await resolveAnonymousCarrierUser({
+  const user = await tryResolveAnonymousCarrierUser({
     authProvider,
     clock: { now: () => Date.now() },
     repository
   });
+
+  if (!user) {
+    return;
+  }
 
   await updateForegroundTarget({
     clock: { now: () => Date.now() },

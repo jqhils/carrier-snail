@@ -2,7 +2,8 @@ import {
   type AnonymousAuthProvider,
   type AuthenticatedUser,
   type BackendCarrierRepository,
-  resolveAnonymousCarrierUser
+  resolveAnonymousCarrierUser,
+  tryResolveAnonymousCarrierUser
 } from "./resolveAnonymousCarrierUser";
 import type { CarrierState } from "./localCarrierState";
 
@@ -96,5 +97,48 @@ describe("resolveAnonymousCarrierUser", () => {
       { authUser: createdAuthUser, nowMs: 67890 }
     ]);
     expect(user.authUserId).toBe("auth-created");
+  });
+});
+
+class DisabledAnonymousAuthProvider implements AnonymousAuthProvider {
+  async currentUser(): Promise<AuthenticatedUser | null> {
+    return null;
+  }
+
+  async signInAnonymously(): Promise<AuthenticatedUser> {
+    throw new Error(
+      "Supabase anonymous sign-in failed: Anonymous sign-ins are disabled"
+    );
+  }
+}
+
+describe("tryResolveAnonymousCarrierUser", () => {
+  it("returns the carrier user when resolution succeeds", async () => {
+    const authProvider = new FakeAnonymousAuthProvider(null, {
+      authUserId: "auth-created",
+      isAnonymous: true
+    });
+    const repository = new FakeBackendCarrierRepository();
+
+    const user = await tryResolveAnonymousCarrierUser({
+      authProvider,
+      clock: { now: () => 1 },
+      repository
+    });
+
+    expect(user?.authUserId).toBe("auth-created");
+  });
+
+  it("returns null for local-mode fallback when anonymous sign-in is disabled", async () => {
+    const authProvider = new DisabledAnonymousAuthProvider();
+    const repository = new FakeBackendCarrierRepository();
+
+    const user = await tryResolveAnonymousCarrierUser({
+      authProvider,
+      clock: { now: () => 1 },
+      repository
+    });
+
+    expect(user).toBeNull();
   });
 });
