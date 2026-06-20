@@ -82,7 +82,7 @@ import {
 import { buildJourneyWatchState } from "./src/useCases/watchJourneyState";
 import { loadBackendJourneyState } from "./src/useCases/loadBackendJourneyState";
 import {
-  resolveAnonymousCarrierUser,
+  tryResolveAnonymousCarrierUser,
   type BackendCarrierRepository,
   type CarrierUser
 } from "./src/useCases/resolveAnonymousCarrierUser";
@@ -245,11 +245,18 @@ export default function App() {
     const authProvider = new SupabaseAnonymousAuthProvider(supabase);
 
     async function loadBackendState() {
-      const user = await resolveAnonymousCarrierUser({
+      const user = await tryResolveAnonymousCarrierUser({
         authProvider,
         clock: { now: () => Date.now() },
         repository
       });
+
+      if (!user) {
+        // Backend configured but unavailable (e.g. anonymous sign-ins disabled).
+        // Fall back to local mode silently — the app stays fully usable.
+        return;
+      }
+
       const loaded = await loadBackendJourneyState({
         clock: { now: () => Date.now() },
         repository,
@@ -273,13 +280,13 @@ export default function App() {
     }
 
     loadBackendState().catch((error) => {
-      if (!cancelled) {
-        setFormError(
-          error instanceof Error
-            ? error.message
-            : "Supabase setup failed; using local state."
-        );
-      }
+      // Any other backend setup failure (e.g. row-level security) — stay in
+      // local mode rather than surfacing a scary error.
+      console.warn(
+        `Carrier Snail backend unavailable; using local mode. ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     });
 
     return () => {
