@@ -16,10 +16,10 @@ import {
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from "react-native";
 
+import type { BottomTabId } from "../components/TabBar";
 import { ExpoBackgroundLocationController } from "../background/expoBackgroundLocationController";
 import {
   coerceTimeWarpFactor,
@@ -51,10 +51,7 @@ import {
   ExpoLocalPushSender,
   requestArrivalNotificationPermission
 } from "../useCases/expoLocalPushSender";
-import {
-  getEggRarityPoolOdds,
-  hatchEgg
-} from "../useCases/hatchEgg";
+import { hatchEgg } from "../useCases/hatchEgg";
 import {
   levelUpCost,
   levelUpSnail
@@ -67,9 +64,7 @@ import {
 } from "../useCases/onboarding";
 import {
   getPurchaseCatalog,
-  PURCHASE_FLOOR_DISCLOSURE,
   purchaseInventory,
-  type PurchaseCatalogProduct,
   type PurchaseProductId
 } from "../useCases/purchaseInventory";
 import {
@@ -88,6 +83,9 @@ import {
 } from "../useCases/resolveAnonymousCarrierUser";
 import { recallReminder } from "../useCases/recallReminder";
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
+import { MySnailsScreen } from "./MySnailsScreen";
+import { NotificationsScreen } from "./NotificationsScreen";
+import { ToDosScreen } from "./ToDosScreen";
 
 const MOCK_RESTING_POINT: Coordinate = {
   latitude: -33.8688,
@@ -131,7 +129,11 @@ type BackendSession = {
   user: CarrierUser;
 };
 
-export function MapScreen() {
+type MapScreenProps = {
+  activeTab: BottomTabId;
+};
+
+export function MapScreen({ activeTab }: MapScreenProps) {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
   const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
@@ -386,7 +388,11 @@ export function MapScreen() {
       watchScrubProgress
     ]
   );
-  const selectedWatchJourney = watchState.selectedJourney;
+  const selectedWatchJourney = selectedWatchJourneyId
+    ? watchState.journeys.find(
+        ({ journeyId }) => journeyId === selectedWatchJourneyId
+      )
+    : undefined;
   const visibleCrawls = personalityDemoEnabled
     ? demoPersonalityJourneys.map((crawl) => ({
         highlighted: false,
@@ -775,541 +781,427 @@ export function MapScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.mapShell}>
-        <Map
-          attributionPosition={{ bottom: 10, right: 10 }}
-          logo={false}
-          mapStyle={MAP_STYLE_URL}
-          onDidFailLoadingMap={() => setMapStatus("failed")}
-          onDidFinishLoadingStyle={() => setMapStatus("ready")}
-          style={StyleSheet.absoluteFill}
-        >
-          <Camera
-            initialViewState={{
-              center: [target.longitude, target.latitude],
-              zoom: MAP_DEFAULT_ZOOM
-            }}
-            ref={cameraRef}
-          />
-          {crawlGeo.map(({ id, polyline, snail, target: crawlTarget }) => (
-            <Fragment key={`journey-${id}`}>
-              {polyline.remaining ? (
-                <GeoJSONSource
-                  data={lineStringCollection(
-                    [polyline.remaining],
-                    "rgba(120, 132, 120, 0.45)"
-                  )}
-                  id={`remaining-${id}`}
-                >
-                  <Layer
-                    id={`remaining-line-${id}`}
-                    layout={{ "line-cap": "round" }}
-                    paint={{
-                      "line-color": ["get", "color"],
-                      "line-dasharray": [1.5, 2.5],
-                      "line-width": 2
-                    }}
-                    type="line"
-                  />
-                </GeoJSONSource>
-              ) : null}
-              <GeoJSONSource
-                data={trailSegmentCollection(
-                  polyline.traveled,
-                  snail.trail.color
-                )}
-                id={`trail-${id}`}
-              >
-                <Layer
-                  id={`trail-line-${id}`}
-                  layout={{ "line-cap": "round", "line-join": "round" }}
-                  paint={{
-                    "line-color": ["get", "color"],
-                    "line-width": 5
-                  }}
-                  type="line"
-                />
-              </GeoJSONSource>
-              <Marker
-                id={`target-${id}`}
-                lngLat={[crawlTarget.longitude, crawlTarget.latitude]}
-              >
-                <View style={styles.targetMarker} />
-              </Marker>
-              <Marker
-                id={`snail-${id}`}
-                lngLat={[polyline.snail.longitude, polyline.snail.latitude]}
-              >
-                <View
-                  style={[
-                    styles.snailMarker,
-                    { backgroundColor: snail.appearance.shellColor }
-                  ]}
-                >
-                  <Text style={styles.snailGlyph}>🐌</Text>
-                </View>
-              </Marker>
-            </Fragment>
-          ))}
-        </Map>
-        {mapStatus === "failed" ? (
-          <View pointerEvents="none" style={styles.mapNotice}>
-            <Text style={styles.mapNoticeTitle}>Map couldn’t load</Text>
-            <Text style={styles.mapNoticeBody}>
-              Check your connection. The snail still knows where it’s going.
-            </Text>
-          </View>
-        ) : USING_PLACEHOLDER_BASEMAP ? (
-          <View pointerEvents="none" style={styles.mapHint}>
-            <Text style={styles.mapHintText}>
-              Demo basemap · set EXPO_PUBLIC_MAP_STYLE_URL to a MapTiler style for
-              streets
-            </Text>
-          </View>
-        ) : null}
-        <Pressable
-          onPress={() => setMapMaximized((value) => !value)}
-          style={({ pressed }) => [
-            styles.mapToggle,
-            pressed && styles.mapTogglePressed
-          ]}
-        >
-          <Text style={styles.mapToggleText}>
-            {mapMaximized ? "Collapse map" : "Expand map"}
-          </Text>
-        </Pressable>
-      </View>
-
-      {mapMaximized ? null : (
-        <SafeAreaView style={styles.controls}>
-        <ScrollView
-          contentContainerStyle={styles.controlsContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.statusRow}>
-          <View style={styles.titleBlock}>
-            <Text numberOfLines={1} style={styles.title}>
-              Carrier Snail
-            </Text>
-            <Text numberOfLines={1} style={styles.meta}>
-              {locationLabel}
-            </Text>
-          </View>
-          <View style={styles.statusActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Toggle personality demo trio"
-              onPress={() => setPersonalityDemoEnabled((enabled) => !enabled)}
-              style={({ pressed }) => [
-                styles.personalityButton,
-                personalityDemoEnabled ? styles.personalityButtonEnabled : null,
-                pressed ? styles.personalityButtonPressed : null
-              ]}
-            >
-              <Text style={styles.personalityButtonText}>
-                {personalityDemoEnabled ? "Solo" : "Trio"}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Cycle debug time warp"
-              onPress={cycleWarp}
-              style={styles.warpButton}
-            >
-              <Text style={styles.warpValue}>
-                {timeWarpFactor.toLocaleString()}x
-              </Text>
-              <Text style={styles.warpLabel}>warp</Text>
-            </Pressable>
-          </View>
-        </View>
-        {personalityDemoEnabled ? (
-          <View style={styles.demoLegend}>
-            {demoPersonalityJourneys.map(({ snail }) => (
-              <View key={snail.id} style={styles.demoLegendItem}>
-                <View
-                  style={[
-                    styles.demoLegendSwatch,
-                    { backgroundColor: snail.trail.color }
-                  ]}
-                />
-                <Text numberOfLines={1} style={styles.demoLegendText}>
-                  {snail.name}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-        {onboardingVisible ? (
-          <View style={styles.onboardingPanel}>
-            <View style={styles.onboardingHeaderRow}>
-              <View style={styles.onboardingTitleBlock}>
-                <Text style={styles.onboardingKicker}>First delivery</Text>
-                <Text numberOfLines={1} style={styles.onboardingTitle}>
-                  Garden Snail is ready
-                </Text>
-              </View>
-              <View style={styles.onboardingSnailBadge}>
-                <Text style={styles.onboardingSnailBadgeText}>1</Text>
-              </View>
-            </View>
-            <View style={styles.onboardingStepList}>
-              {FIRST_RUN_ONBOARDING_STEPS.map((step, index) => (
-                <View key={step} style={styles.onboardingStep}>
-                  <Text style={styles.onboardingStepNumber}>{index + 1}</Text>
-                  <Text style={styles.onboardingStepText}>{step}</Text>
-                </View>
-              ))}
-            </View>
-            <Text style={styles.onboardingPrivacy}>
-              {LOCATION_PRIVACY_PLAIN_LANGUAGE}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Start with Garden Snail"
-              onPress={finishOnboarding}
-              style={({ pressed }) => [
-                styles.onboardingButton,
-                pressed ? styles.onboardingButtonPressed : null
-              ]}
-            >
-              <Text style={styles.onboardingButtonText}>
-                Start with Garden Snail
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-        {watchState.journeys.length > 0 && selectedWatchJourney ? (
-          <View style={styles.watchPanel}>
-            <View style={styles.watchHeaderRow}>
-              <View style={styles.watchTitleBlock}>
-                <Text style={styles.watchKicker}>Journey watch</Text>
-                <Text numberOfLines={1} style={styles.watchTitle}>
-                  {selectedWatchJourney.reminderText}
-                </Text>
-              </View>
-              <Text style={styles.watchProgress}>
-                {Math.round(selectedWatchJourney.preview.progress * 100)}%
-              </Text>
-            </View>
-            <Text numberOfLines={2} style={styles.watchEta}>
-              {selectedWatchJourney.etaRange.copy}
-            </Text>
-            <View style={styles.watchJourneyTabs}>
-              {watchState.journeys.map((watchJourney) => {
-                const selected =
-                  watchJourney.journeyId === selectedWatchJourney.journeyId;
-
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
-                    key={watchJourney.journeyId}
-                    onPress={() => selectWatchJourney(watchJourney.journeyId)}
-                    style={({ pressed }) => [
-                      styles.watchJourneyTab,
-                      selected ? styles.watchJourneyTabSelected : null,
-                      pressed ? styles.watchJourneyTabPressed : null
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.watchJourneySwatch,
-                        { backgroundColor: watchJourney.trail.color }
-                      ]}
-                    />
-                    <Text numberOfLines={1} style={styles.watchJourneyTabText}>
-                      {watchJourney.snailName}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text numberOfLines={2} style={styles.watchMeta}>
-              Path {formatDistance(selectedWatchJourney.preview.travelledMeters)}{" "}
-              crawled,{" "}
-              {formatDistance(selectedWatchJourney.preview.remainingMeters)} left
-            </Text>
-            <Text numberOfLines={2} style={styles.watchMeta}>
-              Target {formatCoordinate(selectedWatchJourney.target)} · trail
-              history {selectedWatchJourney.trailHistory.length}
-            </Text>
-            <View style={styles.watchActionRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Share selected trail"
-                onPress={shareSelectedTrail}
-                style={({ pressed }) => [
-                  styles.watchShareButton,
-                  pressed ? styles.watchShareButtonPressed : null
-                ]}
-              >
-                <Text style={styles.watchShareButtonText}>Share trail</Text>
-              </Pressable>
-              <View style={styles.watchScrubRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Show live journey position"
-                  onPress={() => scrubWatchJourney(undefined)}
-                  style={({ pressed }) => [
-                    styles.watchScrubButton,
-                    watchScrubProgress === undefined
-                      ? styles.watchScrubButtonSelected
-                      : null,
-                    pressed ? styles.watchScrubButtonPressed : null
-                  ]}
-                >
-                  <Text style={styles.watchScrubButtonText}>Live</Text>
-                </Pressable>
-                {WATCH_SCRUB_STOPS.map((stop) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Preview trail at ${stop.label}`}
-                    key={stop.label}
-                    onPress={() => scrubWatchJourney(stop.progress)}
-                    style={({ pressed }) => [
-                      styles.watchScrubButton,
-                      watchScrubProgress === stop.progress
-                        ? styles.watchScrubButtonSelected
-                        : null,
-                      pressed ? styles.watchScrubButtonPressed : null
-                    ]}
-                  >
-                    <Text style={styles.watchScrubButtonText}>{stop.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </View>
-        ) : null}
-        <View style={styles.stablePanel}>
-          <View style={styles.stableHeaderRow}>
-            <Text style={styles.stableTitle}>Stable</Text>
-            <Text numberOfLines={2} style={styles.stableCapacity}>
-              {stable.capacity.freeCount} resting,{" "}
-              {stable.capacity.emptySlotCount} slots, {unhatchedEggs.length} eggs,{" "}
-              {carrierState.softCurrency.slime} slime
-            </Text>
-          </View>
-          <View style={styles.stableSnailList}>
-            {stable.snails.map((snail) => {
-              const selected = snail.id === selectedSnailId;
-              const ownedSnail = carrierState.snails.find(
-                (candidate) => candidate.id === snail.id
+      <View
+        style={[
+          styles.mapSurface,
+          activeTab !== "map" ? styles.hiddenSurface : null
+        ]}
+      >
+        <View style={styles.mapShell}>
+          <Map
+            attributionPosition={{ bottom: 10, right: 10 }}
+            logo={false}
+            mapStyle={MAP_STYLE_URL}
+            onDidFailLoadingMap={() => setMapStatus("failed")}
+            onDidFinishLoadingStyle={() => setMapStatus("ready")}
+            style={StyleSheet.absoluteFill}
+          >
+            <Camera
+              initialViewState={{
+                center: [target.longitude, target.latitude],
+                zoom: MAP_DEFAULT_ZOOM
+              }}
+              ref={cameraRef}
+            />
+            {crawlGeo.map(({ id, polyline, snail, target: crawlTarget }) => {
+              const canSelectJourney = watchState.journeys.some(
+                (journey) => journey.journeyId === id
               );
 
               return (
-                <Pressable
-                  accessibilityLabel={`${snail.name}, ${snail.statusLabel}`}
-                  accessibilityRole="button"
-                  disabled={snail.status !== "resting"}
-                  key={snail.id}
-                  onPress={() => setRequestedSelectedSnailId(snail.id)}
-                  style={({ pressed }) => [
-                    styles.stableSnailItem,
-                    snail.status === "on-journey"
-                      ? styles.stableSnailItemBusy
-                      : null,
-                    selected ? styles.stableSnailItemSelected : null,
-                    pressed ? styles.stableSnailItemPressed : null
-                  ]}
-                >
-                  <View style={styles.stableSnailIdentityRow}>
-                    <Text numberOfLines={1} style={styles.stableSnailName}>
-                      {snail.name}
-                    </Text>
-                    <Text style={styles.stableSnailStatus}>
-                      {snail.statusLabel}
-                    </Text>
-                  </View>
-                  <Text numberOfLines={1} style={styles.stableSnailMeta}>
-                    {snail.carryingText
-                      ? `Carrying: ${snail.carryingText}`
-                      : selected
-                        ? "Selected"
-                        : "Ready"}
-                  </Text>
-                  {ownedSnail ? (
-                    <Text numberOfLines={1} style={styles.stableSnailStats}>
-                      Lv {ownedSnail.level} · {ownedSnail.rarity} ·{" "}
-                      {Math.round(ownedSnail.baseSpeedMetersPerHour)} m/h ·{" "}
-                      {Math.round(ownedSnail.reliability * 100)}%
-                    </Text>
+                <Fragment key={`journey-${id}`}>
+                  {polyline.remaining ? (
+                    <GeoJSONSource
+                      data={lineStringCollection(
+                        [polyline.remaining],
+                        "rgba(120, 132, 120, 0.45)"
+                      )}
+                      id={`remaining-${id}`}
+                    >
+                      <Layer
+                        id={`remaining-line-${id}`}
+                        layout={{ "line-cap": "round" }}
+                        paint={{
+                          "line-color": ["get", "color"],
+                          "line-dasharray": [1.5, 2.5],
+                          "line-width": 2
+                        }}
+                        type="line"
+                      />
+                    </GeoJSONSource>
                   ) : null}
-                </Pressable>
+                  <GeoJSONSource
+                    data={trailSegmentCollection(
+                      polyline.traveled,
+                      snail.trail.color
+                    )}
+                    id={`trail-${id}`}
+                  >
+                    <Layer
+                      id={`trail-line-${id}`}
+                      layout={{ "line-cap": "round", "line-join": "round" }}
+                      paint={{
+                        "line-color": ["get", "color"],
+                        "line-width": 5
+                      }}
+                      type="line"
+                    />
+                  </GeoJSONSource>
+                  <Marker
+                    id={`target-${id}`}
+                    lngLat={[crawlTarget.longitude, crawlTarget.latitude]}
+                  >
+                    <View style={styles.targetMarker} />
+                  </Marker>
+                  <Marker
+                    id={`snail-${id}`}
+                    lngLat={[polyline.snail.longitude, polyline.snail.latitude]}
+                  >
+                    <Pressable
+                      accessibilityLabel={`Select ${snail.name}`}
+                      accessibilityRole="button"
+                      disabled={!canSelectJourney}
+                      onPress={() => selectWatchJourney(id)}
+                      style={({ pressed }) => [
+                        styles.snailMarker,
+                        { backgroundColor: snail.appearance.shellColor },
+                        pressed ? styles.snailMarkerPressed : null
+                      ]}
+                    >
+                      <Text style={styles.snailGlyph}>🐌</Text>
+                    </Pressable>
+                  </Marker>
+                </Fragment>
               );
             })}
-          </View>
-          {selectedOwnedSnail ? (
-            <View style={styles.levelRow}>
-              <Text numberOfLines={1} style={styles.levelText}>
-                {selectedOwnedSnail.name} Lv {selectedOwnedSnail.level}
+          </Map>
+          {mapStatus === "failed" ? (
+            <View pointerEvents="none" style={styles.mapNotice}>
+              <Text style={styles.mapNoticeTitle}>Map couldn’t load</Text>
+              <Text style={styles.mapNoticeBody}>
+                Check your connection. The snail still knows where it’s going.
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Level ${selectedOwnedSnail.name}`}
-                disabled={!selectedCanLevel}
-                onPress={levelSelectedSnail}
-                style={({ pressed }) => [
-                  styles.levelButton,
-                  !selectedCanLevel ? styles.levelButtonDisabled : null,
-                  pressed ? styles.levelButtonPressed : null
-                ]}
-              >
-                <Text style={styles.levelButtonText}>
-                  Level {selectedLevelCost}
-                </Text>
-              </Pressable>
+            </View>
+          ) : USING_PLACEHOLDER_BASEMAP ? (
+            <View pointerEvents="none" style={styles.mapHint}>
+              <Text style={styles.mapHintText}>
+                Demo basemap · set EXPO_PUBLIC_MAP_STYLE_URL to a MapTiler style for
+                streets
+              </Text>
             </View>
           ) : null}
-          {unhatchedEggs.length > 0 ? (
-            <View style={styles.eggList}>
-              {unhatchedEggs.map((egg) => (
-                <View key={egg.id} style={styles.eggRow}>
-                  <View style={styles.eggCopy}>
-                    <Text numberOfLines={1} style={styles.eggTitle}>
-                      Earned egg
-                    </Text>
-                    <Text numberOfLines={2} style={styles.eggOdds}>
-                      {formatOddsText(egg.rarityPool)}
-                    </Text>
-                  </View>
+          <Pressable
+            onPress={() => setMapMaximized((value) => !value)}
+            style={({ pressed }) => [
+              styles.mapToggle,
+              pressed && styles.mapTogglePressed
+            ]}
+          >
+            <Text style={styles.mapToggleText}>
+              {mapMaximized ? "Collapse map" : "Expand map"}
+            </Text>
+          </Pressable>
+        </View>
+
+        {mapMaximized ? null : (
+          <SafeAreaView style={styles.controls}>
+            <ScrollView
+              contentContainerStyle={styles.controlsContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.statusRow}>
+                <View style={styles.titleBlock}>
+                  <Text numberOfLines={1} style={styles.title}>
+                    Carrier Snail
+                  </Text>
+                  <Text numberOfLines={1} style={styles.meta}>
+                    {locationLabel}
+                  </Text>
+                </View>
+                <View style={styles.statusActions}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Hatch ${egg.id}`}
-                    onPress={() => {
-                      void hatchCarrierEgg(egg.id);
-                    }}
+                    accessibilityLabel="Toggle personality demo trio"
+                    onPress={() => setPersonalityDemoEnabled((enabled) => !enabled)}
                     style={({ pressed }) => [
-                      styles.hatchButton,
-                      pressed ? styles.hatchButtonPressed : null
+                      styles.personalityButton,
+                      personalityDemoEnabled ? styles.personalityButtonEnabled : null,
+                      pressed ? styles.personalityButtonPressed : null
                     ]}
                   >
-                    <Text style={styles.hatchButtonText}>Hatch</Text>
+                    <Text style={styles.personalityButtonText}>
+                      {personalityDemoEnabled ? "Solo" : "Trio"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Cycle debug time warp"
+                    onPress={cycleWarp}
+                    style={styles.warpButton}
+                  >
+                    <Text style={styles.warpValue}>
+                      {timeWarpFactor.toLocaleString()}x
+                    </Text>
+                    <Text style={styles.warpLabel}>warp</Text>
                   </Pressable>
                 </View>
-              ))}
-            </View>
-          ) : null}
-          <View style={styles.shopList}>
-            <Text style={styles.shopDisclosure}>
-              {PURCHASE_FLOOR_DISCLOSURE}
-            </Text>
-            {purchaseCatalog.map((product) => (
-              <View key={product.id} style={styles.shopRow}>
-                <View style={styles.shopCopy}>
-                  <Text numberOfLines={1} style={styles.shopTitle}>
-                    {product.label}
-                  </Text>
-                  <Text numberOfLines={2} style={styles.shopDetail}>
-                    {formatPurchaseDetail(product)}
-                  </Text>
+              </View>
+              {personalityDemoEnabled ? (
+                <View style={styles.demoLegend}>
+                  {demoPersonalityJourneys.map(({ snail }) => (
+                    <View key={snail.id} style={styles.demoLegendItem}>
+                      <View
+                        style={[
+                          styles.demoLegendSwatch,
+                          { backgroundColor: snail.trail.color }
+                        ]}
+                      />
+                      <Text numberOfLines={1} style={styles.demoLegendText}>
+                        {snail.name}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
+              ) : null}
+              {onboardingVisible ? (
+                <View style={styles.onboardingPanel}>
+                  <View style={styles.onboardingHeaderRow}>
+                    <View style={styles.onboardingTitleBlock}>
+                      <Text style={styles.onboardingKicker}>First delivery</Text>
+                      <Text numberOfLines={1} style={styles.onboardingTitle}>
+                        Garden Snail is ready
+                      </Text>
+                    </View>
+                    <View style={styles.onboardingSnailBadge}>
+                      <Text style={styles.onboardingSnailBadgeText}>1</Text>
+                    </View>
+                  </View>
+                  <View style={styles.onboardingStepList}>
+                    {FIRST_RUN_ONBOARDING_STEPS.map((step, index) => (
+                      <View key={step} style={styles.onboardingStep}>
+                        <Text style={styles.onboardingStepNumber}>{index + 1}</Text>
+                        <Text style={styles.onboardingStepText}>{step}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={styles.onboardingPrivacy}>
+                    {LOCATION_PRIVACY_PLAIN_LANGUAGE}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Start with Garden Snail"
+                    onPress={finishOnboarding}
+                    style={({ pressed }) => [
+                      styles.onboardingButton,
+                      pressed ? styles.onboardingButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.onboardingButtonText}>
+                      Start with Garden Snail
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <View style={styles.watchPanel}>
+                <View style={styles.watchHeaderRow}>
+                  <View style={styles.watchTitleBlock}>
+                    <Text style={styles.watchKicker}>Details</Text>
+                    <Text numberOfLines={1} style={styles.watchTitle}>
+                      {selectedWatchJourney
+                        ? selectedWatchJourney.reminderText
+                        : watchState.journeys.length > 0
+                          ? "No traveler selected"
+                          : "The map is quiet"}
+                    </Text>
+                  </View>
+                  {selectedWatchJourney ? (
+                    <Text style={styles.watchProgress}>
+                      {Math.round(selectedWatchJourney.preview.progress * 100)}%
+                    </Text>
+                  ) : null}
+                </View>
+
+                {selectedWatchJourney ? (
+                  <>
+                    <Text numberOfLines={2} style={styles.watchEta}>
+                      {selectedWatchJourney.etaRange.copy}
+                    </Text>
+                    <Text numberOfLines={2} style={styles.watchMeta}>
+                      Path {formatDistance(selectedWatchJourney.preview.travelledMeters)} crawled, {formatDistance(selectedWatchJourney.preview.remainingMeters)} left
+                    </Text>
+                    <Text numberOfLines={2} style={styles.watchMeta}>
+                      Target {formatCoordinate(selectedWatchJourney.target)} · trail history {selectedWatchJourney.trailHistory.length}
+                    </Text>
+                  </>
+                ) : (
+                  <Text numberOfLines={2} style={styles.watchEta}>
+                    {watchState.journeys.length > 0
+                      ? "The trails are waiting for a closer look."
+                      : "No snail is carrying a thought right now."}
+                  </Text>
+                )}
+
+                {watchState.journeys.length > 0 ? (
+                  <View style={styles.watchJourneyTabs}>
+                    {watchState.journeys.map((watchJourney) => {
+                      const selected =
+                        selectedWatchJourney?.journeyId === watchJourney.journeyId;
+
+                      return (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
+                          key={watchJourney.journeyId}
+                          onPress={() => selectWatchJourney(watchJourney.journeyId)}
+                          style={({ pressed }) => [
+                            styles.watchJourneyTab,
+                            selected ? styles.watchJourneyTabSelected : null,
+                            pressed ? styles.watchJourneyTabPressed : null
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.watchJourneySwatch,
+                              { backgroundColor: watchJourney.trail.color }
+                            ]}
+                          />
+                          <Text numberOfLines={1} style={styles.watchJourneyTabText}>
+                            {watchJourney.snailName}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
+
+                {selectedWatchJourney ? (
+                  <View style={styles.watchActionRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Share selected trail"
+                      onPress={shareSelectedTrail}
+                      style={({ pressed }) => [
+                        styles.watchShareButton,
+                        pressed ? styles.watchShareButtonPressed : null
+                      ]}
+                    >
+                      <Text style={styles.watchShareButtonText}>Share trail</Text>
+                    </Pressable>
+                    <View style={styles.watchScrubRow}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Show live journey position"
+                        onPress={() => scrubWatchJourney(undefined)}
+                        style={({ pressed }) => [
+                          styles.watchScrubButton,
+                          watchScrubProgress === undefined
+                            ? styles.watchScrubButtonSelected
+                            : null,
+                          pressed ? styles.watchScrubButtonPressed : null
+                        ]}
+                      >
+                        <Text style={styles.watchScrubButtonText}>Live</Text>
+                      </Pressable>
+                      {WATCH_SCRUB_STOPS.map((stop) => (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Preview trail at ${stop.label}`}
+                          key={stop.label}
+                          onPress={() => scrubWatchJourney(stop.progress)}
+                          style={({ pressed }) => [
+                            styles.watchScrubButton,
+                            watchScrubProgress === stop.progress
+                              ? styles.watchScrubButtonSelected
+                              : null,
+                            pressed ? styles.watchScrubButtonPressed : null
+                          ]}
+                        >
+                          <Text style={styles.watchScrubButtonText}>
+                            {stop.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.backgroundLocationRow}>
+                <Text style={styles.backgroundLocationText}>
+                  {BACKGROUND_LOCATION_PERMISSION_COPY}
+                </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Buy ${product.label}`}
-                  disabled={!entitlementProvider}
-                  onPress={() => {
-                    void buyCatalogProduct(product.id);
-                  }}
+                  accessibilityLabel="Enable optional background location"
+                  disabled={
+                    backgroundLocationBusy ||
+                    backgroundLocationMode === "background-enabled"
+                  }
+                  onPress={enableBackgroundLocation}
                   style={({ pressed }) => [
-                    styles.buyButton,
-                    !entitlementProvider ? styles.buyButtonDisabled : null,
-                    pressed ? styles.buyButtonPressed : null
+                    styles.backgroundLocationButton,
+                    pressed ? styles.backgroundLocationButtonPressed : null,
+                    backgroundLocationMode === "background-enabled"
+                      ? styles.backgroundLocationButtonEnabled
+                      : null
                   ]}
                 >
-                  <Text style={styles.buyButtonText}>Buy</Text>
+                  <Text style={styles.backgroundLocationButtonText}>
+                    {backgroundLocationMode === "background-enabled"
+                      ? "On"
+                      : backgroundLocationBusy
+                        ? "..."
+                        : "Enable"}
+                  </Text>
                 </Pressable>
               </View>
-            ))}
-          </View>
-        </View>
-        <View style={styles.composerRow}>
-          <TextInput
-            accessibilityLabel="Reminder text"
-            onChangeText={setReminderText}
-            onSubmitEditing={sendReminder}
-            placeholder="buy milk"
-            placeholderTextColor="#7d7a70"
-            returnKeyType="send"
-            style={styles.reminderInput}
-            value={reminderText}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Send reminder"
-            disabled={!selectedStableSnail}
-            onPress={sendReminder}
-            style={({ pressed }) => [
-              styles.sendButton,
-              !selectedStableSnail ? styles.sendButtonDisabled : null,
-              pressed ? styles.sendButtonPressed : null
-            ]}
-          >
-            <Text style={styles.sendButtonText}>Send</Text>
-          </Pressable>
-        </View>
-        <View style={styles.backgroundLocationRow}>
-          <Text style={styles.backgroundLocationText}>
-            {BACKGROUND_LOCATION_PERMISSION_COPY}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Enable optional background location"
-            disabled={
-              backgroundLocationBusy ||
-              backgroundLocationMode === "background-enabled"
-            }
-            onPress={enableBackgroundLocation}
-            style={({ pressed }) => [
-              styles.backgroundLocationButton,
-              pressed ? styles.backgroundLocationButtonPressed : null,
-              backgroundLocationMode === "background-enabled"
-                ? styles.backgroundLocationButtonEnabled
-                : null
-            ]}
-          >
-            <Text style={styles.backgroundLocationButtonText}>
-              {backgroundLocationMode === "background-enabled"
-                ? "On"
-                : backgroundLocationBusy
-                  ? "..."
-                  : "Enable"}
-            </Text>
-          </Pressable>
-        </View>
-        {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-        {inFlightReminders.length > 0 ? (
-          <View style={styles.inFlightList}>
-            {inFlightReminders.map((reminder) => (
-              <View key={reminder.reminderId} style={styles.inFlightItem}>
-                <View style={styles.inFlightCopy}>
-                  <Text numberOfLines={1} style={styles.inFlightText}>
-                    {reminder.text}
-                  </Text>
-                  <Text numberOfLines={1} style={styles.inFlightSnail}>
-                    {reminder.snailName}
-                  </Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Recall ${reminder.text}`}
-                  onPress={() => confirmRecallReminder(reminder.reminderId)}
-                  style={({ pressed }) => [
-                    styles.recallButton,
-                    pressed ? styles.recallButtonPressed : null
-                  ]}
-                >
-                  <Text style={styles.recallButtonText}>Recall</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : null}
-        </ScrollView>
-        </SafeAreaView>
-      )}
+              {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
+            </ScrollView>
+          </SafeAreaView>
+        )}
+      </View>
+
+      {activeTab === "snails" ? (
+        <MySnailsScreen
+          canPurchase={!!entitlementProvider}
+          carrierState={carrierState}
+          onBuyProduct={(productId) => {
+            void buyCatalogProduct(productId);
+          }}
+          onHatchEgg={(eggId) => {
+            void hatchCarrierEgg(eggId);
+          }}
+          onLevelSelectedSnail={() => {
+            void levelSelectedSnail();
+          }}
+          onSelectSnail={setRequestedSelectedSnailId}
+          purchaseCatalog={purchaseCatalog}
+          selectedCanLevel={selectedCanLevel}
+          selectedLevelCost={selectedLevelCost}
+          selectedOwnedSnail={selectedOwnedSnail}
+          selectedSnailId={selectedSnailId}
+          stable={stable}
+          unhatchedEggs={unhatchedEggs}
+        />
+      ) : null}
+
+      {activeTab === "todos" ? (
+        <ToDosScreen
+          formError={formError}
+          inFlightReminders={inFlightReminders}
+          onChangeReminderText={setReminderText}
+          onRecallReminder={confirmRecallReminder}
+          onSendReminder={() => {
+            void sendReminder();
+          }}
+          reminderText={reminderText}
+          selectedStableSnail={selectedStableSnail}
+        />
+      ) : null}
+
+      {activeTab === "notifications" ? <NotificationsScreen /> : null}
     </View>
   );
 }
@@ -1372,28 +1264,6 @@ function hexToRgba(hex: string, alpha: number): string {
   const safeAlpha = Math.max(0, Math.min(1, alpha));
 
   return `rgba(${red}, ${green}, ${blue}, ${safeAlpha})`;
-}
-
-function formatOddsText(
-  rarityPool: Parameters<typeof getEggRarityPoolOdds>[0]
-): string {
-  return getEggRarityPoolOdds(rarityPool)
-    .map((odd) => `${Math.round(odd.probability * 100)}% ${odd.rarity}`)
-    .join(" · ");
-}
-
-function formatPurchaseDetail(product: PurchaseCatalogProduct): string {
-  if (product.grant.kind === "eggs") {
-    return `${product.grant.count} eggs · ${formatOddsText(
-      product.grant.rarityPool
-    )}`;
-  }
-
-  if (product.grant.kind === "stable-slot") {
-    return `${product.grant.count} empty stable slot`;
-  }
-
-  return product.description;
 }
 
 function formatDistance(distanceMeters: number): string {
@@ -1665,6 +1535,9 @@ const styles = StyleSheet.create({
   mapShell: {
     flex: 1
   },
+  mapSurface: {
+    flex: 1
+  },
   mapToggle: {
     backgroundColor: "rgba(20, 28, 24, 0.72)",
     borderRadius: 18,
@@ -1693,6 +1566,10 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: "center",
     width: 36
+  },
+  snailMarkerPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.96 }]
   },
   targetMarker: {
     backgroundColor: "#1f5da2",
@@ -1825,6 +1702,9 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#edf1e8",
     flex: 1
+  },
+  hiddenSurface: {
+    display: "none"
   },
   shopCopy: {
     flex: 1,
