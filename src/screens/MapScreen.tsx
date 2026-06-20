@@ -45,8 +45,8 @@ import {
   markArrivalsSeen
 } from "../useCases/arrivalInboxUseCases";
 import {
-  BACKGROUND_LOCATION_PERMISSION_COPY,
   configureOptionalBackgroundLocation,
+  disableOptionalBackgroundLocation,
   type BackgroundLocationMode
 } from "../useCases/configureOptionalBackgroundLocation";
 import {
@@ -96,6 +96,7 @@ import {
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
 import { MySnailsScreen } from "./MySnailsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
+import { SettingsScreen } from "./SettingsScreen";
 import { ToDosScreen } from "./ToDosScreen";
 
 const MOCK_RESTING_POINT: Coordinate = {
@@ -595,20 +596,31 @@ export function MapScreen({
       });
 
       setBackgroundLocationMode(result.mode);
-
-      if (result.mode === "location-denied") {
-        setFormError("Location permission denied. Foreground-only mode remains available.");
-      } else {
-        setFormError("");
-      }
-    } catch (error) {
-      setFormError(
-        error instanceof Error
-          ? error.message
-          : "Background location setup failed."
-      );
+    } catch {
+      setBackgroundLocationMode("foreground-only");
     } finally {
       setBackgroundLocationBusy(false);
+    }
+  }
+
+  async function disableBackgroundLocation() {
+    setBackgroundLocationBusy(true);
+
+    try {
+      await disableOptionalBackgroundLocation({
+        controller: backgroundLocationController
+      });
+      setBackgroundLocationMode("foreground-only");
+    } finally {
+      setBackgroundLocationBusy(false);
+    }
+  }
+
+  function toggleBackgroundLocation(enabled: boolean) {
+    if (enabled) {
+      void enableBackgroundLocation();
+    } else {
+      void disableBackgroundLocation();
     }
   }
 
@@ -1016,19 +1028,6 @@ export function MapScreen({
                     {locationLabel}
                   </Text>
                 </View>
-                <View style={styles.statusActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Cycle debug time warp"
-                    onPress={cycleWarp}
-                    style={styles.warpButton}
-                  >
-                    <Text style={styles.warpValue}>
-                      {timeWarpFactor.toLocaleString()}x
-                    </Text>
-                    <Text style={styles.warpLabel}>warp</Text>
-                  </Pressable>
-                </View>
               </View>
               {onboardingVisible ? (
                 <View style={styles.onboardingPanel}>
@@ -1256,35 +1255,6 @@ export function MapScreen({
                 </View>
               )}
 
-              <View style={styles.backgroundLocationRow}>
-                <Text style={styles.backgroundLocationText}>
-                  {BACKGROUND_LOCATION_PERMISSION_COPY}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Enable optional background location"
-                  disabled={
-                    backgroundLocationBusy ||
-                    backgroundLocationMode === "background-enabled"
-                  }
-                  onPress={enableBackgroundLocation}
-                  style={({ pressed }) => [
-                    styles.backgroundLocationButton,
-                    pressed ? styles.backgroundLocationButtonPressed : null,
-                    backgroundLocationMode === "background-enabled"
-                      ? styles.backgroundLocationButtonEnabled
-                      : null
-                  ]}
-                >
-                  <Text style={styles.backgroundLocationButtonText}>
-                    {backgroundLocationMode === "background-enabled"
-                      ? "On"
-                      : backgroundLocationBusy
-                        ? "..."
-                        : "Enable"}
-                  </Text>
-                </Pressable>
-              </View>
               {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
             </ScrollView>
           </SafeAreaView>
@@ -1354,6 +1324,16 @@ export function MapScreen({
           arrivals={arrivalItems}
           nowMs={nowMs}
           onViewed={markNotificationsViewed}
+        />
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <SettingsScreen
+          backgroundLocationBusy={backgroundLocationBusy}
+          backgroundLocationMode={backgroundLocationMode}
+          onCycleWarp={cycleWarp}
+          onToggleBackgroundLocation={toggleBackgroundLocation}
+          timeWarpFactor={timeWarpFactor}
         />
       ) : null}
     </View>

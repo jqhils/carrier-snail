@@ -2,6 +2,7 @@ import {
   BACKGROUND_LOCATION_PERMISSION_COPY,
   type BackgroundLocationController,
   configureOptionalBackgroundLocation,
+  disableOptionalBackgroundLocation,
   LOW_POWER_BACKGROUND_LOCATION_POLICY
 } from "./configureOptionalBackgroundLocation";
 
@@ -25,6 +26,12 @@ class FakeBackgroundLocationController implements BackgroundLocationController {
     policy: typeof LOW_POWER_BACKGROUND_LOCATION_POLICY
   ): Promise<void> {
     this.startedPolicies.push(policy);
+  }
+
+  stopCallCount = 0;
+
+  async stopLowPowerUpdates(): Promise<void> {
+    this.stopCallCount += 1;
   }
 }
 
@@ -64,5 +71,14 @@ describe("configureOptionalBackgroundLocation", () => {
     expect(result.mode).toBe("foreground-only");
     expect(result.foregroundAvailable).toBe(true);
     expect(controller.startedPolicies).toEqual([]);
+  });
+
+  it("stops background updates and returns to foreground-only when disabled", async () => {
+    const controller = new FakeBackgroundLocationController(true, true);
+
+    const result = await disableOptionalBackgroundLocation({ controller });
+
+    expect(result.mode).toBe("foreground-only");
+    expect(controller.stopCallCount).toBe(1);
   });
 });

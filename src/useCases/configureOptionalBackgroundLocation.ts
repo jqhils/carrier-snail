@@ -30,6 +30,7 @@ export interface BackgroundLocationController {
   startLowPowerUpdates(
     policy: LowPowerBackgroundLocationPolicy
   ): Promise<void>;
+  stopLowPowerUpdates(): Promise<void>;
 }
 
 export type ConfigureOptionalBackgroundLocationResult = {
@@ -65,5 +66,18 @@ export async function configureOptionalBackgroundLocation({
   return {
     foregroundAvailable: true,
     mode: "background-enabled"
+  };
+}
+
+export async function disableOptionalBackgroundLocation({
+  controller
+}: {
+  controller: BackgroundLocationController;
+}): Promise<ConfigureOptionalBackgroundLocationResult> {
+  await controller.stopLowPowerUpdates();
+
+  return {
+    foregroundAvailable: true,
+    mode: "foreground-only"
   };
 }
