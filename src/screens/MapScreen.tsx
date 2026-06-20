@@ -269,9 +269,10 @@ export function MapScreen({
     () => listArrivalInboxItems(carrierState),
     [carrierState]
   );
-  const firstRestingSnail = stable.snails.find(
+  const restingStableSnails = stable.snails.filter(
     (snail) => snail.status === "resting"
   );
+  const firstRestingSnail = restingStableSnails[0];
   const selectedStableSnail = stable.snails.find(
     (snail) =>
       snail.id === requestedSelectedSnailId && snail.status === "resting"
@@ -637,12 +638,12 @@ export function MapScreen({
     }
   }
 
-  async function assignSnailToTodo(todoId: string) {
+  async function assignSnailToTodo(todoId: string, snailId: string) {
     try {
       const repository = new InMemoryCarrierRepository(carrierState);
 
       assignSnailToToDo(
-        { snailId: selectedSnailId || undefined, todoId },
+        { snailId, todoId },
         {
           clock: { now: () => Date.now() },
           locationSource: { currentTarget: () => target },
@@ -1365,8 +1366,8 @@ export function MapScreen({
           editingText={editingTodoText}
           editingTodoId={editingTodoId}
           formError={formError}
-          onAssignSnail={(todoId) => {
-            void assignSnailToTodo(todoId);
+          onAssignSnail={(todoId, snailId) => {
+            void assignSnailToTodo(todoId, snailId);
           }}
           onCancelEdit={() => {
             setEditingTodoId(undefined);
@@ -1388,6 +1389,7 @@ export function MapScreen({
             void saveEditingToDo();
           }}
           onStartEdit={startEditingToDo}
+          restingSnails={restingStableSnails}
           selectedStableSnail={selectedStableSnail}
           toDoItems={toDoItems}
           toDoText={toDoText}

@@ -105,6 +105,115 @@ describe("to-do use-cases", () => {
     ]);
   });
 
+  it("assigns the explicitly selected idle snail instead of the first resting snail", () => {
+    const initialState = createInitialCarrierState();
+    initialState.snails.push({
+      ...initialState.snails[0],
+      baseSpeedMetersPerHour: 57,
+      id: "postal-1",
+      name: "Postmaster",
+      speciesId: "postal",
+      status: "resting"
+    });
+    const repository = new InMemoryCarrierRepository(initialState);
+    const { todo } = createToDo(
+      { text: "send postcards" },
+      { clock: { now: () => 0 }, repository }
+    );
+
+    const result = assignSnailToToDo(
+      { snailId: "postal-1", todoId: todo.id },
+      {
+        clock: { now: () => 1000 },
+        locationSource: { currentTarget: () => target },
+        repository
+      }
+    );
+    const state = repository.snapshot();
+
+    expect(result.journey).toMatchObject({
+      snailId: "postal-1",
+      todoId: todo.id
+    });
+    expect(state.snails.find((snail) => snail.id === "garden-1")?.status).toBe(
+      "resting"
+    );
+    expect(state.snails.find((snail) => snail.id === "postal-1")?.status).toBe(
+      "on-journey"
+    );
+    expect(listToDoItems({ clock: { now: () => 1000 }, state })).toEqual([
+      expect.objectContaining({
+        snailName: "Postmaster",
+        snailSpeciesId: "postal",
+        status: "in-transit"
+      })
+    ]);
+  });
+
+  it("requires the selected snail to exist and be idle", () => {
+    const initialState = createInitialCarrierState();
+    initialState.snails.push({
+      ...initialState.snails[0],
+      id: "garden-2",
+      name: "Second Garden",
+      status: "resting"
+    });
+    const repository = new InMemoryCarrierRepository(initialState);
+    const first = createToDo(
+      { text: "buy milk" },
+      { clock: { now: () => 0 }, repository }
+    ).todo;
+    const second = createToDo(
+      { text: "check passport" },
+      { clock: { now: () => 1 }, repository }
+    ).todo;
+
+    assignSnailToToDo(
+      { snailId: "garden-1", todoId: first.id },
+      {
+        clock: { now: () => 2 },
+        locationSource: { currentTarget: () => target },
+        repository
+      }
+    );
+
+    expect(() =>
+      assignSnailToToDo(
+        { snailId: "", todoId: second.id },
+        {
+          clock: { now: () => 3 },
+          locationSource: { currentTarget: () => target },
+          repository
+        }
+      )
+    ).toThrow(NoRestingSnailError);
+    expect(() =>
+      assignSnailToToDo(
+        { snailId: "missing-snail", todoId: second.id },
+        {
+          clock: { now: () => 4 },
+          locationSource: { currentTarget: () => target },
+          repository
+        }
+      )
+    ).toThrow(NoRestingSnailError);
+    expect(() =>
+      assignSnailToToDo(
+        { snailId: "garden-1", todoId: second.id },
+        {
+          clock: { now: () => 5 },
+          locationSource: { currentTarget: () => target },
+          repository
+        }
+      )
+    ).toThrow(NoRestingSnailError);
+    expect(repository.snapshot().journeys).toHaveLength(1);
+    expect(
+      repository.snapshot().snails.find((snail) => snail.id === "garden-2")
+        ?.status
+    ).toBe("resting");
+  });
+
   it("keeps to-dos limitless while guarding assignment by idle snails", () => {
     const repository = new InMemoryCarrierRepository(createInitialCarrierState());
     const first = createToDo(
@@ -117,7 +226,7 @@ describe("to-do use-cases", () => {
     ).todo;
 
     assignSnailToToDo(
-      { todoId: first.id },
+      { snailId: "garden-1", todoId: first.id },
       {
         clock: { now: () => 2 },
         locationSource: { currentTarget: () => target },
@@ -127,7 +236,7 @@ describe("to-do use-cases", () => {
 
     expect(() =>
       assignSnailToToDo(
-        { todoId: second.id },
+        { snailId: "garden-1", todoId: second.id },
         {
           clock: { now: () => 3 },
           locationSource: { currentTarget: () => target },
@@ -146,7 +255,7 @@ describe("to-do use-cases", () => {
       { clock: { now: () => 0 }, repository }
     );
     assignSnailToToDo(
-      { todoId: todo.id },
+      { snailId: "garden-1", todoId: todo.id },
       {
         clock: { now: () => 10 },
         locationSource: { currentTarget: () => target },
@@ -184,7 +293,7 @@ describe("to-do use-cases", () => {
       { clock: { now: () => 0 }, repository }
     );
     assignSnailToToDo(
-      { todoId: todo.id },
+      { snailId: "garden-1", todoId: todo.id },
       {
         clock: { now: () => 10 },
         locationSource: { currentTarget: () => target },
@@ -241,7 +350,7 @@ describe("to-do use-cases", () => {
       { clock: { now: () => 0 }, repository }
     );
     assignSnailToToDo(
-      { todoId: todo.id },
+      { snailId: "garden-1", todoId: todo.id },
       {
         clock: { now: () => 10 },
         locationSource: { currentTarget: () => target },
@@ -276,7 +385,7 @@ describe("to-do use-cases", () => {
       { clock: { now: () => 0 }, repository }
     );
     assignSnailToToDo(
-      { todoId: todo.id },
+      { snailId: "garden-1", todoId: todo.id },
       {
         clock: { now: () => 10 },
         locationSource: { currentTarget: () => target },
@@ -346,7 +455,7 @@ describe("to-do use-cases", () => {
       { clock: { now: () => 0 }, repository }
     );
     const { journey } = assignSnailToToDo(
-      { todoId: todo.id },
+      { snailId: "garden-1", todoId: todo.id },
       {
         clock: { now: () => 0 },
         locationSource: { currentTarget: () => target },

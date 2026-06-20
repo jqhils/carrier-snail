@@ -60,10 +60,13 @@ describe("createReminderJourney", () => {
       },
       snails: [
         {
+          baseSpeedMetersPerHour: 48,
           carryingText: "buy milk",
           id: "garden-1",
+          level: 1,
           name: "Garden Snail",
           speciesId: "garden",
+          speciesName: "Garden Snail",
           status: "on-journey",
           statusLabel: "On journey"
         }
