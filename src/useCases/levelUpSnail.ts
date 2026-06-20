@@ -50,6 +50,7 @@ export function levelUpSnail(
   const leveledSnail = applyLevelGrowth(snail);
 
   repository.save({
+    arrivals: state.arrivals,
     eggs: state.eggs,
     inventory: state.inventory,
     journeys: state.journeys,

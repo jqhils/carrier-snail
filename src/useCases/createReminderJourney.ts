@@ -102,6 +102,7 @@ export function createReminderJourney(
   };
 
   repository.save({
+    arrivals: state.arrivals,
     eggs: state.eggs,
     inventory: state.inventory,
     journeys: [...state.journeys, journey],

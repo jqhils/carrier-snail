@@ -66,6 +66,18 @@ export type OnboardingState = {
   completedAtMs?: number;
 };
 
+export type ArrivalNotification = {
+  arrivedAtMs: number;
+  id: string;
+  journeyId: string;
+  reminderId?: string;
+  seenAtMs?: number;
+  snailId: string;
+  snailName: string;
+  text: string;
+  todoId?: string;
+};
+
 export type Snail = {
   appearance: SnailAppearanceTraits;
   baseSpeedMetersPerHour: number;
@@ -124,6 +136,7 @@ export type Egg = {
 };
 
 export type CarrierState = {
+  arrivals: ArrivalNotification[];
   eggs: Egg[];
   inventory: Inventory;
   journeys: JourneyRecord[];
@@ -196,6 +209,7 @@ export function createStarterGardenSnail(): Snail {
 
 export function createInitialCarrierState(): CarrierState {
   return {
+    arrivals: [],
     eggs: [],
     inventory: { cosmetics: [] },
     journeys: [],
@@ -316,6 +330,7 @@ export function getActiveJourney(state: CarrierState): JourneyRecord | undefined
 
 export function cloneCarrierState(state: CarrierState): CarrierState {
   return {
+    arrivals: state.arrivals?.map((arrival) => ({ ...arrival })) ?? [],
     eggs: state.eggs?.map((egg) => ({ ...egg })) ?? [],
     inventory: {
       cosmetics:

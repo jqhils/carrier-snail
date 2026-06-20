@@ -7,7 +7,7 @@ import {
   Marker
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -41,6 +41,11 @@ import {
 import { createRevenueCatEntitlementProvider } from "../payments/revenueCatEntitlementProvider";
 import { completeArrivedJourneys } from "../useCases/completeArrivedJourneys";
 import {
+  hasUnseenArrivals,
+  listArrivalInboxItems,
+  markArrivalsSeen
+} from "../useCases/arrivalInboxUseCases";
+import {
   BACKGROUND_LOCATION_PERMISSION_COPY,
   configureOptionalBackgroundLocation,
   type BackgroundLocationMode
@@ -70,7 +75,8 @@ import {
   createInitialCarrierState,
   getActiveJourney,
   InMemoryCarrierRepository,
-  listStableSnails
+  listStableSnails,
+  type CarrierState
 } from "../useCases/localCarrierState";
 import { buildJourneyWatchState } from "../useCases/watchJourneyState";
 import { loadBackendJourneyState } from "../useCases/loadBackendJourneyState";
@@ -138,9 +144,13 @@ type BackendSession = {
 
 type MapScreenProps = {
   activeTab: BottomTabId;
+  onUnseenNotificationsChange: (hasUnseen: boolean) => void;
 };
 
-export function MapScreen({ activeTab }: MapScreenProps) {
+export function MapScreen({
+  activeTab,
+  onUnseenNotificationsChange
+}: MapScreenProps) {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
   const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
@@ -199,6 +209,10 @@ export function MapScreen({ activeTab }: MapScreenProps) {
       }),
     [carrierState, nowMs]
   );
+  const arrivalItems = useMemo(
+    () => listArrivalInboxItems(carrierState),
+    [carrierState]
+  );
   const firstRestingSnail = stable.snails.find(
     (snail) => snail.status === "resting"
   );
@@ -237,6 +251,43 @@ export function MapScreen({ activeTab }: MapScreenProps) {
     () => new ExpoBackgroundLocationController(),
     []
   );
+  const persistNextCarrierState = useCallback(
+    async (nextState: CarrierState) => {
+      if (backendSession) {
+        await backendSession.repository.saveCarrierState(
+          backendSession.user.id,
+          nextState
+        );
+
+        const loaded = await loadBackendJourneyState({
+          clock: { now: () => Date.now() },
+          repository: backendSession.repository,
+          timeWarpFactor,
+          userId: backendSession.user.id
+        });
+
+        setCarrierState(loaded.carrierState);
+      } else {
+        setCarrierState(nextState);
+      }
+    },
+    [backendSession, timeWarpFactor]
+  );
+  const markNotificationsViewed = useCallback(() => {
+    if (!hasUnseenArrivals(carrierState)) {
+      return;
+    }
+
+    const repository = new InMemoryCarrierRepository(carrierState);
+    const result = markArrivalsSeen({
+      clock: { now: () => Date.now() },
+      repository
+    });
+
+    if (result.markedCount > 0) {
+      void persistNextCarrierState(repository.snapshot());
+    }
+  }, [carrierState, persistNextCarrierState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -482,6 +533,10 @@ export function MapScreen({ activeTab }: MapScreenProps) {
     return () => clearInterval(interval);
   }, [backendSession, pushSender, timeWarpFactor]);
 
+  useEffect(() => {
+    onUnseenNotificationsChange(hasUnseenArrivals(carrierState));
+  }, [carrierState, onUnseenNotificationsChange]);
+
   const crawlGeo = visibleCrawls.map((crawl) => ({
     ...crawl,
     polyline: buildJourneyPolyline({
@@ -495,26 +550,6 @@ export function MapScreen({ activeTab }: MapScreenProps) {
     const currentIndex = allowedWarps.indexOf(timeWarpFactor);
     const nextWarp = allowedWarps[(currentIndex + 1) % allowedWarps.length] ?? 1;
     setRequestedWarp(nextWarp);
-  }
-
-  async function persistNextCarrierState(nextState: typeof carrierState) {
-    if (backendSession) {
-      await backendSession.repository.saveCarrierState(
-        backendSession.user.id,
-        nextState
-      );
-
-      const loaded = await loadBackendJourneyState({
-        clock: { now: () => Date.now() },
-        repository: backendSession.repository,
-        timeWarpFactor,
-        userId: backendSession.user.id
-      });
-
-      setCarrierState(loaded.carrierState);
-    } else {
-      setCarrierState(nextState);
-    }
   }
 
   async function createToDoFromInput() {
@@ -1310,7 +1345,13 @@ export function MapScreen({ activeTab }: MapScreenProps) {
         />
       ) : null}
 
-      {activeTab === "notifications" ? <NotificationsScreen /> : null}
+      {activeTab === "notifications" ? (
+        <NotificationsScreen
+          arrivals={arrivalItems}
+          nowMs={nowMs}
+          onViewed={markNotificationsViewed}
+        />
+      ) : null}
     </View>
   );
 }

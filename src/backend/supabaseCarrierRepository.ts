@@ -1,6 +1,7 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  type ArrivalNotification,
   cloneCarrierState,
   createStarterGardenSnail,
   type CarrierState,
@@ -69,6 +70,18 @@ type TodoRow = {
   id: string;
   status: ToDo["status"];
   text: string;
+};
+
+type ArrivalRow = {
+  arrived_at: string;
+  id: string;
+  journey_id: string;
+  reminder_id: string | null;
+  seen_at: string | null;
+  snail_id: string;
+  snail_name: string;
+  text: string;
+  todo_id: string | null;
 };
 
 type JourneyRow = {
@@ -149,79 +162,97 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
   }
 
   async loadCarrierState(userId: string): Promise<CarrierState> {
-    const [userState, snails, reminders, todos, journeys, eggs] = await Promise.all([
-      this.client
-        .from("carrier_users")
-        .select(
-          "soft_currency_slime, inventory, purchase_records, purchased_stable_slots, onboarding_completed_at"
-        )
-        .eq("id", userId)
-        .maybeSingle(),
-      this.client
-        .from("snails")
-        .select(
-          [
-            "id",
-            "name",
-            "status",
-            "rarity",
-            "level",
-            "experience_points",
-            "journeys_completed",
-            "base_speed_meters_per_hour",
-            "quirk_seed",
-            "temperament",
-            "speed_band",
-            "reliability",
-            "quirk",
-            "appearance",
-            "trail_traits"
-          ].join(", ")
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true }),
-      this.client
-        .from("reminders")
-        .select(
-          "id, snail_id, text, status, created_at, delivered_at, recalled_at"
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true }),
-      this.client
-        .from("todos")
-        .select("id, text, status, created_at, done_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true }),
-      this.client
-        .from("journeys")
-        .select(
-          [
-            "id",
-            "reminder_id",
-            "todo_id",
-            "snail_id",
-            "status",
-            "created_at",
-            "arrived_at",
-            "recalled_at",
-            "start_latitude",
-            "start_longitude",
-            "target_latitude",
-            "target_longitude",
-            "base_speed_meters_per_hour",
-            "trail_history"
-          ].join(", ")
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true }),
-      this.client
-        .from("eggs")
-        .select(
-          "id, source, status, rarity_pool, earned_at, hatched_at, hatched_snail_id"
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true })
-    ]);
+    const [userState, snails, reminders, todos, journeys, eggs, arrivals] =
+      await Promise.all([
+        this.client
+          .from("carrier_users")
+          .select(
+            "soft_currency_slime, inventory, purchase_records, purchased_stable_slots, onboarding_completed_at"
+          )
+          .eq("id", userId)
+          .maybeSingle(),
+        this.client
+          .from("snails")
+          .select(
+            [
+              "id",
+              "name",
+              "status",
+              "rarity",
+              "level",
+              "experience_points",
+              "journeys_completed",
+              "base_speed_meters_per_hour",
+              "quirk_seed",
+              "temperament",
+              "speed_band",
+              "reliability",
+              "quirk",
+              "appearance",
+              "trail_traits"
+            ].join(", ")
+          )
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true }),
+        this.client
+          .from("reminders")
+          .select(
+            "id, snail_id, text, status, created_at, delivered_at, recalled_at"
+          )
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true }),
+        this.client
+          .from("todos")
+          .select("id, text, status, created_at, done_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true }),
+        this.client
+          .from("journeys")
+          .select(
+            [
+              "id",
+              "reminder_id",
+              "todo_id",
+              "snail_id",
+              "status",
+              "created_at",
+              "arrived_at",
+              "recalled_at",
+              "start_latitude",
+              "start_longitude",
+              "target_latitude",
+              "target_longitude",
+              "base_speed_meters_per_hour",
+              "trail_history"
+            ].join(", ")
+          )
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true }),
+        this.client
+          .from("eggs")
+          .select(
+            "id, source, status, rarity_pool, earned_at, hatched_at, hatched_snail_id"
+          )
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true }),
+        this.client
+          .from("arrival_notifications")
+          .select(
+            [
+              "id",
+              "journey_id",
+              "todo_id",
+              "reminder_id",
+              "snail_id",
+              "snail_name",
+              "text",
+              "arrived_at",
+              "seen_at"
+            ].join(", ")
+          )
+          .eq("user_id", userId)
+          .order("arrived_at", { ascending: true })
+      ]);
 
     assertNoSupabaseError(userState.error, "load user state");
     assertNoSupabaseError(snails.error, "load snails");
@@ -229,6 +260,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     assertNoSupabaseError(todos.error, "load todos");
     assertNoSupabaseError(journeys.error, "load journeys");
     assertNoSupabaseError(eggs.error, "load eggs");
+    assertNoSupabaseError(arrivals.error, "load arrival notifications");
 
     const mappedUserState = mapUserState(
       userState.data as CarrierUserStateRow | null
@@ -238,6 +270,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
     const mappedTodos = asRows<TodoRow>(todos.data).map(mapTodo);
 
     return {
+      arrivals: asRows<ArrivalRow>(arrivals.data).map(mapArrival),
       eggs: asRows<EggRow>(eggs.data).map(mapEgg),
       inventory: mappedUserState.inventory,
       journeys: asRows<JourneyRow>(journeys.data).map(mapJourney),
@@ -247,7 +280,8 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       snails: asRows<SnailRow>(snails.data).map(mapSnail),
       softCurrency: mappedUserState.softCurrency,
       stableSlots: mappedUserState.stableSlots,
-      todos: mappedTodos.length > 0 ? mappedTodos : mappedReminders.map(mapReminderToTodo)
+      todos:
+        mappedTodos.length > 0 ? mappedTodos : mappedReminders.map(mapReminderToTodo)
     };
   }
 
@@ -389,6 +423,27 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
       );
 
       assertNoSupabaseError(result.error, "save eggs");
+    }
+
+    if (snapshot.arrivals.length > 0) {
+      const result = await this.client.from("arrival_notifications").upsert(
+        snapshot.arrivals.map((arrival) => ({
+          arrived_at: toIso(arrival.arrivedAtMs),
+          id: arrival.id,
+          journey_id: arrival.journeyId,
+          reminder_id: arrival.reminderId ?? null,
+          seen_at:
+            arrival.seenAtMs === undefined ? null : toIso(arrival.seenAtMs),
+          snail_id: arrival.snailId,
+          snail_name: arrival.snailName,
+          text: arrival.text,
+          todo_id: arrival.todoId ?? null,
+          user_id: userId
+        })),
+        { onConflict: "user_id,id" }
+      );
+
+      assertNoSupabaseError(result.error, "save arrival notifications");
     }
   }
 
@@ -546,6 +601,20 @@ function mapTodo(row: TodoRow): ToDo {
     id: row.id,
     status: row.status,
     text: row.text
+  };
+}
+
+function mapArrival(row: ArrivalRow): ArrivalNotification {
+  return {
+    arrivedAtMs: fromIso(row.arrived_at),
+    id: row.id,
+    journeyId: row.journey_id,
+    reminderId: row.reminder_id ?? undefined,
+    seenAtMs: row.seen_at ? fromIso(row.seen_at) : undefined,
+    snailId: row.snail_id,
+    snailName: row.snail_name,
+    text: row.text,
+    todoId: row.todo_id ?? undefined
   };
 }
 

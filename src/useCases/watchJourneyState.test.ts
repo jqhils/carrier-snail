@@ -151,6 +151,7 @@ function createWatchState({
   snails: Snail[];
 }): CarrierState {
   return {
+    arrivals: [],
     eggs: [],
     inventory: { cosmetics: [] },
     journeys,

@@ -1,4 +1,5 @@
 import { computeServerJourneyEta } from "./computeServerJourneyEta";
+import { createArrivalNotification } from "./arrivalInboxUseCases";
 import {
   cloneCarrierState,
   type CarrierState,
@@ -73,6 +74,19 @@ export async function runScheduledArrivalWorker({
         nowMs: serverNowMs,
         snails: state.snails
       });
+      state.arrivals.push(
+        createArrivalNotification({
+          arrivedAtMs: serverNowMs,
+          journey,
+          reminderId: delivery.reminder?.id,
+          sequence: state.arrivals.length + 1,
+          snailName:
+            state.snails.find(({ id }) => id === journey.snailId)?.name ??
+            "Unknown snail",
+          text: delivery.text,
+          todoId: delivery.todo?.id
+        })
+      );
       state.eggs.push(createEarnedEgg(state.eggs.length + 1, serverNowMs));
       state.softCurrency.slime += 1;
       completedCount += 1;

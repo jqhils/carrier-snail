@@ -13,15 +13,23 @@ const DEFAULT_TAB: BottomTabId = "map";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<BottomTabId>(DEFAULT_TAB);
+  const [hasUnseenNotifications, setHasUnseenNotifications] = useState(false);
 
   return (
     <SafeAreaProvider>
       <View style={styles.app}>
         <StatusBar style="dark" />
         <View style={styles.content}>
-          <MapScreen activeTab={activeTab} />
+          <MapScreen
+            activeTab={activeTab}
+            onUnseenNotificationsChange={setHasUnseenNotifications}
+          />
         </View>
-        <TabBar activeTab={activeTab} onChangeTab={setActiveTab} />
+        <TabBar
+          activeTab={activeTab}
+          hasUnseenNotifications={hasUnseenNotifications}
+          onChangeTab={setActiveTab}
+        />
       </View>
     </SafeAreaProvider>
   );
