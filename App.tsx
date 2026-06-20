@@ -8,12 +8,15 @@ import {
   type BottomTabId
 } from "./src/components/TabBar";
 import { MapScreen } from "./src/screens/MapScreen";
+import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 
 const DEFAULT_TAB: BottomTabId = "map";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<BottomTabId>(DEFAULT_TAB);
   const [hasUnseenNotifications, setHasUnseenNotifications] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+  const [completeOnboardingSignal, setCompleteOnboardingSignal] = useState(0);
 
   return (
     <SafeAreaProvider>
@@ -22,6 +25,8 @@ export default function App() {
         <View style={styles.content}>
           <MapScreen
             activeTab={activeTab}
+            completeOnboardingSignal={completeOnboardingSignal}
+            onOnboardingVisibleChange={setOnboardingVisible}
             onUnseenNotificationsChange={setHasUnseenNotifications}
           />
         </View>
@@ -30,6 +35,15 @@ export default function App() {
           hasUnseenNotifications={hasUnseenNotifications}
           onChangeTab={setActiveTab}
         />
+        {onboardingVisible ? (
+          <View style={styles.onboardingOverlay}>
+            <OnboardingScreen
+              onStart={() =>
+                setCompleteOnboardingSignal((signal) => signal + 1)
+              }
+            />
+          </View>
+        ) : null}
       </View>
     </SafeAreaProvider>
   );
@@ -42,5 +56,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1
+  },
+  onboardingOverlay: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0
   }
 });

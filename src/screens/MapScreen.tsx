@@ -10,8 +10,9 @@ import * as Location from "expo-location";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  PanResponder,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
@@ -20,12 +21,11 @@ import {
 } from "react-native";
 
 import type { BottomTabId } from "../components/TabBar";
+import { styles } from "./mapScreen.styles";
 import { ExpoBackgroundLocationController } from "../background/expoBackgroundLocationController";
 import {
   coerceTimeWarpFactor,
-  createPhaseZeroJourney,
-  getAllowedTimeWarpFactors,
-  getCrawlFrame
+  getAllowedTimeWarpFactors
 } from "../journey/snailCrawl";
 import type { Coordinate } from "../journey/snailCrawl";
 import {
@@ -46,11 +46,10 @@ import {
   markArrivalsSeen
 } from "../useCases/arrivalInboxUseCases";
 import {
-  BACKGROUND_LOCATION_PERMISSION_COPY,
   configureOptionalBackgroundLocation,
+  disableOptionalBackgroundLocation,
   type BackgroundLocationMode
 } from "../useCases/configureOptionalBackgroundLocation";
-import { createDemoPersonalityJourneys } from "../useCases/demoSnailPersonalities";
 import {
   ExpoLocalPushSender,
   requestArrivalNotificationPermission
@@ -62,8 +61,6 @@ import {
 } from "../useCases/levelUpSnail";
 import {
   completeOnboarding,
-  FIRST_RUN_ONBOARDING_STEPS,
-  LOCATION_PRIVACY_PLAIN_LANGUAGE,
   shouldShowOnboarding
 } from "../useCases/onboarding";
 import {
@@ -98,6 +95,7 @@ import {
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
 import { MySnailsScreen } from "./MySnailsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
+import { SettingsScreen } from "./SettingsScreen";
 import { ToDosScreen } from "./ToDosScreen";
 
 const MOCK_RESTING_POINT: Coordinate = {
@@ -137,6 +135,12 @@ const WATCH_SCRUB_STOPS = [
   { label: "75%", progress: 0.75 }
 ] as const;
 
+// Draggable snail-details sheet: a fixed-height sheet that translates down so only
+// the grip (peek) shows, or sits at 0 (expanded). Two snap points.
+const SHEET_EXPANDED_HEIGHT = 400;
+const SHEET_PEEK_HEIGHT = 96;
+const SHEET_COLLAPSED_OFFSET = SHEET_EXPANDED_HEIGHT - SHEET_PEEK_HEIGHT;
+
 type BackendSession = {
   repository: BackendCarrierRepository;
   user: CarrierUser;
@@ -144,20 +148,70 @@ type BackendSession = {
 
 type MapScreenProps = {
   activeTab: BottomTabId;
+  completeOnboardingSignal: number;
+  onOnboardingVisibleChange: (visible: boolean) => void;
   onUnseenNotificationsChange: (hasUnseen: boolean) => void;
 };
 
 export function MapScreen({
   activeTab,
+  completeOnboardingSignal,
+  onOnboardingVisibleChange,
   onUnseenNotificationsChange
 }: MapScreenProps) {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
-  const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
-  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
+  const [detailsCollapsed, setDetailsCollapsed] = useState(true);
+  const [sheetTranslateY] = useState(
+    () => new Animated.Value(SHEET_COLLAPSED_OFFSET)
+  );
+  const [sheetDrag] = useState(() => ({ start: 0 }));
+  const snapSheet = useCallback(
+    (collapse: boolean) => {
+      setDetailsCollapsed(collapse);
+      Animated.spring(sheetTranslateY, {
+        bounciness: 3,
+        toValue: collapse ? SHEET_COLLAPSED_OFFSET : 0,
+        useNativeDriver: false
+      }).start();
+    },
+    [sheetTranslateY]
+  );
+  const sheetPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          Math.abs(gesture.dy) > 4,
+        onPanResponderGrant: () => {
+          sheetTranslateY.stopAnimation((value) => {
+            sheetDrag.start = value;
+          });
+        },
+        onPanResponderMove: (_event, gesture) => {
+          const next = Math.max(
+            0,
+            Math.min(SHEET_COLLAPSED_OFFSET, sheetDrag.start + gesture.dy)
+          );
+          sheetTranslateY.setValue(next);
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          if (Math.abs(gesture.dy) < 6 && Math.abs(gesture.vy) < 0.2) {
+            snapSheet(!detailsCollapsed);
+            return;
+          }
+          const ended = sheetDrag.start + gesture.dy;
+          const collapse =
+            gesture.vy > 0.4 ||
+            (gesture.vy >= -0.4 && ended > SHEET_COLLAPSED_OFFSET / 2);
+          snapSheet(collapse);
+        }
+      }),
+    [detailsCollapsed, sheetDrag, sheetTranslateY, snapSheet]
+  );
   const cameraRef = useRef<CameraRef>(null);
 
   useEffect(() => {
@@ -186,7 +240,6 @@ export function MapScreen({
   const [backgroundLocationBusy, setBackgroundLocationBusy] = useState(false);
   const [backgroundLocationMode, setBackgroundLocationMode] =
     useState<BackgroundLocationMode>("foreground-only");
-  const [personalityDemoEnabled, setPersonalityDemoEnabled] = useState(false);
   const [selectedWatchJourneyId, setSelectedWatchJourneyId] = useState<
     string | undefined
   >(undefined);
@@ -235,6 +288,10 @@ export function MapScreen({
     (egg) => egg.status === "unhatched"
   );
   const onboardingVisible = shouldShowOnboarding(carrierState);
+
+  useEffect(() => {
+    onOnboardingVisibleChange(onboardingVisible);
+  }, [onboardingVisible, onOnboardingVisibleChange]);
   const purchaseCatalog = useMemo(() => getPurchaseCatalog(), []);
   const entitlementProvider = useMemo(
     () =>
@@ -311,7 +368,6 @@ export function MapScreen({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       });
-      setJourneyCreatedAtMs(Date.now());
       setLocationLabel("Coarse current location");
     }
 
@@ -421,22 +477,6 @@ export function MapScreen({
     };
   }, [backendSession, target]);
 
-  const demoJourney = useMemo(
-    () =>
-      createPhaseZeroJourney({
-        createdAtMs: journeyCreatedAtMs,
-        target
-      }),
-    [journeyCreatedAtMs, target]
-  );
-  const demoPersonalityJourneys = useMemo(
-    () =>
-      createDemoPersonalityJourneys({
-        createdAtMs: journeyCreatedAtMs,
-        target
-      }),
-    [journeyCreatedAtMs, target]
-  );
   const watchState = useMemo(
     () =>
       buildJourneyWatchState({
@@ -457,9 +497,14 @@ export function MapScreen({
       watchScrubProgress
     ]
   );
-  const selectedWatchJourney = selectedWatchJourneyId
+  const effectiveSelectedJourneyId =
+    selectedWatchJourneyId ??
+    (watchState.journeys.length === 1
+      ? watchState.journeys[0].journeyId
+      : undefined);
+  const selectedWatchJourney = effectiveSelectedJourneyId
     ? watchState.journeys.find(
-        ({ journeyId }) => journeyId === selectedWatchJourneyId
+        ({ journeyId }) => journeyId === effectiveSelectedJourneyId
       )
     : undefined;
   const selectedJourneySnail = selectedWatchJourney
@@ -470,46 +515,25 @@ export function MapScreen({
         ({ activeJourneyId }) => activeJourneyId === selectedWatchJourney.journeyId
       )
     : undefined;
-  const visibleCrawls = personalityDemoEnabled
-    ? demoPersonalityJourneys.map((crawl) => ({
-        highlighted: false,
-        id: crawl.id,
-        progress: getCrawlFrame({
-          journey: crawl.journey,
-          nowMs,
-          timeWarpFactor
-        }).progress,
-        snail: crawl.snail,
-        start: crawl.journey.start,
-        target: crawl.journey.target
-      }))
-    : watchState.journeys.length > 0
-      ? watchState.journeys.map((watchJourney) => ({
-          highlighted:
-            watchJourney.journeyId === selectedWatchJourney?.journeyId,
-          id: watchJourney.journeyId,
-          progress: watchJourney.preview.progress,
-          snail:
-            carrierState.snails.find(
-              (snail) => snail.id === watchJourney.snailId
-            ) ?? demoPersonalityJourneys[0].snail,
-          start: watchJourney.start,
-          target: watchJourney.target
-        }))
-      : [
+  const visibleCrawls = watchState.journeys.flatMap((watchJourney) => {
+    const snail = carrierState.snails.find(
+      (candidate) => candidate.id === watchJourney.snailId
+    );
+
+    return snail
+      ? [
           {
-            highlighted: false,
-            id: "single-demo",
-            progress: getCrawlFrame({
-              journey: demoJourney,
-              nowMs,
-              timeWarpFactor
-            }).progress,
-            snail: demoPersonalityJourneys[0].snail,
-            start: demoJourney.start,
-            target: demoJourney.target
+            highlighted:
+              watchJourney.journeyId === selectedWatchJourney?.journeyId,
+            id: watchJourney.journeyId,
+            progress: watchJourney.preview.progress,
+            snail,
+            start: watchJourney.start,
+            target: watchJourney.target
           }
-        ];
+        ]
+      : [];
+  });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -628,6 +652,17 @@ export function MapScreen({
     }
   }
 
+  // Bridge: App bumps completeOnboardingSignal on the onboarding "Start" tap;
+  // this runs the async, persisting completion. A user-triggered one-shot, not a
+  // render hotpath, so the hook lints below are deliberate.
+  useEffect(() => {
+    if (completeOnboardingSignal > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void finishOnboarding();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completeOnboardingSignal]);
+
   async function enableBackgroundLocation() {
     setBackgroundLocationBusy(true);
 
@@ -637,20 +672,31 @@ export function MapScreen({
       });
 
       setBackgroundLocationMode(result.mode);
-
-      if (result.mode === "location-denied") {
-        setFormError("Location permission denied. Foreground-only mode remains available.");
-      } else {
-        setFormError("");
-      }
-    } catch (error) {
-      setFormError(
-        error instanceof Error
-          ? error.message
-          : "Background location setup failed."
-      );
+    } catch {
+      setBackgroundLocationMode("foreground-only");
     } finally {
       setBackgroundLocationBusy(false);
+    }
+  }
+
+  async function disableBackgroundLocation() {
+    setBackgroundLocationBusy(true);
+
+    try {
+      await disableOptionalBackgroundLocation({
+        controller: backgroundLocationController
+      });
+      setBackgroundLocationMode("foreground-only");
+    } finally {
+      setBackgroundLocationBusy(false);
+    }
+  }
+
+  function toggleBackgroundLocation(enabled: boolean) {
+    if (enabled) {
+      void enableBackgroundLocation();
+    } else {
+      void disableBackgroundLocation();
     }
   }
 
@@ -1029,341 +1075,200 @@ export function MapScreen({
               </Text>
             </View>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              detailsCollapsed ? "Show map details" : "Hide map details"
-            }
-            onPress={() => setDetailsCollapsed((value) => !value)}
-            style={({ pressed }) => [
-              styles.mapToggle,
-              pressed && styles.mapTogglePressed
-            ]}
-          >
-            <Text style={styles.mapToggleText}>
-              {detailsCollapsed ? "Show details" : "Hide details"}
-            </Text>
-          </Pressable>
         </View>
 
-        <SafeAreaView style={styles.controls}>
-            <ScrollView
-              contentContainerStyle={styles.controlsContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.statusRow}>
-                <View style={styles.titleBlock}>
-                  <Text numberOfLines={1} style={styles.title}>
-                    Carrier Snail
-                  </Text>
-                  <Text numberOfLines={1} style={styles.meta}>
-                    {locationLabel}
-                  </Text>
-                </View>
-                <View style={styles.statusActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Toggle personality demo trio"
-                    onPress={() => setPersonalityDemoEnabled((enabled) => !enabled)}
-                    style={({ pressed }) => [
-                      styles.personalityButton,
-                      personalityDemoEnabled ? styles.personalityButtonEnabled : null,
-                      pressed ? styles.personalityButtonPressed : null
-                    ]}
-                  >
-                    <Text style={styles.personalityButtonText}>
-                      {personalityDemoEnabled ? "Solo" : "Trio"}
+        <Animated.View
+          style={[
+            styles.controls,
+            {
+              height: SHEET_EXPANDED_HEIGHT,
+              transform: [{ translateY: sheetTranslateY }]
+            }
+          ]}
+        >
+          <View
+            accessibilityLabel="Snail details. Drag or tap to expand."
+            accessibilityRole="adjustable"
+            style={styles.sheetGrip}
+            {...sheetPan.panHandlers}
+          >
+            <View style={styles.peekHandle} />
+            <View style={styles.peekTextBlock}>
+              <Text numberOfLines={1} style={styles.peekTitle}>
+                {selectedWatchJourney
+                  ? selectedWatchJourney.snailName
+                  : watchState.journeys.length > 0
+                    ? "Tap a snail to watch"
+                    : "No snails out right now"}
+              </Text>
+              {selectedWatchJourney ? (
+                <Text numberOfLines={1} style={styles.peekEta}>
+                  {selectedWatchJourney.etaRange.copy}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.controlsContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={styles.sheetScroll}
+          >
+            {selectedWatchJourney ? (
+              <>
+                <Text style={styles.watchCarryingLabel}>Carrying</Text>
+                <Text numberOfLines={2} style={styles.watchTodoText}>
+                  {selectedWatchJourney.reminderText}
+                </Text>
+                <View style={styles.watchTraitRow}>
+                  <View style={styles.watchTrait}>
+                    <Text style={styles.watchTraitLabel}>Level</Text>
+                    <Text style={styles.watchTraitValue}>
+                      {selectedJourneySnail?.level ?? 1}
                     </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Cycle debug time warp"
-                    onPress={cycleWarp}
-                    style={styles.warpButton}
-                  >
-                    <Text style={styles.warpValue}>
-                      {timeWarpFactor.toLocaleString()}x
+                  </View>
+                  <View style={styles.watchTrait}>
+                    <Text style={styles.watchTraitLabel}>Quirk</Text>
+                    <Text numberOfLines={1} style={styles.watchTraitValue}>
+                      {formatQuirkLabel(selectedJourneySnail?.quirk)}
                     </Text>
-                    <Text style={styles.warpLabel}>warp</Text>
-                  </Pressable>
+                  </View>
+                  <View style={styles.watchTrait}>
+                    <Text style={styles.watchTraitLabel}>Trail</Text>
+                    <Text numberOfLines={1} style={styles.watchTraitValue}>
+                      {selectedWatchJourney.trail.texture}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-              {personalityDemoEnabled ? (
-                <View style={styles.demoLegend}>
-                  {demoPersonalityJourneys.map(({ snail }) => (
-                    <View key={snail.id} style={styles.demoLegendItem}>
+                <Text numberOfLines={2} style={styles.watchMeta}>
+                  Path{" "}
+                  {formatDistance(selectedWatchJourney.preview.travelledMeters)}{" "}
+                  crawled,{" "}
+                  {formatDistance(selectedWatchJourney.preview.remainingMeters)}{" "}
+                  left
+                </Text>
+                <Text numberOfLines={2} style={styles.watchMeta}>
+                  Target {formatCoordinate(selectedWatchJourney.target)}. Trail
+                  points {selectedWatchJourney.trailHistory.length}.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text numberOfLines={3} style={styles.watchEta}>
+                  {watchState.journeys.length > 0
+                    ? "Tap a snail on the map, or choose one below to watch its crawl."
+                    : "No snail is carrying a thought yet. Send one from your To Dos."}
+                </Text>
+                <Text numberOfLines={1} style={styles.watchMeta}>
+                  Snails crawl toward {locationLabel.toLowerCase()}.
+                </Text>
+              </>
+            )}
+
+            {watchState.journeys.length > 0 ? (
+              <View style={styles.watchJourneyTabs}>
+                {watchState.journeys.map((watchJourney) => {
+                  const selected =
+                    selectedWatchJourney?.journeyId === watchJourney.journeyId;
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
+                      key={watchJourney.journeyId}
+                      onPress={() => selectWatchJourney(watchJourney.journeyId)}
+                      style={({ pressed }) => [
+                        styles.watchJourneyTab,
+                        selected ? styles.watchJourneyTabSelected : null,
+                        pressed ? styles.watchJourneyTabPressed : null
+                      ]}
+                    >
                       <View
                         style={[
-                          styles.demoLegendSwatch,
-                          { backgroundColor: snail.trail.color }
+                          styles.watchJourneySwatch,
+                          { backgroundColor: watchJourney.trail.color }
                         ]}
                       />
-                      <Text numberOfLines={1} style={styles.demoLegendText}>
-                        {snail.name}
+                      <Text numberOfLines={1} style={styles.watchJourneyTabText}>
+                        {watchJourney.snailName}
                       </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {onboardingVisible ? (
-                <View style={styles.onboardingPanel}>
-                  <View style={styles.onboardingHeaderRow}>
-                    <View style={styles.onboardingTitleBlock}>
-                      <Text style={styles.onboardingKicker}>First delivery</Text>
-                      <Text numberOfLines={1} style={styles.onboardingTitle}>
-                        Garden Snail is ready
-                      </Text>
-                    </View>
-                    <View style={styles.onboardingSnailBadge}>
-                      <Text style={styles.onboardingSnailBadgeText}>1</Text>
-                    </View>
-                  </View>
-                  <View style={styles.onboardingStepList}>
-                    {FIRST_RUN_ONBOARDING_STEPS.map((step, index) => (
-                      <View key={step} style={styles.onboardingStep}>
-                        <Text style={styles.onboardingStepNumber}>{index + 1}</Text>
-                        <Text style={styles.onboardingStepText}>{step}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <Text style={styles.onboardingPrivacy}>
-                    {LOCATION_PRIVACY_PLAIN_LANGUAGE}
-                  </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {selectedWatchJourney ? (
+              <>
+                <View style={styles.watchActionRow}>
+                  {selectedWatchToDo ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Recall selected snail"
+                      onPress={recallSelectedWatchJourney}
+                      style={({ pressed }) => [
+                        styles.recallButton,
+                        pressed ? styles.recallButtonPressed : null
+                      ]}
+                    >
+                      <Text style={styles.recallButtonText}>Recall</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Start with Garden Snail"
-                    onPress={finishOnboarding}
+                    accessibilityLabel="Share selected trail"
+                    onPress={shareSelectedTrail}
                     style={({ pressed }) => [
-                      styles.onboardingButton,
-                      pressed ? styles.onboardingButtonPressed : null
+                      styles.watchShareButton,
+                      pressed ? styles.watchShareButtonPressed : null
                     ]}
                   >
-                    <Text style={styles.onboardingButtonText}>
-                      Start with Garden Snail
-                    </Text>
+                    <Text style={styles.watchShareButtonText}>Share trail</Text>
                   </Pressable>
                 </View>
-              ) : null}
-
-              {detailsCollapsed ? null : (
-                <View style={styles.watchPanel}>
-                  <View style={styles.watchHeaderRow}>
-                    <View style={styles.watchTitleBlock}>
-                      <Text style={styles.watchKicker}>
-                        {selectedWatchJourney ? "Traveler" : "Details"}
+                <View style={styles.watchScrubRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Show live journey position"
+                    onPress={() => scrubWatchJourney(undefined)}
+                    style={({ pressed }) => [
+                      styles.watchScrubButton,
+                      watchScrubProgress === undefined
+                        ? styles.watchScrubButtonSelected
+                        : null,
+                      pressed ? styles.watchScrubButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.watchScrubButtonText}>Live</Text>
+                  </Pressable>
+                  {WATCH_SCRUB_STOPS.map((stop) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Preview trail at ${stop.label}`}
+                      key={stop.label}
+                      onPress={() => scrubWatchJourney(stop.progress)}
+                      style={({ pressed }) => [
+                        styles.watchScrubButton,
+                        watchScrubProgress === stop.progress
+                          ? styles.watchScrubButtonSelected
+                          : null,
+                        pressed ? styles.watchScrubButtonPressed : null
+                      ]}
+                    >
+                      <Text style={styles.watchScrubButtonText}>
+                        {stop.label}
                       </Text>
-                      <Text numberOfLines={1} style={styles.watchTitle}>
-                        {selectedWatchJourney
-                          ? selectedWatchJourney.snailName
-                          : watchState.journeys.length > 0
-                            ? "Choose a trail"
-                            : "Map at rest"}
-                      </Text>
-                    </View>
-                    {selectedWatchJourney ? (
-                      <View style={styles.watchProgressPill}>
-                        <Text style={styles.watchProgress}>
-                          {Math.round(selectedWatchJourney.preview.progress * 100)}%
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  {selectedWatchJourney ? (
-                    <>
-                      <Text style={styles.watchCarryingLabel}>Carrying</Text>
-                      <Text numberOfLines={2} style={styles.watchTodoText}>
-                        {selectedWatchJourney.reminderText}
-                      </Text>
-                      <View style={styles.watchTraitRow}>
-                        <View style={styles.watchTrait}>
-                          <Text style={styles.watchTraitLabel}>Level</Text>
-                          <Text style={styles.watchTraitValue}>
-                            {selectedJourneySnail?.level ?? 1}
-                          </Text>
-                        </View>
-                        <View style={styles.watchTrait}>
-                          <Text style={styles.watchTraitLabel}>Quirk</Text>
-                          <Text numberOfLines={1} style={styles.watchTraitValue}>
-                            {formatQuirkLabel(selectedJourneySnail?.quirk)}
-                          </Text>
-                        </View>
-                        <View style={styles.watchTrait}>
-                          <Text style={styles.watchTraitLabel}>Trail</Text>
-                          <Text numberOfLines={1} style={styles.watchTraitValue}>
-                            {selectedWatchJourney.trail.texture}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text numberOfLines={3} style={styles.watchEta}>
-                        {selectedWatchJourney.etaRange.copy}
-                      </Text>
-                      <Text numberOfLines={2} style={styles.watchMeta}>
-                        Path{" "}
-                        {formatDistance(
-                          selectedWatchJourney.preview.travelledMeters
-                        )}{" "}
-                        crawled,{" "}
-                        {formatDistance(
-                          selectedWatchJourney.preview.remainingMeters
-                        )}{" "}
-                        left
-                      </Text>
-                      <Text numberOfLines={2} style={styles.watchMeta}>
-                        Target {formatCoordinate(selectedWatchJourney.target)}.
-                        Trail points {selectedWatchJourney.trailHistory.length}.
-                      </Text>
-                    </>
-                  ) : (
-                    <Text numberOfLines={3} style={styles.watchEta}>
-                      {watchState.journeys.length > 0
-                        ? "Tap a snail on the map, or choose one below."
-                        : "No snail is carrying a thought right now."}
-                    </Text>
-                  )}
-
-                  {watchState.journeys.length > 0 ? (
-                    <View style={styles.watchJourneyTabs}>
-                      {watchState.journeys.map((watchJourney) => {
-                        const selected =
-                          selectedWatchJourney?.journeyId ===
-                          watchJourney.journeyId;
-
-                        return (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
-                            key={watchJourney.journeyId}
-                            onPress={() =>
-                              selectWatchJourney(watchJourney.journeyId)
-                            }
-                            style={({ pressed }) => [
-                              styles.watchJourneyTab,
-                              selected ? styles.watchJourneyTabSelected : null,
-                              pressed ? styles.watchJourneyTabPressed : null
-                            ]}
-                          >
-                            <View
-                              style={[
-                                styles.watchJourneySwatch,
-                                { backgroundColor: watchJourney.trail.color }
-                              ]}
-                            />
-                            <Text
-                              numberOfLines={1}
-                              style={styles.watchJourneyTabText}
-                            >
-                              {watchJourney.snailName}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-
-                  {selectedWatchJourney ? (
-                    <>
-                      <View style={styles.watchActionRow}>
-                        {selectedWatchToDo ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Recall selected snail"
-                            onPress={recallSelectedWatchJourney}
-                            style={({ pressed }) => [
-                              styles.recallButton,
-                              pressed ? styles.recallButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.recallButtonText}>Recall</Text>
-                          </Pressable>
-                        ) : null}
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Share selected trail"
-                          onPress={shareSelectedTrail}
-                          style={({ pressed }) => [
-                            styles.watchShareButton,
-                            pressed ? styles.watchShareButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.watchShareButtonText}>
-                            Share trail
-                          </Text>
-                        </Pressable>
-                      </View>
-                      <View style={styles.watchScrubRow}>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Show live journey position"
-                          onPress={() => scrubWatchJourney(undefined)}
-                          style={({ pressed }) => [
-                            styles.watchScrubButton,
-                            watchScrubProgress === undefined
-                              ? styles.watchScrubButtonSelected
-                              : null,
-                            pressed ? styles.watchScrubButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.watchScrubButtonText}>Live</Text>
-                        </Pressable>
-                        {WATCH_SCRUB_STOPS.map((stop) => (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Preview trail at ${stop.label}`}
-                            key={stop.label}
-                            onPress={() => scrubWatchJourney(stop.progress)}
-                            style={({ pressed }) => [
-                              styles.watchScrubButton,
-                              watchScrubProgress === stop.progress
-                                ? styles.watchScrubButtonSelected
-                                : null,
-                              pressed ? styles.watchScrubButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.watchScrubButtonText}>
-                              {stop.label}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </>
-                  ) : null}
+                    </Pressable>
+                  ))}
                 </View>
-              )}
+              </>
+            ) : null}
 
-              <View style={styles.backgroundLocationRow}>
-                <Text style={styles.backgroundLocationText}>
-                  {BACKGROUND_LOCATION_PERMISSION_COPY}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Enable optional background location"
-                  disabled={
-                    backgroundLocationBusy ||
-                    backgroundLocationMode === "background-enabled"
-                  }
-                  onPress={enableBackgroundLocation}
-                  style={({ pressed }) => [
-                    styles.backgroundLocationButton,
-                    pressed ? styles.backgroundLocationButtonPressed : null,
-                    backgroundLocationMode === "background-enabled"
-                      ? styles.backgroundLocationButtonEnabled
-                      : null
-                  ]}
-                >
-                  <Text style={styles.backgroundLocationButtonText}>
-                    {backgroundLocationMode === "background-enabled"
-                      ? "On"
-                      : backgroundLocationBusy
-                        ? "..."
-                        : "Enable"}
-                  </Text>
-                </Pressable>
-              </View>
-              {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-            </ScrollView>
-          </SafeAreaView>
+            {formError ? (
+              <Text style={styles.errorText}>{formError}</Text>
+            ) : null}
+          </ScrollView>
+        </Animated.View>
       </View>
 
       {activeTab === "snails" ? (
@@ -1430,6 +1335,16 @@ export function MapScreen({
           arrivals={arrivalItems}
           nowMs={nowMs}
           onViewed={markNotificationsViewed}
+        />
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <SettingsScreen
+          backgroundLocationBusy={backgroundLocationBusy}
+          backgroundLocationMode={backgroundLocationMode}
+          onCycleWarp={cycleWarp}
+          onToggleBackgroundLocation={toggleBackgroundLocation}
+          timeWarpFactor={timeWarpFactor}
         />
       ) : null}
     </View>
@@ -1524,821 +1439,3 @@ function formatCoordinate(coordinate: Coordinate): string {
   return `${coordinate.latitude.toFixed(3)}, ${coordinate.longitude.toFixed(3)}`;
 }
 
-const styles = StyleSheet.create({
-  backgroundLocationButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 38,
-    minWidth: 68,
-    paddingHorizontal: 12
-  },
-  backgroundLocationButtonEnabled: {
-    backgroundColor: "#6a7b70"
-  },
-  backgroundLocationButtonPressed: {
-    backgroundColor: "#315547"
-  },
-  backgroundLocationButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  backgroundLocationRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10
-  },
-  backgroundLocationText: {
-    color: "#56645e",
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 16
-  },
-  buyButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 60,
-    paddingHorizontal: 10
-  },
-  buyButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  buyButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  buyButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  controls: {
-    backgroundColor: "rgba(249, 247, 238, 0.94)",
-    borderTopColor: "rgba(38, 51, 46, 0.12)",
-    borderTopWidth: 1,
-    bottom: 0,
-    left: 0,
-    maxHeight: "76%",
-    paddingBottom: 18,
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    position: "absolute",
-    right: 0
-  },
-  controlsContent: {
-    paddingBottom: 2
-  },
-  composerRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12
-  },
-  demoLegend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 10
-  },
-  demoLegendItem: {
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.58)",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 30,
-    paddingHorizontal: 9
-  },
-  demoLegendSwatch: {
-    borderRadius: 5,
-    height: 10,
-    width: 10
-  },
-  demoLegendText: {
-    color: "#25332e",
-    fontSize: 12,
-    fontWeight: "700",
-    maxWidth: 124
-  },
-  errorText: {
-    color: "#a13d2d",
-    fontSize: 13,
-    marginTop: 8
-  },
-  eggCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  eggList: {
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
-    borderTopWidth: 1,
-    gap: 8,
-    marginTop: 10,
-    paddingTop: 10
-  },
-  eggOdds: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2
-  },
-  eggRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10
-  },
-  eggTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  hatchButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 68,
-    paddingHorizontal: 10
-  },
-  hatchButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  hatchButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  inFlightItem: {
-    alignItems: "center",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 9
-  },
-  inFlightCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  inFlightList: {
-    gap: 8,
-    marginTop: 10
-  },
-  inFlightSnail: {
-    color: "#5d6d77",
-    fontSize: 12,
-    marginTop: 2
-  },
-  inFlightText: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "600"
-  },
-  levelButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 76,
-    paddingHorizontal: 10
-  },
-  levelButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  levelButtonPressed: {
-    backgroundColor: "#315547"
-  },
-  levelButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  levelRow: {
-    alignItems: "center",
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
-    paddingTop: 10
-  },
-  levelText: {
-    color: "#25332e",
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
-    minWidth: 0
-  },
-  mapHint: {
-    backgroundColor: "rgba(20, 28, 24, 0.72)",
-    borderRadius: 8,
-    bottom: 10,
-    left: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    position: "absolute",
-    right: 10
-  },
-  mapHintText: {
-    color: "#eef3ec",
-    fontSize: 12,
-    textAlign: "center"
-  },
-  mapNotice: {
-    alignItems: "center",
-    backgroundColor: "rgba(20, 28, 24, 0.55)",
-    bottom: 0,
-    justifyContent: "center",
-    left: 0,
-    padding: 20,
-    position: "absolute",
-    right: 0,
-    top: 0
-  },
-  mapNoticeBody: {
-    color: "#dfe6df",
-    fontSize: 13,
-    marginTop: 4,
-    textAlign: "center"
-  },
-  mapNoticeTitle: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  mapShell: {
-    flex: 1
-  },
-  mapSurface: {
-    flex: 1
-  },
-  mapToggle: {
-    backgroundColor: "rgba(20, 28, 24, 0.72)",
-    borderRadius: 18,
-    left: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    position: "absolute",
-    top: 52
-  },
-  mapTogglePressed: {
-    backgroundColor: "rgba(20, 28, 24, 0.92)"
-  },
-  mapToggleText: {
-    color: "#f3f7f1",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  snailGlyph: {
-    fontSize: 20
-  },
-  snailMarker: {
-    alignItems: "center",
-    borderColor: "#ffffff",
-    borderRadius: 18,
-    borderWidth: 2,
-    height: 36,
-    justifyContent: "center",
-    width: 36
-  },
-  snailMarkerPressed: {
-    opacity: 0.78,
-    transform: [{ scale: 0.96 }]
-  },
-  targetMarker: {
-    backgroundColor: "#1f5da2",
-    borderColor: "#ffffff",
-    borderRadius: 8,
-    borderWidth: 2,
-    height: 16,
-    width: 16
-  },
-  meta: {
-    color: "#56645e",
-    fontSize: 13,
-    marginTop: 2
-  },
-  onboardingButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    marginTop: 10,
-    minHeight: 38,
-    paddingHorizontal: 12
-  },
-  onboardingButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  onboardingButtonText: {
-    color: "#f8fafc",
-    fontSize: 14,
-    fontWeight: "800"
-  },
-  onboardingHeaderRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between"
-  },
-  onboardingKicker: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
-    textTransform: "uppercase"
-  },
-  onboardingPanel: {
-    backgroundColor: "#f7f6ef",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 12,
-    padding: 10
-  },
-  onboardingPrivacy: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 9
-  },
-  onboardingSnailBadge: {
-    alignItems: "center",
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(63, 109, 91, 0.26)",
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 34,
-    justifyContent: "center",
-    width: 34
-  },
-  onboardingSnailBadgeText: {
-    color: "#3f6d5b",
-    fontSize: 16,
-    fontWeight: "800"
-  },
-  onboardingStep: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 8
-  },
-  onboardingStepList: {
-    gap: 7,
-    marginTop: 10
-  },
-  onboardingStepNumber: {
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 17,
-    minWidth: 14
-  },
-  onboardingStepText: {
-    color: "#25332e",
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
-    minWidth: 0
-  },
-  onboardingTitle: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "800",
-    marginTop: 2
-  },
-  onboardingTitleBlock: {
-    flex: 1,
-    minWidth: 0
-  },
-  personalityButton: {
-    alignItems: "center",
-    backgroundColor: "#edf1e8",
-    borderColor: "rgba(37, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 48,
-    minWidth: 62,
-    paddingHorizontal: 12
-  },
-  personalityButtonEnabled: {
-    backgroundColor: "#fff6ef",
-    borderColor: "rgba(178, 72, 54, 0.34)"
-  },
-  personalityButtonPressed: {
-    backgroundColor: "#e3ebe2"
-  },
-  personalityButtonText: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "800"
-  },
-  screen: {
-    backgroundColor: "#edf1e8",
-    flex: 1
-  },
-  hiddenSurface: {
-    display: "none"
-  },
-  shopCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  shopDetail: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2
-  },
-  shopDisclosure: {
-    color: "#6d5a46",
-    fontSize: 12,
-    lineHeight: 16
-  },
-  shopList: {
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
-    borderTopWidth: 1,
-    gap: 9,
-    marginTop: 10,
-    paddingTop: 10
-  },
-  shopRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10
-  },
-  shopTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  sendButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    minHeight: 44,
-    minWidth: 72,
-    justifyContent: "center",
-    paddingHorizontal: 14
-  },
-  sendButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  sendButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  sendButtonText: {
-    color: "#f8fafc",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  reminderInput: {
-    backgroundColor: "#ffffff",
-    borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: "#25332e",
-    flex: 1,
-    fontSize: 16,
-    minHeight: 44,
-    paddingHorizontal: 12
-  },
-  recallButton: {
-    alignItems: "center",
-    backgroundColor: "#fff6ef",
-    borderColor: "rgba(161, 61, 45, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 68,
-    paddingHorizontal: 10
-  },
-  recallButtonPressed: {
-    backgroundColor: "#f8e5dc"
-  },
-  recallButtonText: {
-    color: "#a13d2d",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  statusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
-  },
-  statusActions: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8
-  },
-  stableCapacity: {
-    color: "#56645e",
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
-    marginLeft: 8,
-    textAlign: "right"
-  },
-  stableHeaderRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
-  },
-  stablePanel: {
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 12,
-    padding: 10
-  },
-  stableSnailIdentityRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "space-between"
-  },
-  stableSnailItem: {
-    backgroundColor: "#ffffff",
-    borderColor: "rgba(63, 109, 91, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8
-  },
-  stableSnailItemBusy: {
-    backgroundColor: "#eef1ed",
-    borderColor: "rgba(86, 100, 94, 0.2)"
-  },
-  stableSnailItemPressed: {
-    backgroundColor: "#eef7f1"
-  },
-  stableSnailItemSelected: {
-    borderColor: "#3f6d5b",
-    borderWidth: 2
-  },
-  stableSnailList: {
-    gap: 8,
-    marginTop: 8
-  },
-  stableSnailMeta: {
-    color: "#56645e",
-    fontSize: 12,
-    marginTop: 3
-  },
-  stableSnailName: {
-    color: "#25332e",
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  stableSnailStatus: {
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  stableSnailStats: {
-    color: "#6d5a46",
-    fontSize: 12,
-    marginTop: 3
-  },
-  stableTitle: {
-    color: "#25332e",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  title: {
-    color: "#25332e",
-    fontSize: 21,
-    fontWeight: "700"
-  },
-  titleBlock: {
-    flex: 1,
-    minWidth: 0
-  },
-  warpButton: {
-    alignItems: "center",
-    backgroundColor: "#25332e",
-    borderRadius: 8,
-    minWidth: 86,
-    paddingHorizontal: 14,
-    paddingVertical: 9
-  },
-  warpLabel: {
-    color: "#dce7d2",
-    fontSize: 11,
-    marginTop: 1,
-    textTransform: "uppercase"
-  },
-  warpValue: {
-    color: "#fff7dc",
-    fontSize: 16,
-    fontWeight: "700"
-  },
-  watchActionRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "flex-start",
-    marginTop: 10
-  },
-  watchCarryingLabel: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0,
-    marginTop: 12,
-    textTransform: "uppercase"
-  },
-  watchEta: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 10
-  },
-  watchHeaderRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between"
-  },
-  watchJourneySwatch: {
-    borderRadius: 5,
-    height: 10,
-    width: 10
-  },
-  watchJourneyTab: {
-    alignItems: "center",
-    backgroundColor: "#f7f6ef",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 30,
-    maxWidth: 142,
-    paddingHorizontal: 9
-  },
-  watchJourneyTabPressed: {
-    backgroundColor: "#eef7f1"
-  },
-  watchJourneyTabSelected: {
-    borderColor: "#3f6d5b",
-    borderWidth: 2
-  },
-  watchJourneyTabText: {
-    color: "#25332e",
-    flexShrink: 1,
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  watchJourneyTabs: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 10
-  },
-  watchKicker: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
-    textTransform: "uppercase"
-  },
-  watchMeta: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 6
-  },
-  watchPanel: {
-    backgroundColor: "rgba(248, 245, 235, 0.9)",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 12,
-    padding: 12
-  },
-  watchProgress: {
-    color: "#3f6d5b",
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  watchProgressPill: {
-    alignItems: "center",
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(63, 109, 91, 0.22)",
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 54,
-    paddingHorizontal: 10
-  },
-  watchScrubButton: {
-    alignItems: "center",
-    backgroundColor: "#edf1e8",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 30,
-    minWidth: 48,
-    paddingHorizontal: 8
-  },
-  watchScrubButtonPressed: {
-    backgroundColor: "#dfe9df"
-  },
-  watchScrubButtonSelected: {
-    backgroundColor: "#dfeee4",
-    borderColor: "#3f6d5b"
-  },
-  watchScrubButtonText: {
-    color: "#25332e",
-    fontSize: 12,
-    fontWeight: "800"
-  },
-  watchScrubRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    justifyContent: "flex-start",
-    marginTop: 10
-  },
-  watchShareButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 32,
-    minWidth: 88,
-    paddingHorizontal: 10
-  },
-  watchShareButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  watchShareButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  watchTitle: {
-    color: "#25332e",
-    fontSize: 18,
-    fontWeight: "900",
-    marginTop: 2
-  },
-  watchTitleBlock: {
-    flex: 1,
-    minWidth: 0
-  },
-  watchTodoText: {
-    color: "#25332e",
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 24,
-    marginTop: 4
-  },
-  watchTrait: {
-    backgroundColor: "#f1eee4",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
-    flexGrow: 1,
-    minWidth: 92,
-    paddingHorizontal: 10,
-    paddingVertical: 9
-  },
-  watchTraitLabel: {
-    color: "#6d746d",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
-    textTransform: "uppercase"
-  },
-  watchTraitRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12
-  },
-  watchTraitValue: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "900",
-    marginTop: 3
-  }
-});

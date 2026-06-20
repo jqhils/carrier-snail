@@ -34,3 +34,7 @@ coverage/
 .idea/
 .vscode/
 *.tsbuildinfo
+
+# Supabase CLI scratch (local state, regenerated on demand)
+supabase/.temp/
+supabase/.branches/
