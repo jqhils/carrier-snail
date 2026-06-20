@@ -29,9 +29,32 @@ npm run ios
 npm run android
 ```
 
-MapLibre React Native is native code and does not run in Expo Go. The app uses
-the MapLibre demo style by default; override it with
-`EXPO_PUBLIC_MAP_STYLE_URL` in `.env` if needed.
+MapLibre React Native is native code and does not run in Expo Go or on web — use
+a dev build (`npm run ios` / `npm run android`).
+
+### Map basemap (important)
+
+The default style, `https://demotiles.maplibre.org/style.json`, is a **keyless
+placeholder** with only low-zoom world data — it shows continents, not streets,
+so the app frames it out to a world view. For a real city-level basemap (and to
+see the snail crawl on actual roads), set a free
+[MapTiler](https://cloud.maptiler.com) style + key in `.env`:
+
+```sh
+EXPO_PUBLIC_MAP_STYLE_URL=https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_MAPTILER_KEY
+```
+
+Self-hosted Protomaps on Cloudflare R2 is the keyless, zero-egress option for
+scale (see `specs/tech-stack.md`).
+
+### Running on a physical device
+
+A dev build downloads its JS from Metro on every launch, so **Metro must be
+running** (`npx expo start`, or the terminal left open by `npm run android`), and
+the phone must be able to reach it: put the phone on the **same Wi-Fi as your
+computer**, or keep it on USB and run `adb reverse tcp:8081 tcp:8081`. A white
+screen followed by an error almost always means Metro isn't running or isn't
+reachable — not a code problem.
 
 ## Backend spine
 

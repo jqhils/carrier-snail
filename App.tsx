@@ -1,11 +1,16 @@
-import { Camera, Map } from "@maplibre/maplibre-react-native";
-import { Canvas, Circle, Line, vec } from "@shopify/react-native-skia";
+import {
+  Camera,
+  type CameraRef,
+  GeoJSONSource,
+  Layer,
+  Map,
+  Marker
+} from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  LayoutChangeEvent,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -24,13 +29,16 @@ import {
   getCrawlFrame
 } from "./src/journey/snailCrawl";
 import type { Coordinate } from "./src/journey/snailCrawl";
+import {
+  buildJourneyPolyline,
+  type GeoTrailSegment
+} from "./src/journey/journeyPolyline";
 import { SupabaseAnonymousAuthProvider } from "./src/backend/supabaseAnonymousAuthProvider";
 import { SupabaseCarrierRepository } from "./src/backend/supabaseCarrierRepository";
 import {
   createCarrierSupabaseClient,
   installSupabaseAutoRefresh
 } from "./src/backend/supabaseClient";
-import { buildFadingTrailSegments } from "./src/journey/trail";
 import { createRevenueCatEntitlementProvider } from "./src/payments/revenueCatEntitlementProvider";
 import { completeArrivedJourneys } from "./src/useCases/completeArrivedJourneys";
 import {
@@ -75,7 +83,7 @@ import {
 import { buildJourneyWatchState } from "./src/useCases/watchJourneyState";
 import { loadBackendJourneyState } from "./src/useCases/loadBackendJourneyState";
 import {
-  resolveAnonymousCarrierUser,
+  tryResolveAnonymousCarrierUser,
   type BackendCarrierRepository,
   type CarrierUser
 } from "./src/useCases/resolveAnonymousCarrierUser";
@@ -90,6 +98,13 @@ const MOCK_RESTING_POINT: Coordinate = {
 const MAP_STYLE_URL =
   process.env.EXPO_PUBLIC_MAP_STYLE_URL ??
   "https://demotiles.maplibre.org/style.json";
+// The default demotiles style is a keyless placeholder with only low-zoom world
+// data (no streets). Frame it out to the world so it shows *something*; real
+// providers (MapTiler/Protomaps) get a city-level view to see the journey.
+const USING_PLACEHOLDER_BASEMAP = MAP_STYLE_URL.includes(
+  "demotiles.maplibre.org"
+);
+const MAP_DEFAULT_ZOOM = USING_PLACEHOLDER_BASEMAP ? 1.6 : 13;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
 const REVENUECAT_ANDROID_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
@@ -112,11 +127,6 @@ const WATCH_SCRUB_STOPS = [
   { label: "75%", progress: 0.75 }
 ] as const;
 
-type Viewport = {
-  height: number;
-  width: number;
-};
-
 type BackendSession = {
   repository: BackendCarrierRepository;
   user: CarrierUser;
@@ -125,8 +135,22 @@ type BackendSession = {
 export default function App() {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
-  const [viewport, setViewport] = useState<Viewport>({ height: 0, width: 0 });
   const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
+  const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
+    "loading"
+  );
+  const [mapMaximized, setMapMaximized] = useState(false);
+  const cameraRef = useRef<CameraRef>(null);
+
+  useEffect(() => {
+    // Keep the camera centred on the user's location at an appropriate zoom,
+    // recentring when a fresh coarse location arrives.
+    cameraRef.current?.easeTo({
+      center: [target.longitude, target.latitude],
+      duration: 600,
+      zoom: MAP_DEFAULT_ZOOM
+    });
+  }, [target.latitude, target.longitude]);
   const [carrierState, setCarrierState] = useState(() =>
     createInitialCarrierState()
   );
@@ -244,11 +268,18 @@ export default function App() {
     const authProvider = new SupabaseAnonymousAuthProvider(supabase);
 
     async function loadBackendState() {
-      const user = await resolveAnonymousCarrierUser({
+      const user = await tryResolveAnonymousCarrierUser({
         authProvider,
         clock: { now: () => Date.now() },
         repository
       });
+
+      if (!user) {
+        // Backend configured but unavailable (e.g. anonymous sign-ins disabled).
+        // Fall back to local mode silently — the app stays fully usable.
+        return;
+      }
+
       const loaded = await loadBackendJourneyState({
         clock: { now: () => Date.now() },
         repository,
@@ -272,13 +303,13 @@ export default function App() {
     }
 
     loadBackendState().catch((error) => {
-      if (!cancelled) {
-        setFormError(
-          error instanceof Error
-            ? error.message
-            : "Supabase setup failed; using local state."
-        );
-      }
+      // Any other backend setup failure (e.g. row-level security) — stay in
+      // local mode rather than surfacing a scary error.
+      console.warn(
+        `Carrier Snail backend unavailable; using local mode. ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     });
 
     return () => {
@@ -366,7 +397,9 @@ export default function App() {
           nowMs,
           timeWarpFactor
         }).progress,
-        snail: crawl.snail
+        snail: crawl.snail,
+        start: crawl.journey.start,
+        target: crawl.journey.target
       }))
     : watchState.journeys.length > 0
       ? watchState.journeys.map((watchJourney) => ({
@@ -377,7 +410,9 @@ export default function App() {
           snail:
             carrierState.snails.find(
               (snail) => snail.id === watchJourney.snailId
-            ) ?? demoPersonalityJourneys[0].snail
+            ) ?? demoPersonalityJourneys[0].snail,
+          start: watchJourney.start,
+          target: watchJourney.target
         }))
       : [
           {
@@ -388,7 +423,9 @@ export default function App() {
               nowMs,
               timeWarpFactor
             }).progress,
-            snail: demoPersonalityJourneys[0].snail
+            snail: demoPersonalityJourneys[0].snail,
+            start: demoJourney.start,
+            target: demoJourney.target
           }
         ];
 
@@ -422,34 +459,19 @@ export default function App() {
     return () => clearInterval(interval);
   }, [backendSession, pushSender, timeWarpFactor]);
 
-  const crawlOverlays = visibleCrawls.map((crawl, index) => {
-    const laneOffset =
-      visibleCrawls.length > 1
-        ? (index - (visibleCrawls.length - 1) / 2) * 20
-        : 0;
-
-    return {
-      ...crawl,
-      overlay: projectCrawlToViewport(
-        crawl.progress,
-        viewport,
-        laneOffset
-      )
-    };
-  });
-  const targetOverlay = projectCrawlToViewport(0, viewport);
+  const crawlGeo = visibleCrawls.map((crawl) => ({
+    ...crawl,
+    polyline: buildJourneyPolyline({
+      progress: crawl.progress,
+      start: crawl.start,
+      target: crawl.target
+    })
+  }));
 
   function cycleWarp() {
     const currentIndex = allowedWarps.indexOf(timeWarpFactor);
     const nextWarp = allowedWarps[(currentIndex + 1) % allowedWarps.length] ?? 1;
     setRequestedWarp(nextWarp);
-  }
-
-  function onMapLayout(event: LayoutChangeEvent) {
-    setViewport({
-      height: event.nativeEvent.layout.height,
-      width: event.nativeEvent.layout.width
-    });
   }
 
   async function sendReminder() {
@@ -755,137 +777,113 @@ export default function App() {
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
-      <View style={styles.mapShell} onLayout={onMapLayout}>
+      <View style={styles.mapShell}>
         <Map
           attributionPosition={{ bottom: 10, right: 10 }}
           logo={false}
           mapStyle={MAP_STYLE_URL}
+          onDidFailLoadingMap={() => setMapStatus("failed")}
+          onDidFinishLoadingStyle={() => setMapStatus("ready")}
           style={StyleSheet.absoluteFill}
         >
           <Camera
             initialViewState={{
               center: [target.longitude, target.latitude],
-              zoom: 12.7
+              zoom: MAP_DEFAULT_ZOOM
             }}
+            ref={cameraRef}
           />
+          {crawlGeo.map(({ id, polyline, snail, target: crawlTarget }) => (
+            <Fragment key={`journey-${id}`}>
+              {polyline.remaining ? (
+                <GeoJSONSource
+                  data={lineStringCollection(
+                    [polyline.remaining],
+                    "rgba(120, 132, 120, 0.45)"
+                  )}
+                  id={`remaining-${id}`}
+                >
+                  <Layer
+                    id={`remaining-line-${id}`}
+                    layout={{ "line-cap": "round" }}
+                    paint={{
+                      "line-color": ["get", "color"],
+                      "line-dasharray": [1.5, 2.5],
+                      "line-width": 2
+                    }}
+                    type="line"
+                  />
+                </GeoJSONSource>
+              ) : null}
+              <GeoJSONSource
+                data={trailSegmentCollection(
+                  polyline.traveled,
+                  snail.trail.color
+                )}
+                id={`trail-${id}`}
+              >
+                <Layer
+                  id={`trail-line-${id}`}
+                  layout={{ "line-cap": "round", "line-join": "round" }}
+                  paint={{
+                    "line-color": ["get", "color"],
+                    "line-width": 5
+                  }}
+                  type="line"
+                />
+              </GeoJSONSource>
+              <Marker
+                id={`target-${id}`}
+                lngLat={[crawlTarget.longitude, crawlTarget.latitude]}
+              >
+                <View style={styles.targetMarker} />
+              </Marker>
+              <Marker
+                id={`snail-${id}`}
+                lngLat={[polyline.snail.longitude, polyline.snail.latitude]}
+              >
+                <View
+                  style={[
+                    styles.snailMarker,
+                    { backgroundColor: snail.appearance.shellColor }
+                  ]}
+                >
+                  <Text style={styles.snailGlyph}>🐌</Text>
+                </View>
+              </Marker>
+            </Fragment>
+          ))}
         </Map>
-        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-          {crawlOverlays.flatMap(({ id, overlay, snail }) =>
-            overlay.trailSegments.map((segment, index) => (
-              <Line
-                color={hexToRgba(snail.trail.color, segment.opacity * 0.32)}
-                key={`${id}-trail-shadow-${index}`}
-                p1={vec(segment.from.x, segment.from.y)}
-                p2={vec(segment.to.x, segment.to.y)}
-                strokeCap="round"
-                strokeWidth={10}
-              />
-            ))
-          )}
-          {crawlOverlays.flatMap(({ id, overlay, snail }) =>
-            overlay.trailSegments.map((segment, index) => (
-              <Line
-                color={hexToRgba(snail.trail.color, segment.opacity)}
-                key={`${id}-trail-shine-${index}`}
-                p1={vec(segment.from.x, segment.from.y)}
-                p2={vec(segment.to.x, segment.to.y)}
-                strokeCap="round"
-                strokeWidth={3}
-              />
-            ))
-          )}
-          <Circle
-            color="rgba(31, 93, 162, 0.2)"
-            cx={targetOverlay.target.x}
-            cy={targetOverlay.target.y}
-            r={18}
-          />
-          <Circle
-            color="#1f5da2"
-            cx={targetOverlay.target.x}
-            cy={targetOverlay.target.y}
-            r={7}
-          />
-          {crawlOverlays
-            .filter(({ highlighted }) => highlighted)
-            .map(({ id, overlay, snail }) => (
-              <Circle
-                color={hexToRgba(snail.trail.color, 0.22)}
-                cx={overlay.snail.x}
-                cy={overlay.snail.y}
-                key={`${id}-selected-ring`}
-                r={27}
-              />
-            ))}
-          {crawlOverlays.map(({ id, overlay, snail }) => (
-            <Circle
-              color={snail.appearance.shellColor}
-              cx={overlay.snail.x - 9}
-              cy={overlay.snail.y + 4}
-              key={`${id}-shell`}
-              r={17}
-            />
-          ))}
-          {crawlOverlays.map(({ id, overlay, snail }) => (
-            <Circle
-              color={snail.appearance.bodyColor}
-              cx={overlay.snail.x + 7}
-              cy={overlay.snail.y - 2}
-              key={`${id}-body`}
-              r={13}
-            />
-          ))}
-          {crawlOverlays.map(({ id, overlay }) => (
-            <Circle
-              color="#fff4d3"
-              cx={overlay.snail.x + 12}
-              cy={overlay.snail.y - 5}
-              key={`${id}-highlight`}
-              r={5}
-            />
-          ))}
-          {crawlOverlays.map(({ id, overlay }) => (
-            <Line
-              color="#3c2a1f"
-              key={`${id}-right-eye-stalk`}
-              p1={vec(overlay.snail.x + 10, overlay.snail.y - 13)}
-              p2={vec(overlay.snail.x + 22, overlay.snail.y - 26)}
-              strokeCap="round"
-              strokeWidth={2}
-            />
-          ))}
-          {crawlOverlays.map(({ id, overlay }) => (
-            <Line
-              color="#3c2a1f"
-              key={`${id}-left-eye-stalk`}
-              p1={vec(overlay.snail.x + 2, overlay.snail.y - 13)}
-              p2={vec(overlay.snail.x + 11, overlay.snail.y - 28)}
-              strokeCap="round"
-              strokeWidth={2}
-            />
-          ))}
-          {crawlOverlays.map(({ id, overlay }) => (
-            <Circle
-              color="#3c2a1f"
-              cx={overlay.snail.x + 23}
-              cy={overlay.snail.y - 27}
-              key={`${id}-right-eye`}
-              r={2.5}
-            />
-          ))}
-          {crawlOverlays.map(({ id, overlay }) => (
-            <Circle
-              color="#3c2a1f"
-              cx={overlay.snail.x + 12}
-              cy={overlay.snail.y - 29}
-              key={`${id}-left-eye`}
-              r={2.5}
-            />
-          ))}
-        </Canvas>
+        {mapStatus === "failed" ? (
+          <View pointerEvents="none" style={styles.mapNotice}>
+            <Text style={styles.mapNoticeTitle}>Map couldn’t load</Text>
+            <Text style={styles.mapNoticeBody}>
+              Check your connection — the snail still knows where it’s going.
+            </Text>
+          </View>
+        ) : USING_PLACEHOLDER_BASEMAP ? (
+          <View pointerEvents="none" style={styles.mapHint}>
+            <Text style={styles.mapHintText}>
+              Demo basemap · set EXPO_PUBLIC_MAP_STYLE_URL to a MapTiler style for
+              streets
+            </Text>
+          </View>
+        ) : null}
+        <Pressable
+          onPress={() => setMapMaximized((value) => !value)}
+          style={({ pressed }) => [
+            styles.mapToggle,
+            pressed && styles.mapTogglePressed
+          ]}
+        >
+          <Text style={styles.mapToggleText}>
+            {mapMaximized ? "Collapse map" : "Expand map"}
+          </Text>
+        </Pressable>
       </View>
 
-      <SafeAreaView style={styles.controls}>
+      {mapMaximized ? null : (
+        <SafeAreaView style={styles.controls}>
         <ScrollView
           contentContainerStyle={styles.controlsContent}
           keyboardShouldPersistTaps="handled"
@@ -1312,7 +1310,8 @@ export default function App() {
           </View>
         ) : null}
         </ScrollView>
-      </SafeAreaView>
+        </SafeAreaView>
+      )}
     </View>
   );
 }
@@ -1330,45 +1329,40 @@ function persistCompletedState(
   return state;
 }
 
-function projectCrawlToViewport(
-  progress: number,
-  viewport: Viewport,
-  laneOffset = 0
-) {
-  const width = Math.max(viewport.width, 1);
-  const height = Math.max(viewport.height, 1);
-  const start = {
-    x: width * 0.19,
-    y: height * 0.76 + laneOffset
-  };
-  const target = {
-    x: width * 0.74,
-    y: height * 0.34 + laneOffset
-  };
-  const easedProgress = Math.min(1, Math.max(0, progress));
-
-  function pointAt(pointProgress: number) {
-    return {
-      x: start.x + (target.x - start.x) * pointProgress,
-      y: start.y + (target.y - start.y) * pointProgress
-    };
-  }
-
+function trailSegmentCollection(
+  segments: GeoTrailSegment[],
+  hexColor: string
+): GeoJSON.FeatureCollection {
   return {
-    snail: {
-      x: start.x + (target.x - start.x) * easedProgress,
-      y: start.y + (target.y - start.y) * easedProgress
-    },
-    start,
-    target,
-    trailSegments: buildFadingTrailSegments({
-      progress: easedProgress,
-      segmentCount: 10
-    }).map((segment) => ({
-      from: pointAt(segment.fromProgress),
-      opacity: segment.opacity,
-      to: pointAt(segment.toProgress)
-    }))
+    features: segments.map((segment) => ({
+      geometry: {
+        coordinates: [
+          [segment.from.longitude, segment.from.latitude],
+          [segment.to.longitude, segment.to.latitude]
+        ],
+        type: "LineString"
+      },
+      properties: { color: hexToRgba(hexColor, segment.opacity) },
+      type: "Feature"
+    })),
+    type: "FeatureCollection"
+  };
+}
+
+function lineStringCollection(
+  lines: [Coordinate, Coordinate][],
+  color: string
+): GeoJSON.FeatureCollection {
+  return {
+    features: lines.map((line) => ({
+      geometry: {
+        coordinates: line.map((point) => [point.longitude, point.latitude]),
+        type: "LineString"
+      },
+      properties: { color },
+      type: "Feature"
+    })),
+    type: "FeatureCollection"
   };
 }
 
@@ -1633,8 +1627,82 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     minWidth: 0
   },
+  mapHint: {
+    backgroundColor: "rgba(20, 28, 24, 0.72)",
+    borderRadius: 8,
+    bottom: 10,
+    left: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    position: "absolute",
+    right: 10
+  },
+  mapHintText: {
+    color: "#eef3ec",
+    fontSize: 12,
+    textAlign: "center"
+  },
+  mapNotice: {
+    alignItems: "center",
+    backgroundColor: "rgba(20, 28, 24, 0.55)",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    padding: 20,
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  mapNoticeBody: {
+    color: "#dfe6df",
+    fontSize: 13,
+    marginTop: 4,
+    textAlign: "center"
+  },
+  mapNoticeTitle: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700"
+  },
   mapShell: {
     flex: 1
+  },
+  mapToggle: {
+    backgroundColor: "rgba(20, 28, 24, 0.72)",
+    borderRadius: 18,
+    left: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    position: "absolute",
+    top: 52
+  },
+  mapTogglePressed: {
+    backgroundColor: "rgba(20, 28, 24, 0.92)"
+  },
+  mapToggleText: {
+    color: "#f3f7f1",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  snailGlyph: {
+    fontSize: 20
+  },
+  snailMarker: {
+    alignItems: "center",
+    borderColor: "#ffffff",
+    borderRadius: 18,
+    borderWidth: 2,
+    height: 36,
+    justifyContent: "center",
+    width: 36
+  },
+  targetMarker: {
+    backgroundColor: "#1f5da2",
+    borderColor: "#ffffff",
+    borderRadius: 8,
+    borderWidth: 2,
+    height: 16,
+    width: 16
   },
   meta: {
     color: "#56645e",
