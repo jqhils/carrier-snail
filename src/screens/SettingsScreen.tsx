@@ -13,20 +13,29 @@ import {
   BACKGROUND_LOCATION_PERMISSION_COPY,
   type BackgroundLocationMode
 } from "../useCases/configureOptionalBackgroundLocation";
+import type { MapSkinId, MapSkinOption } from "../useCases/mapSkins";
 
 type SettingsScreenProps = {
   backgroundLocationBusy: boolean;
   backgroundLocationMode: BackgroundLocationMode;
+  mapSkinOptions: MapSkinOption[];
+  mapTilerKeyAvailable: boolean;
   onCycleWarp: () => void;
+  onSelectMapSkin: (skinId: MapSkinId) => void;
   onToggleBackgroundLocation: (enabled: boolean) => void;
+  selectedMapSkinId: MapSkinId;
   timeWarpFactor: number;
 };
 
 export function SettingsScreen({
   backgroundLocationBusy,
   backgroundLocationMode,
+  mapSkinOptions,
+  mapTilerKeyAvailable,
   onCycleWarp,
+  onSelectMapSkin,
   onToggleBackgroundLocation,
+  selectedMapSkinId,
   timeWarpFactor
 }: SettingsScreenProps) {
   const backgroundOn = backgroundLocationMode === "background-enabled";
@@ -37,6 +46,9 @@ export function SettingsScreen({
       : backgroundLocationMode === "location-denied"
         ? "Off · location permission was denied"
         : "Off · foreground only";
+  const selectedMapSkinLabel =
+    mapSkinOptions.find((skin) => skin.id === selectedMapSkinId)?.label ??
+    "Streets";
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
@@ -69,6 +81,58 @@ export function SettingsScreen({
               {BACKGROUND_LOCATION_PERMISSION_COPY}
             </Text>
             <Text style={styles.cardStatus}>{statusLabel}</Text>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>Map skin</Text>
+            </View>
+            <Text style={styles.cardBody}>
+              Pick the basemap used behind the trail.
+            </Text>
+            <View style={styles.skinSelector}>
+              {mapSkinOptions.map((skin) => {
+                const selected = skin.id === selectedMapSkinId;
+
+                return (
+                  <Pressable
+                    accessibilityLabel={`Use ${skin.label} map skin`}
+                    accessibilityRole="button"
+                    key={skin.id}
+                    onPress={() => onSelectMapSkin(skin.id)}
+                    style={({ pressed }) => [
+                      styles.skinButton,
+                      selected ? styles.skinButtonSelected : null,
+                      pressed ? styles.skinButtonPressed : null
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.skinButtonText,
+                        selected ? styles.skinButtonTextSelected : null
+                      ]}
+                    >
+                      {skin.label}
+                    </Text>
+                    <Text
+                      numberOfLines={2}
+                      style={[
+                        styles.skinButtonDetail,
+                        selected ? styles.skinButtonDetailSelected : null
+                      ]}
+                    >
+                      {skin.description}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.cardStatus}>
+              {mapTilerKeyAvailable
+                ? `${selectedMapSkinLabel} selected`
+                : "Demo basemap active until this build has a MapTiler key."}
+            </Text>
           </View>
 
           {__DEV__ ? (
@@ -152,6 +216,44 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#edf1e8",
     flex: 1
+  },
+  skinButton: {
+    backgroundColor: "#fdfcf5",
+    borderColor: "rgba(37, 51, 46, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 60,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  skinButtonDetail: {
+    color: "#5f6e66",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 3
+  },
+  skinButtonDetailSelected: {
+    color: "#3f6d5b"
+  },
+  skinButtonPressed: {
+    backgroundColor: "#edf4ea"
+  },
+  skinButtonSelected: {
+    backgroundColor: "#dfeee4",
+    borderColor: "#3f6d5b",
+    borderWidth: 2
+  },
+  skinButtonText: {
+    color: "#26352f",
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  skinButtonTextSelected: {
+    color: "#2f604e"
+  },
+  skinSelector: {
+    gap: 8,
+    marginTop: 2
   },
   subtitle: {
     color: "#5f6e66",
