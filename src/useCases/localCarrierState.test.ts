@@ -1,5 +1,6 @@
 import {
   createInitialCarrierState,
+  getStableSnailDetail,
   InMemoryCarrierRepository,
   listStableSnails
 } from "./localCarrierState";
@@ -51,6 +52,37 @@ describe("stable state", () => {
         statusLabel: "Resting"
       }
     ]);
+  });
+
+  it("shows a stable detail view with species identity and lifetime progress", () => {
+    const initialState = createInitialCarrierState();
+    const state = {
+      ...initialState,
+      snails: [
+        {
+          ...initialState.snails[0],
+          journeysCompleted: 3,
+          name: "Lettuce Courier"
+        }
+      ]
+    };
+
+    expect(getStableSnailDetail(state, "garden-1")).toMatchObject({
+      baseSpeedMetersPerHour: 48,
+      id: "garden-1",
+      journeysCompleted: 3,
+      level: 1,
+      lore: "The steady starter. Unhurried, sincere, and never above the work.",
+      name: "Lettuce Courier",
+      quirk: "none",
+      rarity: "common",
+      reliability: 0.95,
+      speciesId: "garden",
+      speciesName: "Garden Snail",
+      status: "resting",
+      statusLabel: "Resting",
+      temperament: "steady"
+    });
   });
 
   it("normalizes legacy snails without species by rarity", () => {
