@@ -90,20 +90,29 @@ export const styles = StyleSheet.create({
     fontWeight: "700"
   },
   controls: {
-    backgroundColor: "rgba(249, 247, 238, 0.94)",
+    backgroundColor: "rgba(249, 247, 238, 0.97)",
     borderTopColor: "rgba(38, 51, 46, 0.12)",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     borderTopWidth: 1,
     bottom: 0,
     left: 0,
-    maxHeight: "76%",
-    paddingBottom: 18,
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    overflow: "hidden",
     position: "absolute",
     right: 0
   },
   controlsContent: {
-    paddingBottom: 2
+    paddingBottom: 22,
+    paddingHorizontal: 18
+  },
+  sheetGrip: {
+    gap: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 18,
+    paddingTop: 10
+  },
+  sheetScroll: {
+    flex: 1
   },
   composerRow: {
     alignItems: "center",

@@ -10,8 +10,9 @@ import * as Location from "expo-location";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  PanResponder,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
@@ -134,6 +135,12 @@ const WATCH_SCRUB_STOPS = [
   { label: "75%", progress: 0.75 }
 ] as const;
 
+// Draggable snail-details sheet: a fixed-height sheet that translates down so only
+// the grip (peek) shows, or sits at 0 (expanded). Two snap points.
+const SHEET_EXPANDED_HEIGHT = 400;
+const SHEET_PEEK_HEIGHT = 96;
+const SHEET_COLLAPSED_OFFSET = SHEET_EXPANDED_HEIGHT - SHEET_PEEK_HEIGHT;
+
 type BackendSession = {
   repository: BackendCarrierRepository;
   user: CarrierUser;
@@ -157,7 +164,54 @@ export function MapScreen({
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
-  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
+  const [detailsCollapsed, setDetailsCollapsed] = useState(true);
+  const [sheetTranslateY] = useState(
+    () => new Animated.Value(SHEET_COLLAPSED_OFFSET)
+  );
+  const [sheetDrag] = useState(() => ({ start: 0 }));
+  const snapSheet = useCallback(
+    (collapse: boolean) => {
+      setDetailsCollapsed(collapse);
+      Animated.spring(sheetTranslateY, {
+        bounciness: 3,
+        toValue: collapse ? SHEET_COLLAPSED_OFFSET : 0,
+        useNativeDriver: false
+      }).start();
+    },
+    [sheetTranslateY]
+  );
+  const sheetPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          Math.abs(gesture.dy) > 4,
+        onPanResponderGrant: () => {
+          sheetTranslateY.stopAnimation((value) => {
+            sheetDrag.start = value;
+          });
+        },
+        onPanResponderMove: (_event, gesture) => {
+          const next = Math.max(
+            0,
+            Math.min(SHEET_COLLAPSED_OFFSET, sheetDrag.start + gesture.dy)
+          );
+          sheetTranslateY.setValue(next);
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          if (Math.abs(gesture.dy) < 6 && Math.abs(gesture.vy) < 0.2) {
+            snapSheet(!detailsCollapsed);
+            return;
+          }
+          const ended = sheetDrag.start + gesture.dy;
+          const collapse =
+            gesture.vy > 0.4 ||
+            (gesture.vy >= -0.4 && ended > SHEET_COLLAPSED_OFFSET / 2);
+          snapSheet(collapse);
+        }
+      }),
+    [detailsCollapsed, sheetDrag, sheetTranslateY, snapSheet]
+  );
   const cameraRef = useRef<CameraRef>(null);
 
   useEffect(() => {
@@ -1023,238 +1077,198 @@ export function MapScreen({
           ) : null}
         </View>
 
-        <SafeAreaView style={styles.controls}>
-            <ScrollView
-              contentContainerStyle={styles.controlsContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {detailsCollapsed ? (
-                <Pressable
-                  accessibilityLabel="Expand snail details"
-                  accessibilityRole="button"
-                  onPress={() => setDetailsCollapsed(false)}
-                  style={styles.peekBar}
-                >
-                  <View style={styles.peekHandle} />
-                  <View style={styles.peekTextBlock}>
-                    <Text numberOfLines={1} style={styles.peekTitle}>
-                      {selectedWatchJourney
-                        ? selectedWatchJourney.snailName
-                        : watchState.journeys.length > 0
-                          ? "Tap a snail to watch"
-                          : "No snails out right now"}
+        <Animated.View
+          style={[
+            styles.controls,
+            {
+              height: SHEET_EXPANDED_HEIGHT,
+              transform: [{ translateY: sheetTranslateY }]
+            }
+          ]}
+        >
+          <View
+            accessibilityLabel="Snail details. Drag or tap to expand."
+            accessibilityRole="adjustable"
+            style={styles.sheetGrip}
+            {...sheetPan.panHandlers}
+          >
+            <View style={styles.peekHandle} />
+            <View style={styles.peekTextBlock}>
+              <Text numberOfLines={1} style={styles.peekTitle}>
+                {selectedWatchJourney
+                  ? selectedWatchJourney.snailName
+                  : watchState.journeys.length > 0
+                    ? "Tap a snail to watch"
+                    : "No snails out right now"}
+              </Text>
+              {selectedWatchJourney ? (
+                <Text numberOfLines={1} style={styles.peekEta}>
+                  {selectedWatchJourney.etaRange.copy}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.controlsContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={styles.sheetScroll}
+          >
+            {selectedWatchJourney ? (
+              <>
+                <Text style={styles.watchCarryingLabel}>Carrying</Text>
+                <Text numberOfLines={2} style={styles.watchTodoText}>
+                  {selectedWatchJourney.reminderText}
+                </Text>
+                <View style={styles.watchTraitRow}>
+                  <View style={styles.watchTrait}>
+                    <Text style={styles.watchTraitLabel}>Level</Text>
+                    <Text style={styles.watchTraitValue}>
+                      {selectedJourneySnail?.level ?? 1}
                     </Text>
-                    {selectedWatchJourney ? (
-                      <Text numberOfLines={1} style={styles.peekEta}>
-                        {selectedWatchJourney.etaRange.copy}
-                      </Text>
-                    ) : null}
                   </View>
-                </Pressable>
-              ) : (
-                <View style={styles.watchPanel}>
-                  <Pressable
-                    accessibilityLabel="Collapse snail details"
-                    accessibilityRole="button"
-                    hitSlop={8}
-                    onPress={() => setDetailsCollapsed(true)}
-                    style={styles.panelHandleHit}
-                  >
-                    <View style={styles.peekHandle} />
-                  </Pressable>
-                  <View style={styles.watchHeaderRow}>
-                    <View style={styles.watchTitleBlock}>
-                      <Text style={styles.watchKicker}>
-                        {selectedWatchJourney ? "Traveler" : "Details"}
-                      </Text>
-                      <Text numberOfLines={1} style={styles.watchTitle}>
-                        {selectedWatchJourney
-                          ? selectedWatchJourney.snailName
-                          : watchState.journeys.length > 0
-                            ? "Choose a trail"
-                            : "Map at rest"}
-                      </Text>
-                    </View>
-                    {selectedWatchJourney ? (
-                      <View style={styles.watchProgressPill}>
-                        <Text style={styles.watchProgress}>
-                          {Math.round(selectedWatchJourney.preview.progress * 100)}%
-                        </Text>
-                      </View>
-                    ) : null}
+                  <View style={styles.watchTrait}>
+                    <Text style={styles.watchTraitLabel}>Quirk</Text>
+                    <Text numberOfLines={1} style={styles.watchTraitValue}>
+                      {formatQuirkLabel(selectedJourneySnail?.quirk)}
+                    </Text>
                   </View>
-
-                  {selectedWatchJourney ? (
-                    <>
-                      <Text style={styles.watchCarryingLabel}>Carrying</Text>
-                      <Text numberOfLines={2} style={styles.watchTodoText}>
-                        {selectedWatchJourney.reminderText}
-                      </Text>
-                      <View style={styles.watchTraitRow}>
-                        <View style={styles.watchTrait}>
-                          <Text style={styles.watchTraitLabel}>Level</Text>
-                          <Text style={styles.watchTraitValue}>
-                            {selectedJourneySnail?.level ?? 1}
-                          </Text>
-                        </View>
-                        <View style={styles.watchTrait}>
-                          <Text style={styles.watchTraitLabel}>Quirk</Text>
-                          <Text numberOfLines={1} style={styles.watchTraitValue}>
-                            {formatQuirkLabel(selectedJourneySnail?.quirk)}
-                          </Text>
-                        </View>
-                        <View style={styles.watchTrait}>
-                          <Text style={styles.watchTraitLabel}>Trail</Text>
-                          <Text numberOfLines={1} style={styles.watchTraitValue}>
-                            {selectedWatchJourney.trail.texture}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text numberOfLines={3} style={styles.watchEta}>
-                        {selectedWatchJourney.etaRange.copy}
-                      </Text>
-                      <Text numberOfLines={2} style={styles.watchMeta}>
-                        Path{" "}
-                        {formatDistance(
-                          selectedWatchJourney.preview.travelledMeters
-                        )}{" "}
-                        crawled,{" "}
-                        {formatDistance(
-                          selectedWatchJourney.preview.remainingMeters
-                        )}{" "}
-                        left
-                      </Text>
-                      <Text numberOfLines={2} style={styles.watchMeta}>
-                        Target {formatCoordinate(selectedWatchJourney.target)}.
-                        Trail points {selectedWatchJourney.trailHistory.length}.
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text numberOfLines={3} style={styles.watchEta}>
-                        {watchState.journeys.length > 0
-                          ? "Tap a snail on the map, or choose one below to watch its crawl."
-                          : "No snail is carrying a thought yet. Send one from your To Dos."}
-                      </Text>
-                      <Text numberOfLines={1} style={styles.watchMeta}>
-                        Snails crawl toward {locationLabel.toLowerCase()}.
-                      </Text>
-                    </>
-                  )}
-
-                  {watchState.journeys.length > 0 ? (
-                    <View style={styles.watchJourneyTabs}>
-                      {watchState.journeys.map((watchJourney) => {
-                        const selected =
-                          selectedWatchJourney?.journeyId ===
-                          watchJourney.journeyId;
-
-                        return (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
-                            key={watchJourney.journeyId}
-                            onPress={() =>
-                              selectWatchJourney(watchJourney.journeyId)
-                            }
-                            style={({ pressed }) => [
-                              styles.watchJourneyTab,
-                              selected ? styles.watchJourneyTabSelected : null,
-                              pressed ? styles.watchJourneyTabPressed : null
-                            ]}
-                          >
-                            <View
-                              style={[
-                                styles.watchJourneySwatch,
-                                { backgroundColor: watchJourney.trail.color }
-                              ]}
-                            />
-                            <Text
-                              numberOfLines={1}
-                              style={styles.watchJourneyTabText}
-                            >
-                              {watchJourney.snailName}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-
-                  {selectedWatchJourney ? (
-                    <>
-                      <View style={styles.watchActionRow}>
-                        {selectedWatchToDo ? (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Recall selected snail"
-                            onPress={recallSelectedWatchJourney}
-                            style={({ pressed }) => [
-                              styles.recallButton,
-                              pressed ? styles.recallButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.recallButtonText}>Recall</Text>
-                          </Pressable>
-                        ) : null}
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Share selected trail"
-                          onPress={shareSelectedTrail}
-                          style={({ pressed }) => [
-                            styles.watchShareButton,
-                            pressed ? styles.watchShareButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.watchShareButtonText}>
-                            Share trail
-                          </Text>
-                        </Pressable>
-                      </View>
-                      <View style={styles.watchScrubRow}>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Show live journey position"
-                          onPress={() => scrubWatchJourney(undefined)}
-                          style={({ pressed }) => [
-                            styles.watchScrubButton,
-                            watchScrubProgress === undefined
-                              ? styles.watchScrubButtonSelected
-                              : null,
-                            pressed ? styles.watchScrubButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.watchScrubButtonText}>Live</Text>
-                        </Pressable>
-                        {WATCH_SCRUB_STOPS.map((stop) => (
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Preview trail at ${stop.label}`}
-                            key={stop.label}
-                            onPress={() => scrubWatchJourney(stop.progress)}
-                            style={({ pressed }) => [
-                              styles.watchScrubButton,
-                              watchScrubProgress === stop.progress
-                                ? styles.watchScrubButtonSelected
-                                : null,
-                              pressed ? styles.watchScrubButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.watchScrubButtonText}>
-                              {stop.label}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </>
-                  ) : null}
+                  <View style={styles.watchTrait}>
+                    <Text style={styles.watchTraitLabel}>Trail</Text>
+                    <Text numberOfLines={1} style={styles.watchTraitValue}>
+                      {selectedWatchJourney.trail.texture}
+                    </Text>
+                  </View>
                 </View>
-              )}
+                <Text numberOfLines={2} style={styles.watchMeta}>
+                  Path{" "}
+                  {formatDistance(selectedWatchJourney.preview.travelledMeters)}{" "}
+                  crawled,{" "}
+                  {formatDistance(selectedWatchJourney.preview.remainingMeters)}{" "}
+                  left
+                </Text>
+                <Text numberOfLines={2} style={styles.watchMeta}>
+                  Target {formatCoordinate(selectedWatchJourney.target)}. Trail
+                  points {selectedWatchJourney.trailHistory.length}.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text numberOfLines={3} style={styles.watchEta}>
+                  {watchState.journeys.length > 0
+                    ? "Tap a snail on the map, or choose one below to watch its crawl."
+                    : "No snail is carrying a thought yet. Send one from your To Dos."}
+                </Text>
+                <Text numberOfLines={1} style={styles.watchMeta}>
+                  Snails crawl toward {locationLabel.toLowerCase()}.
+                </Text>
+              </>
+            )}
 
-              {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-            </ScrollView>
-          </SafeAreaView>
+            {watchState.journeys.length > 0 ? (
+              <View style={styles.watchJourneyTabs}>
+                {watchState.journeys.map((watchJourney) => {
+                  const selected =
+                    selectedWatchJourney?.journeyId === watchJourney.journeyId;
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
+                      key={watchJourney.journeyId}
+                      onPress={() => selectWatchJourney(watchJourney.journeyId)}
+                      style={({ pressed }) => [
+                        styles.watchJourneyTab,
+                        selected ? styles.watchJourneyTabSelected : null,
+                        pressed ? styles.watchJourneyTabPressed : null
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.watchJourneySwatch,
+                          { backgroundColor: watchJourney.trail.color }
+                        ]}
+                      />
+                      <Text numberOfLines={1} style={styles.watchJourneyTabText}>
+                        {watchJourney.snailName}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {selectedWatchJourney ? (
+              <>
+                <View style={styles.watchActionRow}>
+                  {selectedWatchToDo ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Recall selected snail"
+                      onPress={recallSelectedWatchJourney}
+                      style={({ pressed }) => [
+                        styles.recallButton,
+                        pressed ? styles.recallButtonPressed : null
+                      ]}
+                    >
+                      <Text style={styles.recallButtonText}>Recall</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Share selected trail"
+                    onPress={shareSelectedTrail}
+                    style={({ pressed }) => [
+                      styles.watchShareButton,
+                      pressed ? styles.watchShareButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.watchShareButtonText}>Share trail</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.watchScrubRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Show live journey position"
+                    onPress={() => scrubWatchJourney(undefined)}
+                    style={({ pressed }) => [
+                      styles.watchScrubButton,
+                      watchScrubProgress === undefined
+                        ? styles.watchScrubButtonSelected
+                        : null,
+                      pressed ? styles.watchScrubButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.watchScrubButtonText}>Live</Text>
+                  </Pressable>
+                  {WATCH_SCRUB_STOPS.map((stop) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Preview trail at ${stop.label}`}
+                      key={stop.label}
+                      onPress={() => scrubWatchJourney(stop.progress)}
+                      style={({ pressed }) => [
+                        styles.watchScrubButton,
+                        watchScrubProgress === stop.progress
+                          ? styles.watchScrubButtonSelected
+                          : null,
+                        pressed ? styles.watchScrubButtonPressed : null
+                      ]}
+                    >
+                      <Text style={styles.watchScrubButtonText}>
+                        {stop.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            ) : null}
+
+            {formError ? (
+              <Text style={styles.errorText}>{formError}</Text>
+            ) : null}
+          </ScrollView>
+        </Animated.View>
       </View>
 
       {activeTab === "snails" ? (
