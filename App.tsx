@@ -1,5 +1,6 @@
 import {
   Camera,
+  type CameraRef,
   GeoJSONSource,
   Layer,
   Map,
@@ -7,7 +8,7 @@ import {
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -103,7 +104,7 @@ const MAP_STYLE_URL =
 const USING_PLACEHOLDER_BASEMAP = MAP_STYLE_URL.includes(
   "demotiles.maplibre.org"
 );
-const MAP_DEFAULT_ZOOM = USING_PLACEHOLDER_BASEMAP ? 1.6 : 11.4;
+const MAP_DEFAULT_ZOOM = USING_PLACEHOLDER_BASEMAP ? 1.6 : 13;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
 const REVENUECAT_ANDROID_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
@@ -138,6 +139,18 @@ export default function App() {
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
+  const [mapMaximized, setMapMaximized] = useState(false);
+  const cameraRef = useRef<CameraRef>(null);
+
+  useEffect(() => {
+    // Keep the camera centred on the user's location at an appropriate zoom,
+    // recentring when a fresh coarse location arrives.
+    cameraRef.current?.easeTo({
+      center: [target.longitude, target.latitude],
+      duration: 600,
+      zoom: MAP_DEFAULT_ZOOM
+    });
+  }, [target.latitude, target.longitude]);
   const [carrierState, setCarrierState] = useState(() =>
     createInitialCarrierState()
   );
@@ -454,10 +467,6 @@ export default function App() {
       target: crawl.target
     })
   }));
-  const mapCenter =
-    crawlGeo.find((crawl) => crawl.highlighted)?.polyline.midpoint ??
-    crawlGeo[0]?.polyline.midpoint ??
-    target;
 
   function cycleWarp() {
     const currentIndex = allowedWarps.indexOf(timeWarpFactor);
@@ -779,9 +788,10 @@ export default function App() {
         >
           <Camera
             initialViewState={{
-              center: [mapCenter.longitude, mapCenter.latitude],
+              center: [target.longitude, target.latitude],
               zoom: MAP_DEFAULT_ZOOM
             }}
+            ref={cameraRef}
           />
           {crawlGeo.map(({ id, polyline, snail, target: crawlTarget }) => (
             <Fragment key={`journey-${id}`}>
@@ -859,9 +869,21 @@ export default function App() {
             </Text>
           </View>
         ) : null}
+        <Pressable
+          onPress={() => setMapMaximized((value) => !value)}
+          style={({ pressed }) => [
+            styles.mapToggle,
+            pressed && styles.mapTogglePressed
+          ]}
+        >
+          <Text style={styles.mapToggleText}>
+            {mapMaximized ? "Collapse map" : "Expand map"}
+          </Text>
+        </Pressable>
       </View>
 
-      <SafeAreaView style={styles.controls}>
+      {mapMaximized ? null : (
+        <SafeAreaView style={styles.controls}>
         <ScrollView
           contentContainerStyle={styles.controlsContent}
           keyboardShouldPersistTaps="handled"
@@ -1288,7 +1310,8 @@ export default function App() {
           </View>
         ) : null}
         </ScrollView>
-      </SafeAreaView>
+        </SafeAreaView>
+      )}
     </View>
   );
 }
@@ -1643,6 +1666,23 @@ const styles = StyleSheet.create({
   },
   mapShell: {
     flex: 1
+  },
+  mapToggle: {
+    backgroundColor: "rgba(20, 28, 24, 0.72)",
+    borderRadius: 18,
+    left: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    position: "absolute",
+    top: 52
+  },
+  mapTogglePressed: {
+    backgroundColor: "rgba(20, 28, 24, 0.92)"
+  },
+  mapToggleText: {
+    color: "#f3f7f1",
+    fontSize: 13,
+    fontWeight: "700"
   },
   snailGlyph: {
     fontSize: 20
