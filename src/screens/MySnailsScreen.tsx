@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Animated,
+  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +19,7 @@ import {
   type CarrierState,
   type Egg,
   type EggRarityPool,
+  type Snail,
   type StableSnailDetail,
   type StableSnapshot
 } from "../useCases/localCarrierState";
@@ -27,6 +30,7 @@ import type {
 import { levelUpCost } from "../useCases/levelUpSnail";
 import { PURCHASE_FLOOR_DISCLOSURE } from "../useCases/purchaseInventory";
 import { MAX_SNAIL_NAME_LENGTH } from "../useCases/renameSnail";
+import { getSnailSpecies } from "../useCases/snailSpecies";
 import { EmptyTabScreen } from "./EmptyTabScreen";
 
 type MySnailsScreenProps = {
@@ -34,7 +38,7 @@ type MySnailsScreenProps = {
   carrierState: CarrierState;
   formError: string;
   onBuyProduct: (productId: PurchaseProductId) => void;
-  onHatchEgg: (eggId: string) => void;
+  onHatchEgg: (eggId: string) => Promise<Snail | undefined>;
   onLevelSelectedSnail: () => void;
   onRenameSnail: (snailId: string, name: string) => void;
   onSelectSnail: (snailId: string) => void;
@@ -61,9 +65,30 @@ export function MySnailsScreen({
   unhatchedEggs
 }: MySnailsScreenProps) {
   const [detailSnailId, setDetailSnailId] = useState<string | undefined>();
+  const [hatchingEggId, setHatchingEggId] = useState<string | undefined>();
+  const [hatchReveal, setHatchReveal] = useState<
+    { nonce: number; snail: Snail } | undefined
+  >();
   const detail = detailSnailId
     ? getStableSnailDetail(carrierState, detailSnailId)
     : undefined;
+
+  async function hatchEggWithReveal(eggId: string) {
+    if (hatchingEggId) {
+      return;
+    }
+
+    setHatchingEggId(eggId);
+    const snail = await onHatchEgg(eggId);
+    setHatchingEggId(undefined);
+
+    if (snail) {
+      setHatchReveal((current) => ({
+        nonce: (current?.nonce ?? 0) + 1,
+        snail
+      }));
+    }
+  }
 
   if (stable.snails.length === 0) {
     return (
@@ -180,13 +205,19 @@ export function MySnailsScreen({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Hatch ${egg.id}`}
-                  onPress={() => onHatchEgg(egg.id)}
+                  disabled={!!hatchingEggId}
+                  onPress={() => {
+                    void hatchEggWithReveal(egg.id);
+                  }}
                   style={({ pressed }) => [
                     styles.hatchButton,
+                    hatchingEggId ? styles.hatchButtonDisabled : null,
                     pressed ? styles.hatchButtonPressed : null
                   ]}
                 >
-                  <Text style={styles.hatchButtonText}>Hatch</Text>
+                  <Text style={styles.hatchButtonText}>
+                    {hatchingEggId === egg.id ? "Opening" : "Hatch"}
+                  </Text>
                 </Pressable>
               </View>
             ))}
@@ -229,6 +260,12 @@ export function MySnailsScreen({
           ))}
         </View>
       </ScrollView>
+      {hatchReveal ? (
+        <HatchRevealOverlay
+          reveal={hatchReveal}
+          onDismiss={() => setHatchReveal(undefined)}
+        />
+      ) : null}
       </FadeInView>
     </SafeAreaView>
   );
@@ -422,6 +459,173 @@ function DetailStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function HatchRevealOverlay({
+  onDismiss,
+  reveal
+}: {
+  onDismiss: () => void;
+  reveal: { nonce: number; snail: Snail };
+}) {
+  const [eggProgress] = useState(() => new Animated.Value(0));
+  const [confettiProgress] = useState(() => new Animated.Value(0));
+  const [snailProgress] = useState(() => new Animated.Value(0));
+  const species = getSnailSpecies(reveal.snail.speciesId);
+  const particles = useMemo(() => HATCH_CONFETTI_PARTICLES, []);
+
+  useEffect(() => {
+    eggProgress.setValue(0);
+    confettiProgress.setValue(0);
+    snailProgress.setValue(0);
+
+    const animation = Animated.sequence([
+      Animated.timing(eggProgress, {
+        duration: 240,
+        easing: Easing.out(Easing.quad),
+        toValue: 1,
+        useNativeDriver: true
+      }),
+      Animated.parallel([
+        Animated.timing(confettiProgress, {
+          duration: 720,
+          easing: Easing.out(Easing.cubic),
+          toValue: 1,
+          useNativeDriver: true
+        }),
+        Animated.timing(snailProgress, {
+          duration: 360,
+          easing: Easing.out(Easing.cubic),
+          toValue: 1,
+          useNativeDriver: true
+        })
+      ])
+    ]);
+
+    animation.start();
+
+    return () => animation.stop();
+  }, [confettiProgress, eggProgress, reveal.nonce, snailProgress]);
+
+  const eggScale = eggProgress.interpolate({
+    inputRange: [0, 0.68, 1],
+    outputRange: [0.92, 1.16, 0.74]
+  });
+  const eggOpacity = eggProgress.interpolate({
+    inputRange: [0, 0.8, 1],
+    outputRange: [1, 1, 0]
+  });
+  const snailOpacity = snailProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1]
+  });
+  const snailScale = snailProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.72, 1]
+  });
+  const panelScale = snailProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.98, 1]
+  });
+
+  return (
+    <View pointerEvents="box-none" style={styles.hatchRevealOverlay}>
+      <Animated.View
+        style={[
+          styles.hatchRevealPanel,
+          {
+            transform: [{ scale: panelScale }]
+          }
+        ]}
+      >
+        <View pointerEvents="none" style={styles.hatchConfettiLayer}>
+          {particles.map((particle) => (
+            <Animated.View
+              key={particle.id}
+              style={[
+                styles.hatchConfettiPiece,
+                {
+                  backgroundColor: particle.color,
+                  opacity: confettiProgress.interpolate({
+                    inputRange: [0, 0.12, 1],
+                    outputRange: [0, 1, 0]
+                  }),
+                  transform: [
+                    {
+                      translateX: confettiProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, particle.x]
+                      })
+                    },
+                    {
+                      translateY: confettiProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, particle.y]
+                      })
+                    },
+                    {
+                      rotate: confettiProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ["0deg", `${particle.rotate}deg`]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            />
+          ))}
+        </View>
+
+        <View style={styles.hatchStage}>
+          <Animated.View
+            style={[
+              styles.hatchEggShell,
+              {
+                opacity: eggOpacity,
+                transform: [{ scale: eggScale }]
+              }
+            ]}
+          >
+            <View style={styles.hatchEggCrack} />
+            <View style={styles.hatchEggCrackSecond} />
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.hatchSnailReveal,
+              {
+                opacity: snailOpacity,
+                transform: [{ scale: snailScale }]
+              }
+            ]}
+          >
+            <SnailSprite speciesId={reveal.snail.speciesId} size={118} />
+          </Animated.View>
+        </View>
+
+        <Text style={styles.hatchRevealEyebrow}>
+          {formatLabel(reveal.snail.rarity)} hatch
+        </Text>
+        <Text numberOfLines={2} style={styles.hatchRevealName}>
+          {reveal.snail.name}
+        </Text>
+        <Text numberOfLines={2} style={styles.hatchRevealDetail}>
+          {species.displayName} joined the stable
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Dismiss hatch reveal for ${reveal.snail.name}`}
+          onPress={onDismiss}
+          style={({ pressed }) => [
+            styles.hatchRevealButton,
+            pressed ? styles.hatchRevealButtonPressed : null
+          ]}
+        >
+          <Text style={styles.hatchRevealButtonText}>Done</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
 function formatOddsText(rarityPool: EggRarityPool): string {
   return getEggRarityPoolOdds(rarityPool)
     .map((odd) => `${Math.round(odd.probability * 100)}% ${odd.rarity}`)
@@ -458,6 +662,17 @@ function canSaveRename(name: string, currentName: string): boolean {
     trimmed !== currentName
   );
 }
+
+const HATCH_CONFETTI_PARTICLES = [
+  { color: "#d6b94c", id: "a", rotate: 42, x: -112, y: -102 },
+  { color: "#4b8f8c", id: "b", rotate: -68, x: 96, y: -118 },
+  { color: "#b24836", id: "c", rotate: 92, x: -74, y: -64 },
+  { color: "#365c8d", id: "d", rotate: -36, x: 118, y: -52 },
+  { color: "#88a86b", id: "e", rotate: 128, x: -122, y: 18 },
+  { color: "#8a6f4f", id: "f", rotate: -104, x: 104, y: 28 },
+  { color: "#e0c85a", id: "g", rotate: 58, x: -34, y: -132 },
+  { color: "#5f9c9a", id: "h", rotate: -146, x: 38, y: -138 }
+];
 
 const styles = StyleSheet.create({
   backButton: {
@@ -649,6 +864,9 @@ const styles = StyleSheet.create({
     minWidth: 68,
     paddingHorizontal: 10
   },
+  hatchButtonDisabled: {
+    backgroundColor: "#7c8580"
+  },
   hatchButtonPressed: {
     backgroundColor: "#294870"
   },
@@ -656,6 +874,131 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     fontSize: 13,
     fontWeight: "700"
+  },
+  hatchConfettiLayer: {
+    bottom: 0,
+    left: 0,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  hatchConfettiPiece: {
+    borderRadius: 2,
+    height: 8,
+    left: "50%",
+    position: "absolute",
+    top: 112,
+    width: 5
+  },
+  hatchEggCrack: {
+    backgroundColor: "#8a6f4f",
+    borderRadius: 1,
+    height: 32,
+    left: 45,
+    opacity: 0.68,
+    position: "absolute",
+    top: 22,
+    transform: [{ rotate: "18deg" }],
+    width: 3
+  },
+  hatchEggCrackSecond: {
+    backgroundColor: "#8a6f4f",
+    borderRadius: 1,
+    height: 26,
+    left: 57,
+    opacity: 0.58,
+    position: "absolute",
+    top: 49,
+    transform: [{ rotate: "-28deg" }],
+    width: 3
+  },
+  hatchEggShell: {
+    backgroundColor: "#f3df9c",
+    borderColor: "rgba(138, 111, 79, 0.28)",
+    borderRadius: 50,
+    borderWidth: 1,
+    height: 104,
+    position: "absolute",
+    width: 84
+  },
+  hatchRevealButton: {
+    alignItems: "center",
+    alignSelf: "center",
+    backgroundColor: "#3f6d5b",
+    borderRadius: 8,
+    justifyContent: "center",
+    marginTop: 18,
+    minHeight: 40,
+    minWidth: 92,
+    paddingHorizontal: 14
+  },
+  hatchRevealButtonPressed: {
+    backgroundColor: "#315547"
+  },
+  hatchRevealButtonText: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  hatchRevealDetail: {
+    color: "#56645e",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
+    textAlign: "center"
+  },
+  hatchRevealEyebrow: {
+    color: "#8a6f4f",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    marginTop: 6,
+    textAlign: "center",
+    textTransform: "uppercase"
+  },
+  hatchRevealName: {
+    color: "#25332e",
+    fontSize: 26,
+    fontWeight: "900",
+    lineHeight: 31,
+    marginTop: 4,
+    textAlign: "center"
+  },
+  hatchRevealOverlay: {
+    alignItems: "center",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    padding: 18,
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  hatchRevealPanel: {
+    backgroundColor: "#fbf8ed",
+    borderColor: "rgba(63, 109, 91, 0.22)",
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+    paddingBottom: 18,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    shadowColor: "#25332e",
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    width: "100%"
+  },
+  hatchSnailReveal: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute"
+  },
+  hatchStage: {
+    alignItems: "center",
+    height: 140,
+    justifyContent: "center"
   },
   header: {
     alignItems: "center",
