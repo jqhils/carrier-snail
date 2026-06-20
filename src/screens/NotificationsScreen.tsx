@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     color: "#557363",
     fontSize: 12,
     fontWeight: "900",
-    letterSpacing: 0,
+    letterSpacing: 0.8,
     textTransform: "uppercase"
   },
   header: {

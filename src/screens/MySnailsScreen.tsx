@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     color: "#6d5a46",
     fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0,
+    letterSpacing: 0.8,
     textTransform: "uppercase"
   },
   hatchButton: {
