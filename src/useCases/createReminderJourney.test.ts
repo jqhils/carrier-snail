@@ -63,6 +63,7 @@ describe("createReminderJourney", () => {
           carryingText: "buy milk",
           id: "garden-1",
           name: "Garden Snail",
+          speciesId: "garden",
           status: "on-journey",
           statusLabel: "On journey"
         }

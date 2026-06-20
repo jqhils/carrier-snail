@@ -22,6 +22,7 @@ import {
 } from "react-native";
 
 import type { BottomTabId } from "../components/TabBar";
+import { SnailSprite } from "../components/SnailSprite";
 import { styles } from "./mapScreen.styles";
 import { ExpoBackgroundLocationController } from "../background/expoBackgroundLocationController";
 import {
@@ -1034,7 +1035,7 @@ export function MapScreen({
                 </View>
               </Marker>
             ) : null}
-            {crawlGeo.map(({ id, polyline, snail }) => {
+            {crawlGeo.map(({ highlighted, id, polyline, snail }) => {
               const canSelectJourney = watchState.journeys.some(
                 (journey) => journey.journeyId === id
               );
@@ -1089,11 +1090,16 @@ export function MapScreen({
                       onPress={() => selectWatchJourney(id)}
                       style={({ pressed }) => [
                         styles.snailMarker,
-                        { backgroundColor: snail.appearance.shellColor },
+                        highlighted ? styles.snailMarkerHighlighted : null,
                         pressed ? styles.snailMarkerPressed : null
                       ]}
                     >
-                      <Text style={styles.snailGlyph}>🐌</Text>
+                      <SnailSprite
+                        accessibilityLabel={`${snail.name} map marker`}
+                        size={48}
+                        speciesId={snail.speciesId}
+                        walking
+                      />
                     </Pressable>
                   </Marker>
                 </Fragment>
@@ -1496,4 +1502,3 @@ function formatDistance(distanceMeters: number): string {
 function formatCoordinate(coordinate: Coordinate): string {
   return `${coordinate.latitude.toFixed(3)}, ${coordinate.longitude.toFixed(3)}`;
 }
-

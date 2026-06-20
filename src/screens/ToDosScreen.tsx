@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { SnailSprite } from "../components/SnailSprite";
 import type { StableSnailListItem } from "../useCases/localCarrierState";
 import type { ToDoListItem } from "../useCases/todoUseCases";
 
@@ -70,11 +71,19 @@ export function ToDosScreen({
         <View style={styles.composerPanel}>
           <View style={styles.selectedSnailRow}>
             <Text style={styles.selectedSnailLabel}>Resting carrier</Text>
-            <Text numberOfLines={1} style={styles.selectedSnailValue}>
-              {selectedStableSnail
-                ? selectedStableSnail.name
-                : "No resting snail"}
-            </Text>
+            <View style={styles.selectedSnailIdentity}>
+              {selectedStableSnail ? (
+                <SnailSprite
+                  speciesId={selectedStableSnail.speciesId}
+                  size={28}
+                />
+              ) : null}
+              <Text numberOfLines={1} style={styles.selectedSnailValue}>
+                {selectedStableSnail
+                  ? selectedStableSnail.name
+                  : "No resting snail"}
+              </Text>
+            </View>
           </View>
           <View style={styles.composerRow}>
             <TextInput
@@ -159,10 +168,19 @@ export function ToDosScreen({
                         <Text style={styles.statusPill}>{todo.statusLabel}</Text>
                       </View>
                       {todo.snailName || todo.etaCopy ? (
-                        <Text numberOfLines={2} style={styles.todoMeta}>
-                          {todo.snailName ? todo.snailName : "No carrier"}
-                          {todo.etaCopy ? `, ${todo.etaCopy}` : ""}
-                        </Text>
+                        <View style={styles.todoMetaRow}>
+                          {todo.snailSpeciesId ? (
+                            <SnailSprite
+                              speciesId={todo.snailSpeciesId}
+                              size={34}
+                              walking={todo.status === "in-transit"}
+                            />
+                          ) : null}
+                          <Text numberOfLines={2} style={styles.todoMeta}>
+                            {todo.snailName ? todo.snailName : "No carrier"}
+                            {todo.etaCopy ? `, ${todo.etaCopy}` : ""}
+                          </Text>
+                        </View>
                       ) : null}
                       {showNoSnailPrompt ? (
                         <Text style={styles.noSnailPrompt}>
@@ -432,9 +450,17 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "space-between"
   },
+  selectedSnailIdentity: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "flex-end",
+    minWidth: 0
+  },
   selectedSnailValue: {
     color: "#25332e",
-    flex: 1,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: "800",
     minWidth: 0,
@@ -502,8 +528,15 @@ const styles = StyleSheet.create({
   },
   todoMeta: {
     color: "#5d6d77",
+    flex: 1,
     fontSize: 12,
     lineHeight: 17,
+    minWidth: 0
+  },
+  todoMetaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
     marginTop: 5
   },
   todoText: {

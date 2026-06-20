@@ -10,6 +10,7 @@ import type {
   ToDo
 } from "./localCarrierState";
 import type { PushSender } from "./pushSender";
+import type { SnailSpeciesId } from "./snailSpecies";
 
 export type ToDoDisplayStatus = "open" | "in-transit" | "arrived" | "done";
 
@@ -18,6 +19,7 @@ export type ToDoListItem = {
   etaCopy?: string;
   id: string;
   snailName?: string;
+  snailSpeciesId?: SnailSpeciesId;
   status: ToDoDisplayStatus;
   statusLabel: string;
   text: string;
@@ -309,6 +311,7 @@ export function listToDoItems({
         etaCopy: `No sooner than ${formatRemaining(eta.remainingMs)}`,
         id: todo.id,
         snailName: snail?.name ?? "Unknown snail",
+        ...(snail ? { snailSpeciesId: snail.speciesId } : {}),
         status: "in-transit",
         statusLabel: "Carrying",
         text: todo.text
@@ -327,6 +330,7 @@ export function listToDoItems({
       return {
         id: todo.id,
         snailName: snail?.name ?? "Unknown snail",
+        ...(snail ? { snailSpeciesId: snail.speciesId } : {}),
         status: "arrived",
         statusLabel: "Arrived",
         text: todo.text

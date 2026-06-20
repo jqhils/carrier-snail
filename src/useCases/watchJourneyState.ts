@@ -20,6 +20,7 @@ import {
   type TrailHistoryPoint
 } from "./localCarrierState";
 import type { PushSender } from "./pushSender";
+import type { SnailSpeciesId } from "./snailSpecies";
 
 const ETA_RANGE_MIN_PADDING_MS = 6 * 60 * 60 * 1000;
 const ETA_RANGE_PADDING_RATIO = 0.2;
@@ -53,6 +54,7 @@ export type WatchJourneySnapshot = {
   reminderText: string;
   snailId: string;
   snailName: string;
+  snailSpeciesId?: SnailSpeciesId;
   start: Coordinate;
   target: Coordinate;
   trail: SnailTrailTraits;
@@ -223,6 +225,7 @@ function createWatchJourneySnapshot({
     reminderText,
     snailId: journey.snailId,
     snailName: snail?.name ?? "Unknown snail",
+    ...(snail ? { snailSpeciesId: snail.speciesId } : {}),
     start: journey.start,
     target: journey.target,
     trail:

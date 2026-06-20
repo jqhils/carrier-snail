@@ -358,17 +358,24 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700"
   },
-  snailGlyph: {
-    fontSize: 20
-  },
   snailMarker: {
     alignItems: "center",
-    borderColor: "#ffffff",
-    borderRadius: 18,
+    backgroundColor: "rgba(248, 246, 237, 0.92)",
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 28,
     borderWidth: 2,
-    height: 36,
+    elevation: 3,
+    height: 56,
     justifyContent: "center",
-    width: 36
+    shadowColor: "#1c2a22",
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    width: 56
+  },
+  snailMarkerHighlighted: {
+    borderColor: "#3f6d5b",
+    borderWidth: 3
   },
   snailMarkerPressed: {
     opacity: 0.78,

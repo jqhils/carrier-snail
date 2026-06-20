@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { SnailSprite } from "../components/SnailSprite";
 import type { ArrivalInboxItem } from "../useCases/arrivalInboxUseCases";
 
 type NotificationsScreenProps = {
@@ -40,9 +41,17 @@ export function NotificationsScreen({
             {arrivals.map((arrival) => (
               <View key={arrival.id} style={styles.arrivalItem}>
                 <View style={styles.arrivalHeader}>
-                  <Text numberOfLines={1} style={styles.snailName}>
-                    {arrival.snailName}
-                  </Text>
+                  <View style={styles.arrivalSnailIdentity}>
+                    {arrival.snailSpeciesId ? (
+                      <SnailSprite
+                        speciesId={arrival.snailSpeciesId}
+                        size={36}
+                      />
+                    ) : null}
+                    <Text numberOfLines={1} style={styles.snailName}>
+                      {arrival.snailName}
+                    </Text>
+                  </View>
                   {!arrival.seen ? (
                     <Text style={styles.unseenPill}>New</Text>
                   ) : null}
@@ -108,6 +117,13 @@ const styles = StyleSheet.create({
   },
   arrivalList: {
     gap: 12
+  },
+  arrivalSnailIdentity: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    minWidth: 0
   },
   arrivalText: {
     color: "#2c3933",

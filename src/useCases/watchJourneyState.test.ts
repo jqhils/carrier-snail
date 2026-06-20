@@ -76,6 +76,10 @@ describe("watchJourneyState", () => {
       "Backend Garden",
       "Quiet Fern"
     ]);
+    expect(watchState.journeys.map((journey) => journey.snailSpeciesId)).toEqual([
+      "garden",
+      "garden"
+    ]);
     expect(watchState.journeys[0].liveFrame.travelledMeters).toBeCloseTo(
       BASE_SNAIL_SPEED_METERS_PER_HOUR,
       3

@@ -5,12 +5,14 @@ import type {
   JourneyRecord
 } from "./localCarrierState";
 import type { Clock } from "./createReminderJourney";
+import type { SnailSpeciesId } from "./snailSpecies";
 
 export type ArrivalInboxItem = {
   arrivedAtMs: number;
   id: string;
   seen: boolean;
   snailName: string;
+  snailSpeciesId?: SnailSpeciesId;
   text: string;
 };
 
@@ -23,13 +25,18 @@ export function listArrivalInboxItems(
 ): ArrivalInboxItem[] {
   return [...state.arrivals]
     .sort((left, right) => right.arrivedAtMs - left.arrivedAtMs)
-    .map((arrival) => ({
-      arrivedAtMs: arrival.arrivedAtMs,
-      id: arrival.id,
-      seen: arrival.seenAtMs !== undefined,
-      snailName: arrival.snailName,
-      text: arrival.text
-    }));
+    .map((arrival) => {
+      const snail = state.snails.find(({ id }) => id === arrival.snailId);
+
+      return {
+        arrivedAtMs: arrival.arrivedAtMs,
+        id: arrival.id,
+        seen: arrival.seenAtMs !== undefined,
+        snailName: arrival.snailName,
+        ...(snail ? { snailSpeciesId: snail.speciesId } : {}),
+        text: arrival.text
+      };
+    });
 }
 
 export function markArrivalsSeen({
