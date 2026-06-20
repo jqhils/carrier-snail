@@ -45,7 +45,6 @@ import {
   configureOptionalBackgroundLocation,
   type BackgroundLocationMode
 } from "../useCases/configureOptionalBackgroundLocation";
-import { createReminderJourney } from "../useCases/createReminderJourney";
 import { createDemoPersonalityJourneys } from "../useCases/demoSnailPersonalities";
 import {
   ExpoLocalPushSender,
@@ -71,7 +70,6 @@ import {
   createInitialCarrierState,
   getActiveJourney,
   InMemoryCarrierRepository,
-  listInFlightReminders,
   listStableSnails
 } from "../useCases/localCarrierState";
 import { buildJourneyWatchState } from "../useCases/watchJourneyState";
@@ -81,7 +79,16 @@ import {
   type BackendCarrierRepository,
   type CarrierUser
 } from "../useCases/resolveAnonymousCarrierUser";
-import { recallReminder } from "../useCases/recallReminder";
+import {
+  assignSnailToToDo,
+  completeToDo,
+  createToDo,
+  deleteToDo,
+  listToDoItems,
+  unassignSnail,
+  updateToDo,
+  type ToDoListItem
+} from "../useCases/todoUseCases";
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
 import { MySnailsScreen } from "./MySnailsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
@@ -155,7 +162,11 @@ export function MapScreen({ activeTab }: MapScreenProps) {
   const [carrierState, setCarrierState] = useState(() =>
     createInitialCarrierState()
   );
-  const [reminderText, setReminderText] = useState("");
+  const [toDoText, setToDoText] = useState("");
+  const [editingTodoId, setEditingTodoId] = useState<string | undefined>(
+    undefined
+  );
+  const [editingTodoText, setEditingTodoText] = useState("");
   const [formError, setFormError] = useState("");
   const [requestedSelectedSnailId, setRequestedSelectedSnailId] =
     useState("garden-1");
@@ -176,10 +187,17 @@ export function MapScreen({ activeTab }: MapScreenProps) {
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
-  const inFlightReminders = listInFlightReminders(carrierState);
   const stable = useMemo(
     () => listStableSnails(carrierState),
     [carrierState]
+  );
+  const toDoItems = useMemo(
+    () =>
+      listToDoItems({
+        clock: { now: () => nowMs },
+        state: carrierState
+      }),
+    [carrierState, nowMs]
   );
   const firstRestingSnail = stable.snails.find(
     (snail) => snail.status === "resting"
@@ -479,42 +497,65 @@ export function MapScreen({ activeTab }: MapScreenProps) {
     setRequestedWarp(nextWarp);
   }
 
-  async function sendReminder() {
+  async function persistNextCarrierState(nextState: typeof carrierState) {
+    if (backendSession) {
+      await backendSession.repository.saveCarrierState(
+        backendSession.user.id,
+        nextState
+      );
+
+      const loaded = await loadBackendJourneyState({
+        clock: { now: () => Date.now() },
+        repository: backendSession.repository,
+        timeWarpFactor,
+        userId: backendSession.user.id
+      });
+
+      setCarrierState(loaded.carrierState);
+    } else {
+      setCarrierState(nextState);
+    }
+  }
+
+  async function createToDoFromInput() {
     try {
       const repository = new InMemoryCarrierRepository(carrierState);
 
-      createReminderJourney(
-        { snailId: selectedSnailId || undefined, text: reminderText },
+      createToDo(
+        { text: toDoText },
+        {
+          clock: { now: () => Date.now() },
+          repository
+        }
+      );
+      await persistNextCarrierState(repository.snapshot());
+
+      setToDoText("");
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "To-do failed.");
+    }
+  }
+
+  async function assignSnailToTodo(todoId: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      assignSnailToToDo(
+        { snailId: selectedSnailId || undefined, todoId },
         {
           clock: { now: () => Date.now() },
           locationSource: { currentTarget: () => target },
           repository
         }
       );
-      const nextState = repository.snapshot();
-
-      if (backendSession) {
-        await backendSession.repository.saveCarrierState(
-          backendSession.user.id,
-          nextState
-        );
-
-        const loaded = await loadBackendJourneyState({
-          clock: { now: () => Date.now() },
-          repository: backendSession.repository,
-          timeWarpFactor,
-          userId: backendSession.user.id
-        });
-
-        setCarrierState(loaded.carrierState);
-      } else {
-        setCarrierState(nextState);
-      }
-
-      setReminderText("");
+      await persistNextCarrierState(repository.snapshot());
+      setSelectedWatchJourneyId(undefined);
       setFormError("");
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Reminder failed.");
+      setFormError(
+        error instanceof Error ? error.message : "Snail assignment failed."
+      );
     }
   }
 
@@ -570,10 +611,10 @@ export function MapScreen({ activeTab }: MapScreenProps) {
     }
   }
 
-  function confirmRecallReminder(reminderId: string) {
+  function confirmRecallToDo(todoId: string) {
     Alert.alert(
-      "Recall reminder?",
-      "This permanently ends the reminder. The snail returns empty.",
+      "Recall snail?",
+      "The snail comes home. The to-do stays open.",
       [
         {
           style: "cancel",
@@ -581,7 +622,7 @@ export function MapScreen({ activeTab }: MapScreenProps) {
         },
         {
           onPress: () => {
-            void recallInFlightReminder(reminderId);
+            void recallAssignedToDo(todoId);
           },
           style: "destructive",
           text: "Recall"
@@ -590,41 +631,88 @@ export function MapScreen({ activeTab }: MapScreenProps) {
     );
   }
 
-  async function recallInFlightReminder(reminderId: string) {
+  async function recallAssignedToDo(todoId: string) {
     try {
       const repository = new InMemoryCarrierRepository(carrierState);
 
-      await recallReminder(
-        { reminderId },
+      await unassignSnail(
+        { todoId },
         {
           clock: { now: () => Date.now() },
           pushSender,
           repository
         }
       );
-      const nextState = repository.snapshot();
-
-      if (backendSession) {
-        await backendSession.repository.saveCarrierState(
-          backendSession.user.id,
-          nextState
-        );
-
-        const loaded = await loadBackendJourneyState({
-          clock: { now: () => Date.now() },
-          repository: backendSession.repository,
-          timeWarpFactor,
-          userId: backendSession.user.id
-        });
-
-        setCarrierState(loaded.carrierState);
-      } else {
-        setCarrierState(nextState);
-      }
+      await persistNextCarrierState(repository.snapshot());
 
       setFormError("");
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Recall failed.");
+    }
+  }
+
+  async function completeOpenToDo(todoId: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      await completeToDo(
+        { todoId },
+        {
+          clock: { now: () => Date.now() },
+          pushSender,
+          repository
+        }
+      );
+      await persistNextCarrierState(repository.snapshot());
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Complete failed.");
+    }
+  }
+
+  async function deleteOpenToDo(todoId: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      await deleteToDo(
+        { todoId },
+        {
+          clock: { now: () => Date.now() },
+          pushSender,
+          repository
+        }
+      );
+      await persistNextCarrierState(repository.snapshot());
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Delete failed.");
+    }
+  }
+
+  function startEditingToDo(todo: ToDoListItem) {
+    setEditingTodoId(todo.id);
+    setEditingTodoText(todo.text);
+    setFormError("");
+  }
+
+  async function saveEditingToDo() {
+    if (!editingTodoId) {
+      return;
+    }
+
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      updateToDo(
+        { text: editingTodoText, todoId: editingTodoId },
+        { repository }
+      );
+      await persistNextCarrierState(repository.snapshot());
+      setEditingTodoId(undefined);
+      setEditingTodoText("");
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Edit failed.");
     }
   }
 
@@ -1189,15 +1277,36 @@ export function MapScreen({ activeTab }: MapScreenProps) {
 
       {activeTab === "todos" ? (
         <ToDosScreen
+          canAssignSnail={stable.capacity.freeCount > 0}
+          editingText={editingTodoText}
+          editingTodoId={editingTodoId}
           formError={formError}
-          inFlightReminders={inFlightReminders}
-          onChangeReminderText={setReminderText}
-          onRecallReminder={confirmRecallReminder}
-          onSendReminder={() => {
-            void sendReminder();
+          onAssignSnail={(todoId) => {
+            void assignSnailToTodo(todoId);
           }}
-          reminderText={reminderText}
+          onCancelEdit={() => {
+            setEditingTodoId(undefined);
+            setEditingTodoText("");
+          }}
+          onChangeEditingText={setEditingTodoText}
+          onChangeToDoText={setToDoText}
+          onCompleteToDo={(todoId) => {
+            void completeOpenToDo(todoId);
+          }}
+          onCreateToDo={() => {
+            void createToDoFromInput();
+          }}
+          onDeleteToDo={(todoId) => {
+            void deleteOpenToDo(todoId);
+          }}
+          onRecallToDo={confirmRecallToDo}
+          onSaveEdit={() => {
+            void saveEditingToDo();
+          }}
+          onStartEdit={startEditingToDo}
           selectedStableSnail={selectedStableSnail}
+          toDoItems={toDoItems}
+          toDoText={toDoText}
         />
       ) : null}
 

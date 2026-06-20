@@ -97,7 +97,8 @@ export function createReminderJourney(
     id: `journey-${state.journeys.length + 1}`,
     reminderId: reminder.id,
     snailId: snail.id,
-    status: "in-flight"
+    status: "in-flight",
+    todoId: reminder.id
   };
 
   repository.save({
@@ -113,7 +114,8 @@ export function createReminderJourney(
         : candidate
     ),
     softCurrency: state.softCurrency,
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   });
 
   return { journey, reminder };

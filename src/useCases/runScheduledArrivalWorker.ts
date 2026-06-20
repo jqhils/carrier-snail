@@ -4,7 +4,8 @@ import {
   type CarrierState,
   type JourneyRecord,
   type Reminder,
-  type Snail
+  type Snail,
+  type ToDo
 } from "./localCarrierState";
 import type { Clock } from "./createReminderJourney";
 import type { PushSender } from "./pushSender";
@@ -43,9 +44,9 @@ export async function runScheduledArrivalWorker({
 
       evaluatedJourneyCount += 1;
 
-      const reminder = findInFlightReminder(state, journey);
+      const delivery = findDeliveryTarget(state, journey);
 
-      if (!reminder) {
+      if (!delivery) {
         continue;
       }
 
@@ -60,16 +61,16 @@ export async function runScheduledArrivalWorker({
 
       await Promise.resolve(
         pushSender.sendArrival({
-          reminderId: reminder.id,
-          text: reminder.text,
+          reminderId: delivery.id,
+          text: delivery.text,
           title: "Carrier Snail arrived"
         })
       );
 
       markJourneyDelivered({
+        delivery,
         journey,
         nowMs: serverNowMs,
-        reminder,
         snails: state.snails
       });
       state.eggs.push(createEarnedEgg(state.eggs.length + 1, serverNowMs));
@@ -86,31 +87,66 @@ export async function runScheduledArrivalWorker({
   return { completedCount, evaluatedJourneyCount };
 }
 
-function findInFlightReminder(
+type DeliveryTarget = {
+  id: string;
+  reminder?: Reminder;
+  text: string;
+  todo?: ToDo;
+};
+
+function findDeliveryTarget(
   state: CarrierState,
   journey: JourneyRecord
-): Reminder | undefined {
-  return state.reminders.find(
-    (reminder) =>
-      reminder.id === journey.reminderId && reminder.status === "in-flight"
-  );
+): DeliveryTarget | undefined {
+  const todo = journey.todoId
+    ? state.todos.find(
+        (candidate) =>
+          candidate.id === journey.todoId && candidate.status === "open"
+      )
+    : undefined;
+
+  if (todo) {
+    return {
+      id: todo.id,
+      text: todo.text,
+      todo
+    };
+  }
+
+  const reminder = journey.reminderId
+    ? state.reminders.find(
+        (candidate) =>
+          candidate.id === journey.reminderId && candidate.status === "in-flight"
+      )
+    : undefined;
+
+  return reminder
+    ? {
+        id: reminder.id,
+        reminder,
+        text: reminder.text
+      }
+    : undefined;
 }
 
 function markJourneyDelivered({
+  delivery,
   journey,
   nowMs,
-  reminder,
   snails
 }: {
+  delivery: DeliveryTarget;
   journey: JourneyRecord;
   nowMs: number;
-  reminder: Reminder;
   snails: Snail[];
 }): void {
   journey.arrivedAtMs = nowMs;
   journey.status = "arrived";
-  reminder.deliveredAtMs = nowMs;
-  reminder.status = "delivered";
+
+  if (delivery.reminder) {
+    delivery.reminder.deliveredAtMs = nowMs;
+    delivery.reminder.status = "delivered";
+  }
 
   const snail = snails.find(({ id }) => id === journey.snailId);
 

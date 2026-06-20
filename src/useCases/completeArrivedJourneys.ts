@@ -36,21 +36,35 @@ export function completeArrivedJourneys({
       return journey;
     }
 
-    const reminder = state.reminders.find(({ id }) => id === journey.reminderId);
+    const todo = journey.todoId
+      ? state.todos.find(({ id }) => id === journey.todoId)
+      : undefined;
+    const reminder = journey.reminderId
+      ? state.reminders.find(({ id }) => id === journey.reminderId)
+      : undefined;
+    const delivery = todo
+      ? todo.status === "open"
+        ? { id: todo.id, text: todo.text }
+        : undefined
+      : reminder && reminder.status === "in-flight"
+        ? { id: reminder.id, text: reminder.text }
+        : undefined;
 
-    if (!reminder || reminder.status !== "in-flight") {
+    if (!delivery) {
       return journey;
     }
 
     completedCount += 1;
-    completedReminderIds.add(reminder.id);
+    if (reminder) {
+      completedReminderIds.add(reminder.id);
+    }
     completedSnailIds.add(journey.snailId);
     earnedEggs.push(
       createEarnedEgg(state.eggs.length + earnedEggs.length + 1, nowMs)
     );
     pushSender.sendArrival({
-      reminderId: reminder.id,
-      text: reminder.text,
+      reminderId: delivery.id,
+      text: delivery.text,
       title: "Carrier Snail arrived"
     });
 
@@ -89,7 +103,8 @@ export function completeArrivedJourneys({
     softCurrency: {
       slime: (state.softCurrency?.slime ?? 0) + completedCount
     },
-    stableSlots: state.stableSlots
+    stableSlots: state.stableSlots,
+    todos: state.todos
   };
 
   if (completedCount > 0) {

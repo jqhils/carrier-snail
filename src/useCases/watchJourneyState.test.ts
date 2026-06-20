@@ -174,7 +174,8 @@ function createWatchState({
     ],
     snails,
     softCurrency: { slime: 0 },
-    stableSlots: { purchased: 0 }
+    stableSlots: { purchased: 0 },
+    todos: []
   };
 }
 
