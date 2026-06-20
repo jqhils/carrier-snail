@@ -24,9 +24,7 @@ import { styles } from "./mapScreen.styles";
 import { ExpoBackgroundLocationController } from "../background/expoBackgroundLocationController";
 import {
   coerceTimeWarpFactor,
-  createPhaseZeroJourney,
-  getAllowedTimeWarpFactors,
-  getCrawlFrame
+  getAllowedTimeWarpFactors
 } from "../journey/snailCrawl";
 import type { Coordinate } from "../journey/snailCrawl";
 import {
@@ -51,7 +49,6 @@ import {
   configureOptionalBackgroundLocation,
   type BackgroundLocationMode
 } from "../useCases/configureOptionalBackgroundLocation";
-import { createDemoPersonalityJourneys } from "../useCases/demoSnailPersonalities";
 import {
   ExpoLocalPushSender,
   requestArrivalNotificationPermission
@@ -154,7 +151,6 @@ export function MapScreen({
 }: MapScreenProps) {
   const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
   const [locationLabel, setLocationLabel] = useState("Mock resting point");
-  const [journeyCreatedAtMs, setJourneyCreatedAtMs] = useState(() => Date.now());
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
@@ -187,7 +183,6 @@ export function MapScreen({
   const [backgroundLocationBusy, setBackgroundLocationBusy] = useState(false);
   const [backgroundLocationMode, setBackgroundLocationMode] =
     useState<BackgroundLocationMode>("foreground-only");
-  const [personalityDemoEnabled, setPersonalityDemoEnabled] = useState(false);
   const [selectedWatchJourneyId, setSelectedWatchJourneyId] = useState<
     string | undefined
   >(undefined);
@@ -312,7 +307,6 @@ export function MapScreen({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       });
-      setJourneyCreatedAtMs(Date.now());
       setLocationLabel("Coarse current location");
     }
 
@@ -422,22 +416,6 @@ export function MapScreen({
     };
   }, [backendSession, target]);
 
-  const demoJourney = useMemo(
-    () =>
-      createPhaseZeroJourney({
-        createdAtMs: journeyCreatedAtMs,
-        target
-      }),
-    [journeyCreatedAtMs, target]
-  );
-  const demoPersonalityJourneys = useMemo(
-    () =>
-      createDemoPersonalityJourneys({
-        createdAtMs: journeyCreatedAtMs,
-        target
-      }),
-    [journeyCreatedAtMs, target]
-  );
   const watchState = useMemo(
     () =>
       buildJourneyWatchState({
@@ -471,46 +449,25 @@ export function MapScreen({
         ({ activeJourneyId }) => activeJourneyId === selectedWatchJourney.journeyId
       )
     : undefined;
-  const visibleCrawls = personalityDemoEnabled
-    ? demoPersonalityJourneys.map((crawl) => ({
-        highlighted: false,
-        id: crawl.id,
-        progress: getCrawlFrame({
-          journey: crawl.journey,
-          nowMs,
-          timeWarpFactor
-        }).progress,
-        snail: crawl.snail,
-        start: crawl.journey.start,
-        target: crawl.journey.target
-      }))
-    : watchState.journeys.length > 0
-      ? watchState.journeys.map((watchJourney) => ({
-          highlighted:
-            watchJourney.journeyId === selectedWatchJourney?.journeyId,
-          id: watchJourney.journeyId,
-          progress: watchJourney.preview.progress,
-          snail:
-            carrierState.snails.find(
-              (snail) => snail.id === watchJourney.snailId
-            ) ?? demoPersonalityJourneys[0].snail,
-          start: watchJourney.start,
-          target: watchJourney.target
-        }))
-      : [
+  const visibleCrawls = watchState.journeys.flatMap((watchJourney) => {
+    const snail = carrierState.snails.find(
+      (candidate) => candidate.id === watchJourney.snailId
+    );
+
+    return snail
+      ? [
           {
-            highlighted: false,
-            id: "single-demo",
-            progress: getCrawlFrame({
-              journey: demoJourney,
-              nowMs,
-              timeWarpFactor
-            }).progress,
-            snail: demoPersonalityJourneys[0].snail,
-            start: demoJourney.start,
-            target: demoJourney.target
+            highlighted:
+              watchJourney.journeyId === selectedWatchJourney?.journeyId,
+            id: watchJourney.journeyId,
+            progress: watchJourney.preview.progress,
+            snail,
+            start: watchJourney.start,
+            target: watchJourney.target
           }
-        ];
+        ]
+      : [];
+  });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1055,28 +1012,11 @@ export function MapScreen({
             >
               <View style={styles.statusRow}>
                 <View style={styles.titleBlock}>
-                  <Text numberOfLines={1} style={styles.title}>
-                    Carrier Snail
-                  </Text>
                   <Text numberOfLines={1} style={styles.meta}>
                     {locationLabel}
                   </Text>
                 </View>
                 <View style={styles.statusActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Toggle personality demo trio"
-                    onPress={() => setPersonalityDemoEnabled((enabled) => !enabled)}
-                    style={({ pressed }) => [
-                      styles.personalityButton,
-                      personalityDemoEnabled ? styles.personalityButtonEnabled : null,
-                      pressed ? styles.personalityButtonPressed : null
-                    ]}
-                  >
-                    <Text style={styles.personalityButtonText}>
-                      {personalityDemoEnabled ? "Solo" : "Trio"}
-                    </Text>
-                  </Pressable>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Cycle debug time warp"
@@ -1090,23 +1030,6 @@ export function MapScreen({
                   </Pressable>
                 </View>
               </View>
-              {personalityDemoEnabled ? (
-                <View style={styles.demoLegend}>
-                  {demoPersonalityJourneys.map(({ snail }) => (
-                    <View key={snail.id} style={styles.demoLegendItem}>
-                      <View
-                        style={[
-                          styles.demoLegendSwatch,
-                          { backgroundColor: snail.trail.color }
-                        ]}
-                      />
-                      <Text numberOfLines={1} style={styles.demoLegendText}>
-                        {snail.name}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
               {onboardingVisible ? (
                 <View style={styles.onboardingPanel}>
                   <View style={styles.onboardingHeaderRow}>
