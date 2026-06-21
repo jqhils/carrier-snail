@@ -32,6 +32,24 @@ type ToDosScreenProps = {
   toDoText: string;
 };
 
+const STATUS_THEME: Record<
+  ToDoListItem["status"],
+  { accent: string; pillBackground: string; pillText: string }
+> = {
+  arrived: { accent: "#c79233", pillBackground: "#f6ecd6", pillText: "#946612" },
+  done: { accent: "#9aa49b", pillBackground: "#e8ece9", pillText: "#5f6e66" },
+  "in-transit": {
+    accent: "#365c8d",
+    pillBackground: "#e2eaf4",
+    pillText: "#2c4d77"
+  },
+  open: { accent: "#5f8a5e", pillBackground: "#e7efe0", pillText: "#3f6d5b" }
+};
+
+function statusThemeFor(status: ToDoListItem["status"]) {
+  return STATUS_THEME[status] ?? STATUS_THEME.open;
+}
+
 export function ToDosScreen({
   canAssignSnail,
   editingText,
@@ -51,6 +69,8 @@ export function ToDosScreen({
   toDoItems,
   toDoText
 }: ToDosScreenProps) {
+  const openCount = toDoItems.filter((todo) => todo.status !== "done").length;
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <FadeInView>
@@ -61,7 +81,14 @@ export function ToDosScreen({
       >
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Your list</Text>
-          <Text style={styles.title}>To Dos</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>To Dos</Text>
+            {toDoItems.length > 0 ? (
+              <View style={styles.countChip}>
+                <Text style={styles.countChipText}>{openCount} active</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.subtitle}>
             Limitless thoughts. Snails only leave when you send one.
           </Text>
@@ -69,7 +96,7 @@ export function ToDosScreen({
 
         <View style={styles.composerPanel}>
           <View style={styles.selectedSnailRow}>
-            <Text style={styles.selectedSnailLabel}>Resting carrier</Text>
+            <Text style={styles.selectedSnailLabel}>🐌 Resting carrier</Text>
             <Text numberOfLines={1} style={styles.selectedSnailValue}>
               {selectedStableSnail
                 ? selectedStableSnail.name
@@ -82,7 +109,7 @@ export function ToDosScreen({
               onChangeText={onChangeToDoText}
               onSubmitEditing={onCreateToDo}
               placeholder="buy milk"
-              placeholderTextColor="#7d7a70"
+              placeholderTextColor="#9a9588"
               returnKeyType="done"
               style={styles.reminderInput}
               value={toDoText}
@@ -106,6 +133,7 @@ export function ToDosScreen({
           <View style={styles.todoList}>
             {toDoItems.map((todo) => {
               const editing = editingTodoId === todo.id;
+              const theme = statusThemeFor(todo.status);
               const canSend =
                 (todo.status === "open" || todo.status === "arrived") &&
                 canAssignSnail;
@@ -114,7 +142,10 @@ export function ToDosScreen({
                 !canAssignSnail;
 
               return (
-                <View key={todo.id} style={styles.todoItem}>
+                <View
+                  key={todo.id}
+                  style={[styles.todoItem, { borderLeftColor: theme.accent }]}
+                >
                   {editing ? (
                     <View style={styles.editBlock}>
                       <TextInput
@@ -156,7 +187,17 @@ export function ToDosScreen({
                         <Text numberOfLines={2} style={styles.todoText}>
                           {todo.text}
                         </Text>
-                        <Text style={styles.statusPill}>{todo.statusLabel}</Text>
+                        <Text
+                          style={[
+                            styles.statusPill,
+                            {
+                              backgroundColor: theme.pillBackground,
+                              color: theme.pillText
+                            }
+                          ]}
+                        >
+                          {todo.statusLabel}
+                        </Text>
                       </View>
                       {todo.snailName || todo.etaCopy ? (
                         <Text numberOfLines={2} style={styles.todoMeta}>
@@ -242,6 +283,7 @@ export function ToDosScreen({
           </View>
         ) : (
           <View style={styles.emptyList}>
+            <Text style={styles.emptyGlyph}>🐌</Text>
             <Text style={styles.emptyTitle}>Nothing on the leaf</Text>
             <Text style={styles.emptyBody}>
               Add as many thoughts as you need. The stable decides only what can
@@ -260,36 +302,52 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 10
+    marginTop: 12
   },
   composerPanel: {
-    backgroundColor: "#fbf8ed",
-    borderColor: "rgba(138, 111, 79, 0.2)",
-    borderRadius: 8,
+    backgroundColor: "#fffdf6",
+    borderColor: "rgba(138, 111, 79, 0.18)",
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 18,
-    padding: 12
+    elevation: 2,
+    marginTop: 20,
+    padding: 16,
+    shadowColor: "#3a3327",
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14
   },
   composerRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
-    marginTop: 10
+    marginTop: 12
   },
   content: {
-    paddingBottom: 22,
+    paddingBottom: 28,
     paddingHorizontal: 18,
     paddingTop: 20
+  },
+  countChip: {
+    backgroundColor: "#e7efe0",
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 4
+  },
+  countChipText: {
+    color: "#3f6d5b",
+    fontSize: 12,
+    fontWeight: "800"
   },
   deleteButton: {
     alignItems: "center",
     backgroundColor: "#fff6ef",
     borderColor: "rgba(161, 61, 45, 0.28)",
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
+    minHeight: 36,
+    paddingHorizontal: 12
   },
   deleteButtonPressed: {
     backgroundColor: "#f8e5dc"
@@ -305,26 +363,38 @@ const styles = StyleSheet.create({
   editInput: {
     backgroundColor: "#fdfcf5",
     borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     color: "#25332e",
     fontSize: 16,
-    minHeight: 44,
-    paddingHorizontal: 12
+    minHeight: 46,
+    paddingHorizontal: 14
   },
   emptyBody: {
     color: "#56645e",
     fontSize: 14,
     lineHeight: 20,
-    marginTop: 6
+    marginTop: 6,
+    textAlign: "center"
+  },
+  emptyGlyph: {
+    fontSize: 34,
+    marginBottom: 10
   },
   emptyList: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
+    alignItems: "center",
+    backgroundColor: "#fffdf6",
+    borderColor: "rgba(43, 58, 52, 0.1)",
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 14,
-    padding: 14
+    elevation: 1,
+    marginTop: 16,
+    paddingHorizontal: 22,
+    paddingVertical: 30,
+    shadowColor: "#3a3327",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10
   },
   emptyTitle: {
     color: "#25332e",
@@ -334,7 +404,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#a13d2d",
     fontSize: 13,
-    marginTop: 8
+    marginTop: 10
   },
   eyebrow: {
     color: "#8a6f4f",
@@ -345,13 +415,13 @@ const styles = StyleSheet.create({
   },
   ghostButton: {
     alignItems: "center",
-    backgroundColor: "#f4f0e3",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
+    backgroundColor: "#f1ede0",
+    borderColor: "rgba(37, 51, 46, 0.14)",
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
+    minHeight: 36,
+    paddingHorizontal: 12
   },
   ghostButtonPressed: {
     backgroundColor: "#e6e0d1"
@@ -368,16 +438,21 @@ const styles = StyleSheet.create({
     color: "#8a6f4f",
     fontSize: 12,
     lineHeight: 17,
-    marginTop: 7
+    marginTop: 8
   },
   primaryButton: {
     alignItems: "center",
     backgroundColor: "#365c8d",
-    borderRadius: 8,
+    borderRadius: 12,
+    elevation: 2,
     justifyContent: "center",
-    minHeight: 44,
-    minWidth: 68,
-    paddingHorizontal: 14
+    minHeight: 46,
+    minWidth: 70,
+    paddingHorizontal: 16,
+    shadowColor: "#365c8d",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8
   },
   primaryButtonPressed: {
     backgroundColor: "#294870"
@@ -391,11 +466,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff6ef",
     borderColor: "rgba(161, 61, 45, 0.28)",
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
+    minHeight: 36,
+    paddingHorizontal: 12
   },
   recallButtonPressed: {
     backgroundColor: "#f8e5dc"
@@ -408,13 +483,13 @@ const styles = StyleSheet.create({
   reminderInput: {
     backgroundColor: "#fdfcf5",
     borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     color: "#25332e",
     flex: 1,
     fontSize: 16,
-    minHeight: 44,
-    paddingHorizontal: 12
+    minHeight: 46,
+    paddingHorizontal: 14
   },
   screen: {
     backgroundColor: "#f4f0e3",
@@ -424,6 +499,7 @@ const styles = StyleSheet.create({
     color: "#6d5a46",
     fontSize: 12,
     fontWeight: "800",
+    letterSpacing: 0.3,
     textTransform: "uppercase"
   },
   selectedSnailRow: {
@@ -443,13 +519,13 @@ const styles = StyleSheet.create({
   smallButton: {
     alignItems: "center",
     backgroundColor: "#365c8d",
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
+    minHeight: 36,
+    paddingHorizontal: 12
   },
   smallButtonDisabled: {
-    backgroundColor: "#7c8580"
+    backgroundColor: "#a7ada8"
   },
   smallButtonPressed: {
     backgroundColor: "#294870"
@@ -460,27 +536,30 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   statusPill: {
-    backgroundColor: "#e8ede2",
-    borderRadius: 8,
-    color: "#3f6d5b",
+    borderRadius: 999,
     fontSize: 12,
     fontWeight: "800",
     overflow: "hidden",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4
   },
   subtitle: {
     color: "#5c6861",
     fontSize: 14,
     lineHeight: 20,
-    marginTop: 7
+    marginTop: 8
   },
   title: {
     color: "#25332e",
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
-    lineHeight: 30,
-    marginTop: 3
+    lineHeight: 32,
+    marginTop: 4
+  },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
   },
   todoHeaderRow: {
     alignItems: "flex-start",
@@ -489,22 +568,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   todoItem: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
+    backgroundColor: "#fffdf6",
+    borderColor: "rgba(43, 58, 52, 0.1)",
+    borderLeftWidth: 4,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 11
+    elevation: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+    shadowColor: "#3a3327",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10
   },
   todoList: {
-    gap: 9,
-    marginTop: 14
+    gap: 11,
+    marginTop: 18
   },
   todoMeta: {
     color: "#5d6d77",
     fontSize: 12,
     lineHeight: 17,
-    marginTop: 5
+    marginTop: 6
   },
   todoText: {
     color: "#25332e",
