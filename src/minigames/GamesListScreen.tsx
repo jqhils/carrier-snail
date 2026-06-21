@@ -1,6 +1,7 @@
 import {
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -47,6 +48,8 @@ export function GamesListScreen({
 }: Props) {
   const { width } = useWindowDimensions();
   const tileW = (Math.min(width, 460) - 18 * 2 - 12) / 2;
+  // This hub is shown full-screen (tab bar hidden), so clear the status bar.
+  const topInset = (StatusBar.currentHeight ?? 0) + space.sm;
 
   const roster = snails && snails.length > 0 ? snails : [snail];
   const playable = GAMES.filter((game) => game.available).length;
@@ -54,7 +57,7 @@ export function GamesListScreen({
 
   return (
     <View style={styles.screen}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: topInset }]}>
         <PixelButton
           accessibilityLabel={`Back to ${snail.name}`}
           label="‹ Back"
@@ -546,8 +549,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: space.md,
-    paddingTop: space.sm
+    paddingHorizontal: space.md
   },
   who: { ...text.bodyStrong, color: colors.textPrimary }
 });
