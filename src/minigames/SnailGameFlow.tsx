@@ -14,6 +14,7 @@ import { loadHighScores, persistHighScores } from "./highScoresStorage";
 import { PlaySnailGame } from "./PlaySnailGame";
 import { Play2048 } from "./Play2048";
 import { PlaySnake } from "./PlaySnake";
+import { PlaySaltStorm } from "./PlaySaltStorm";
 import { SnailDetailScreen } from "./SnailDetailScreen";
 import type { SnailGameReward } from "./snailGameReward";
 import type { GameId, GameResult } from "./types";
@@ -170,6 +171,15 @@ export function SnailGameFlowProvider({
             <PlaySnake
               snail={snail}
               bestScore={getHighScore(highScores, snail.id, "snake")}
+              onClose={() => setStep("games")}
+              onReward={handleReward}
+            />
+          ) : null}
+
+          {step === "playing" && activeGame === "salt" ? (
+            <PlaySaltStorm
+              snail={snail}
+              bestScore={getHighScore(highScores, snail.id, "salt")}
               onClose={() => setStep("games")}
               onReward={handleReward}
             />

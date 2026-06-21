@@ -47,6 +47,17 @@ export function scoreToSnakeReward(score: number): SnailGameReward {
   };
 }
 
+// Salt Storm rewards SURVIVAL: score climbs ~10/sec, ~1 slime per 10s, cap 8.
+const POINTS_PER_SLIME_SALT = 100;
+
+export function scoreToSaltStormReward(score: number): SnailGameReward {
+  const safe = Math.max(0, Math.floor(score));
+  return {
+    experiencePoints: Math.floor(safe / 20),
+    slime: Math.min(MAX_SLIME_PER_RUN, Math.floor(safe / POINTS_PER_SLIME_SALT))
+  };
+}
+
 // Optional host helper: credit a reward onto owned snails + the slime balance.
 // Generic over the snail shape so it has no hard dependency on the full
 // CarrierState — purely additive, returns the pieces to merge back in.

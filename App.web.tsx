@@ -11,11 +11,13 @@ import { createSnailFromRarity } from "./src/useCases/hatchEgg";
 import { GamesListScreen } from "./src/minigames/GamesListScreen";
 import { FlappySnailGame } from "./src/minigames/flappySnail/FlappySnailGame";
 import { SnakeGame } from "./src/minigames/snake/SnakeGame";
+import { SaltStormGame } from "./src/minigames/saltStorm/SaltStormGame";
 import { Game2048 } from "./src/minigames/game2048/Game2048";
 import {
   scoreToSnail2048Reward,
   scoreToSnailReward,
-  scoreToSnakeReward
+  scoreToSnakeReward,
+  scoreToSaltStormReward
 } from "./src/minigames/snailGameReward";
 import { snailToCharacter } from "./src/minigames/snailToCharacter";
 import type { GameId, GameResult } from "./src/minigames/types";
@@ -87,6 +89,24 @@ export default function App() {
           rewardLabel={(s: number) => {
             const reward = scoreToSnakeReward(s);
             return reward.slime > 0 ? `Earned ${reward.slime} slime` : "Grow longer for slime";
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "salt") {
+    return (
+      <SafeAreaView style={styles.fill}>
+        <SaltStormGame
+          character={snailToCharacter(ACTIVE)}
+          bestScore={MOCK_SCORES[`${ACTIVE.id}:salt`] ?? 0}
+          snailSprite={SNAIL_SPRITE_ASSETS[ACTIVE.speciesId]}
+          onExit={() => setScreen("dashboard")}
+          onResult={(r: GameResult) => console.log("salt", r, scoreToSaltStormReward(r.score))}
+          rewardLabel={(s: number) => {
+            const reward = scoreToSaltStormReward(s);
+            return reward.slime > 0 ? `Earned ${reward.slime} slime` : "Survive longer for slime";
           }}
         />
       </SafeAreaView>

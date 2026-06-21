@@ -281,6 +281,20 @@ function GameArt({ gameId }: { gameId: GameId }) {
       </View>
     );
   }
+  if (gameId === "salt") {
+    return (
+      <View style={[styles.artFill, { backgroundColor: "#454d68" }]}>
+        <View style={styles.saltMoon} />
+        <View style={[styles.saltDot, { left: 26, top: 16 }]} />
+        <View style={[styles.saltDot, { left: 64, top: 38 }]} />
+        <View style={[styles.saltDot, { left: 104, top: 22 }]} />
+        <View style={[styles.saltDot, { left: 48, top: 56 }]} />
+        <View style={styles.saltShaker} />
+        <View style={styles.saltGround} />
+        <View style={styles.saltSnail} />
+      </View>
+    );
+  }
   return (
     <View style={[styles.artFill, styles.mystery]}>
       <Text style={styles.mysteryMark}>?</Text>
@@ -434,6 +448,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     width: 22
   },
+  saltDot: { backgroundColor: "rgba(255,255,255,0.85)", borderRadius: 2, height: 4, position: "absolute", width: 4 },
+  saltGround: { backgroundColor: "#6b5640", borderTopColor: "#6fae54", borderTopWidth: 3, bottom: 0, height: 12, left: 0, position: "absolute", right: 0 },
+  saltMoon: { backgroundColor: "#f3efe1", borderRadius: 9, height: 18, position: "absolute", right: 12, top: 10, width: 18 },
+  saltShaker: { backgroundColor: "#eef3f7", borderRadius: 3, height: 22, left: 80, position: "absolute", top: 30, width: 14 },
+  saltSnail: { backgroundColor: "#e7cfa3", borderRadius: 6, bottom: 12, height: 12, left: 40, position: "absolute", width: 18 },
   screen: { backgroundColor: "#eef1e8", flex: 1 },
   sectionHead: {
     alignItems: "baseline",
