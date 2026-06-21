@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors, radii, text } from "../theme";
 import type { ArrivalInboxItem } from "../useCases/arrivalInboxUseCases";
 
 type NotificationsScreenProps = {
@@ -108,14 +109,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   arrivalItem: {
-    backgroundColor: "#f8f5eb",
-    borderColor: "rgba(75, 91, 82, 0.16)",
-    borderLeftColor: "#3f8a63",
-    borderLeftWidth: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 15
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 13
   },
   arrivalList: {
     gap: 12
@@ -128,17 +128,12 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   arrivalText: {
-    color: "#2c3933",
-    fontSize: 18,
-    fontWeight: "800",
-    lineHeight: 24,
-    marginTop: 10
+    ...text.bodyStrongLg,
+    color: colors.textPrimary
   },
   arrivalTime: {
-    color: "#6c766f",
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 9
+    ...text.bodySm,
+    color: colors.textMuted
   },
   content: {
     gap: 22,
@@ -147,71 +142,60 @@ const styles = StyleSheet.create({
     paddingTop: 22
   },
   emptyBody: {
-    color: "#6c766f",
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 20,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 7,
     maxWidth: 310,
     textAlign: "center"
   },
   emptyState: {
     alignItems: "center",
-    backgroundColor: "#f8f5eb",
-    borderColor: "rgba(75, 91, 82, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     paddingHorizontal: 24,
     paddingVertical: 34
   },
   emptyTitle: {
-    color: "#31443a",
-    fontSize: 20,
-    fontWeight: "900"
+    ...text.pixelHeading,
+    color: colors.textPrimary
   },
   eyebrow: {
-    color: "#557363",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   header: {
-    gap: 6
+    gap: 8
   },
   screen: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     flex: 1
   },
   snailName: {
-    color: "#557363",
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "900"
+    ...text.bodyStrong,
+    color: colors.textPrimary,
+    flex: 1
   },
   subtitle: {
-    color: "#5f6e66",
-    fontSize: 15,
-    fontWeight: "600",
-    lineHeight: 21,
+    ...text.body,
+    color: colors.textMuted,
     maxWidth: 420
   },
   title: {
-    color: "#26352f",
-    fontSize: 33,
-    fontWeight: "900",
-    lineHeight: 38
+    ...text.pixelTitle,
+    color: colors.textPrimary
   },
   unseenPill: {
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(47, 96, 78, 0.16)",
-    borderRadius: 999,
-    borderWidth: 1,
-    color: "#2f604e",
-    fontSize: 12,
-    fontWeight: "900",
+    ...text.pixelMicro,
+    backgroundColor: colors.accentPink,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    color: colors.textPrimary,
     overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 4
+    paddingHorizontal: 6,
+    paddingVertical: 3
   }
 });

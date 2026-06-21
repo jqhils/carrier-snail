@@ -1,7 +1,9 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { PixelButton } from "../components/PixelButton";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors, radii, space, text } from "../theme";
 import {
   FIRST_RUN_ONBOARDING_STEPS,
   LOCATION_PRIVACY_PLAIN_LANGUAGE
@@ -33,7 +35,9 @@ export function OnboardingScreen({ onStart }: OnboardingScreenProps) {
         <View style={styles.steps}>
           {FIRST_RUN_ONBOARDING_STEPS.map((step, index) => (
             <View key={step} style={styles.step}>
-              <Text style={styles.stepNumber}>{index + 1}</Text>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepNumber}>{index + 1}</Text>
+              </View>
               <Text style={styles.stepText}>{step}</Text>
             </View>
           ))}
@@ -43,17 +47,12 @@ export function OnboardingScreen({ onStart }: OnboardingScreenProps) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable
+        <PixelButton
           accessibilityLabel="Start with Garden Snail"
-          accessibilityRole="button"
+          label="Get started"
           onPress={onStart}
-          style={({ pressed }) => [
-            styles.button,
-            pressed ? styles.buttonPressed : null
-          ]}
-        >
-          <Text style={styles.buttonText}>Start with Garden Snail</Text>
-        </Pressable>
+          variant="primary"
+        />
       </View>
     </SafeAreaView>
   );
@@ -87,22 +86,6 @@ function OnboardingHero() {
 }
 
 const styles = StyleSheet.create({
-  button: {
-    alignItems: "center",
-    backgroundColor: "#2f604e",
-    borderRadius: 10,
-    justifyContent: "center",
-    minHeight: 52,
-    paddingHorizontal: 18
-  },
-  buttonPressed: {
-    backgroundColor: "#264f40"
-  },
-  buttonText: {
-    color: "#f6faf6",
-    fontSize: 16,
-    fontWeight: "800"
-  },
   content: {
     alignSelf: "center",
     flexGrow: 1,
@@ -113,20 +96,17 @@ const styles = StyleSheet.create({
     width: "100%"
   },
   eyebrow: {
-    color: "#557363",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   footer: {
-    alignItems: "center",
     paddingBottom: 18,
     paddingHorizontal: 24,
     paddingTop: 12
   },
   header: {
-    gap: 8
+    gap: space.sm
   },
   hero: {
     alignItems: "center",
@@ -135,6 +115,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     maxWidth: 340,
     width: "100%"
+  },
+  privacy: {
+    ...text.bodySm,
+    color: colors.textMuted
+  },
+  screen: {
+    backgroundColor: colors.background,
+    flex: 1
   },
   snailBack: {
     left: 10,
@@ -160,45 +148,45 @@ const styles = StyleSheet.create({
     position: "absolute",
     zIndex: 1
   },
-  privacy: {
-    color: "#6c766f",
-    fontSize: 13,
-    lineHeight: 19
-  },
-  screen: {
-    backgroundColor: "#f4f0e3",
-    flex: 1
-  },
   step: {
+    alignItems: "center",
     flexDirection: "row",
-    gap: 14
+    gap: 12
+  },
+  stepBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    height: 28,
+    justifyContent: "center",
+    width: 28
   },
   stepNumber: {
-    color: "#2f604e",
-    fontSize: 17,
-    fontWeight: "900",
-    width: 20
+    ...text.pixelLabel,
+    color: colors.primary
   },
   stepText: {
-    color: "#3a463f",
+    ...text.body,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
     minWidth: 0
   },
   steps: {
-    gap: 18
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    gap: 16,
+    padding: 16
   },
   subtitle: {
-    color: "#5f6e66",
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 23
+    ...text.bodyLg,
+    color: colors.textMuted
   },
   title: {
-    color: "#26352f",
-    fontSize: 30,
-    fontWeight: "900",
-    lineHeight: 35
+    ...text.pixelTitle,
+    color: colors.primary
   }
 });
