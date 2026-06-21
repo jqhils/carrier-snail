@@ -1,5 +1,6 @@
 import {
   createInitialCarrierState,
+  createStarterGardenSnail,
   getStableSnailDetail,
   InMemoryCarrierRepository,
   listStableSnails
@@ -36,9 +37,11 @@ describe("stable state", () => {
 
     expect(stable.capacity).toEqual({
       busyCount: 0,
-      emptySlotCount: 0,
+      emptySlotCount: 5,
       freeCount: 1,
-      totalCount: 1
+      freeSlots: 5,
+      maxSlots: 6,
+      totalCount: 6
     });
     expect(stable.snails).toEqual([
       {
@@ -52,6 +55,28 @@ describe("stable state", () => {
         statusLabel: "Resting"
       }
     ]);
+  });
+
+  it("counts all owned snails against base and purchased stable slots", () => {
+    const starter = createStarterGardenSnail();
+    const state = {
+      ...createInitialCarrierState(),
+      snails: Array.from({ length: 7 }, (_, index) => ({
+        ...starter,
+        id: `snail-${index + 1}`,
+        status: index < 2 ? "on-journey" as const : "resting" as const
+      })),
+      stableSlots: { purchased: 2 }
+    };
+
+    expect(listStableSnails(state).capacity).toEqual({
+      busyCount: 2,
+      emptySlotCount: 1,
+      freeCount: 5,
+      freeSlots: 1,
+      maxSlots: 8,
+      totalCount: 8
+    });
   });
 
   it("shows a stable detail view with species identity and lifetime progress", () => {

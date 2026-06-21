@@ -8,6 +8,8 @@ import {
   type Egg,
   type Snail
 } from "../useCases/localCarrierState";
+import { StableFullError } from "../useCases/hatchEgg";
+import type { PurchaseProductId } from "../useCases/purchaseInventory";
 import { getSnailSpecies } from "../useCases/snailSpecies";
 import { MySnailsScreen } from "./MySnailsScreen";
 
@@ -52,6 +54,7 @@ describe("MySnailsScreen", () => {
           onHatchEgg: async () => barista,
           onLevelSelectedSnail: () => undefined,
           onRenameSnail: () => undefined,
+          onReleaseSnail: () => undefined,
           onSelectSnail: () => undefined,
           purchaseCatalog: [],
           selectedCanLevel: false,
@@ -81,6 +84,80 @@ describe("MySnailsScreen", () => {
     expect(tree?.root.findByProps({ accessibilityLabel: "Barista Snail" }))
       .toBeTruthy();
     expect(revealStyle?.opacity).toBeUndefined();
+
+    renderer.act(() => {
+      tree?.unmount();
+    });
+  });
+
+  it("shows release and add-slot actions when hatching is blocked by a full stable", async () => {
+    const egg: Egg = {
+      earnedAtMs: 1,
+      id: "egg-1",
+      rarityPool: "earned-basic",
+      source: "earned",
+      status: "unhatched"
+    };
+    const carrierState = {
+      ...createInitialCarrierState(),
+      eggs: [egg],
+      snails: Array.from({ length: 6 }, (_, index) => ({
+        ...createStarterGardenSnail(),
+        id: `snail-${index + 1}`
+      }))
+    };
+    let boughtProductId: PurchaseProductId | undefined;
+    let tree: ReturnType<ReactTestRenderer["create"]> | undefined;
+
+    renderer.act(() => {
+      tree = renderer.create(
+        React.createElement(MySnailsScreen, {
+          canPurchase: true,
+          carrierState,
+          formError: "",
+          onBuyProduct: (productId: PurchaseProductId) => {
+            boughtProductId = productId;
+          },
+          onHatchEgg: async () => {
+            throw new StableFullError();
+          },
+          onLevelSelectedSnail: () => undefined,
+          onRenameSnail: () => undefined,
+          onReleaseSnail: () => undefined,
+          onSelectSnail: () => undefined,
+          purchaseCatalog: [],
+          selectedCanLevel: false,
+          selectedSnailId: "snail-1",
+          stable: listStableSnails(carrierState),
+          unhatchedEggs: [egg]
+        })
+      );
+    });
+
+    const hatchButton = tree?.root.findByProps({
+      accessibilityLabel: "Hatch egg-1"
+    });
+
+    await renderer.act(async () => {
+      (hatchButton?.props.onPress as () => void)();
+      await Promise.resolve();
+    });
+
+    expect(
+      tree?.root.findByProps({
+        accessibilityLabel: "Choose a snail to set free"
+      })
+    ).toBeTruthy();
+
+    const buySlotButton = tree?.root.findByProps({
+      accessibilityLabel: "Buy a stable slot"
+    });
+
+    renderer.act(() => {
+      (buySlotButton?.props.onPress as () => void)();
+    });
+
+    expect(boughtProductId).toBe("stable-slot-single");
 
     renderer.act(() => {
       tree?.unmount();

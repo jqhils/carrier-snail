@@ -46,6 +46,8 @@ export type SoftCurrencyBalance = {
   slime: number;
 };
 
+export const BASE_STABLE_SLOTS = 6;
+
 export type CosmeticInventoryItem = {
   acquiredAtMs: number;
   id: CosmeticId;
@@ -188,6 +190,8 @@ export type StableCapacity = {
   busyCount: number;
   emptySlotCount: number;
   freeCount: number;
+  freeSlots: number;
+  maxSlots: number;
   totalCount: number;
 };
 
@@ -308,14 +312,17 @@ export function listStableSnails(state: CarrierState): StableSnapshot {
   }));
 
   const freeCount = snails.filter(({ status }) => status === "resting").length;
-  const emptySlotCount = state.stableSlots?.purchased ?? 0;
+  const maxSlots = BASE_STABLE_SLOTS + (state.stableSlots?.purchased ?? 0);
+  const freeSlots = maxSlots - snails.length;
 
   return {
     capacity: {
       busyCount: snails.length - freeCount,
-      emptySlotCount,
+      emptySlotCount: freeSlots,
       freeCount,
-      totalCount: snails.length + emptySlotCount
+      freeSlots,
+      maxSlots,
+      totalCount: maxSlots
     },
     snails
   };

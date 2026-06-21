@@ -199,6 +199,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
             ].join(", ")
           )
           .eq("user_id", userId)
+          .is("released_at", null)
           .order("created_at", { ascending: true }),
         this.client
           .from("reminders")
@@ -293,6 +294,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
 
   async saveCarrierState(userId: string, state: CarrierState): Promise<void> {
     const snapshot = cloneCarrierState(state);
+    const snailIds = snapshot.snails.map(({ id }) => id);
     const todoIds = snapshot.todos.map(({ id }) => id);
     const todoIdSet = new Set(todoIds);
 
@@ -327,6 +329,7 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
           quirk_seed: snail.quirkSeed,
           rarity: snail.rarity,
           reliability: snail.reliability,
+          released_at: null,
           speed_band: snail.speedBand,
           species_id: snail.speciesId,
           status: snail.status,
@@ -339,6 +342,8 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
 
       assertNoSupabaseError(result.error, "save snails");
     }
+
+    await this.markMissingRestingSnailsReleased(userId, snailIds);
 
     if (snapshot.todos.length > 0) {
       const result = await this.client.from("todos").upsert(
@@ -488,6 +493,30 @@ export class SupabaseCarrierRepository implements BackendCarrierRepository {
             .not("id", "in", formatPostgrestTextInFilter(todoIds));
 
     assertNoSupabaseError(result.error, "delete removed todos");
+  }
+
+  private async markMissingRestingSnailsReleased(
+    userId: string,
+    snailIds: string[]
+  ): Promise<void> {
+    const releasedAt = new Date().toISOString();
+    const result =
+      snailIds.length === 0
+        ? await this.client
+            .from("snails")
+            .update({ released_at: releasedAt })
+            .eq("user_id", userId)
+            .eq("status", "resting")
+            .is("released_at", null)
+        : await this.client
+            .from("snails")
+            .update({ released_at: releasedAt })
+            .eq("user_id", userId)
+            .eq("status", "resting")
+            .is("released_at", null)
+            .not("id", "in", formatPostgrestTextInFilter(snailIds));
+
+    assertNoSupabaseError(result.error, "mark released snails");
   }
 }
 
