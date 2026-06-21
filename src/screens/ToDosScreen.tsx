@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -115,27 +116,14 @@ export function ToDosScreen({
         </View>
 
         <View style={styles.composerPanel}>
-          <View style={styles.selectedSnailRow}>
-            <Text style={styles.selectedSnailLabel}>Resting carrier</Text>
-            <View style={styles.selectedSnailIdentity}>
-              {selectedStableSnail ? (
-                <SnailSprite
-                  speciesId={selectedStableSnail.speciesId}
-                  size={28}
-                />
-              ) : null}
-              <Text numberOfLines={1} style={styles.selectedSnailValue}>
-                {selectedStableSnail
-                  ? selectedStableSnail.name
-                  : "No resting snail"}
-              </Text>
-            </View>
-          </View>
           <View style={styles.composerRow}>
             <TextInput
               accessibilityLabel="To-do text"
               onChangeText={onChangeToDoText}
-              onSubmitEditing={onCreateToDo}
+              onSubmitEditing={() => {
+                onCreateToDo();
+                Keyboard.dismiss();
+              }}
               placeholder="buy milk"
               placeholderTextColor="#7d7a70"
               returnKeyType="done"
@@ -145,7 +133,10 @@ export function ToDosScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add to-do"
-              onPress={onCreateToDo}
+              onPress={() => {
+                onCreateToDo();
+                Keyboard.dismiss();
+              }}
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed ? styles.primaryButtonPressed : null
@@ -652,34 +643,6 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#f4f0e3",
     flex: 1
-  },
-  selectedSnailLabel: {
-    color: "#6d5a46",
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "uppercase"
-  },
-  selectedSnailRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between"
-  },
-  selectedSnailIdentity: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: 6,
-    justifyContent: "flex-end",
-    minWidth: 0
-  },
-  selectedSnailValue: {
-    color: "#25332e",
-    flexShrink: 1,
-    fontSize: 13,
-    fontWeight: "800",
-    minWidth: 0,
-    textAlign: "right"
   },
   smallButton: {
     alignItems: "center",
