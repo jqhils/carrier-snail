@@ -65,10 +65,10 @@ describe("purchaseInventory", () => {
 
     expect(state.eggs).toEqual([
       {
-        earnedAtMs: 5000,
+        earnedAtMs: 0,
         id: "egg-1",
-        rarityPool: "paid-premium",
-        source: "purchased",
+        rarityPool: "earned-basic",
+        source: "earned",
         status: "unhatched"
       },
       {
@@ -81,6 +81,13 @@ describe("purchaseInventory", () => {
       {
         earnedAtMs: 5000,
         id: "egg-3",
+        rarityPool: "paid-premium",
+        source: "purchased",
+        status: "unhatched"
+      },
+      {
+        earnedAtMs: 5000,
+        id: "egg-4",
         rarityPool: "paid-premium",
         source: "purchased",
         status: "unhatched"
@@ -107,7 +114,7 @@ describe("purchaseInventory", () => {
     const state = repository.snapshot();
 
     expect(state.snails).toHaveLength(6);
-    expect(state.eggs).toHaveLength(3);
+    expect(state.eggs).toHaveLength(4);
     expect(state.eggs.every((egg) => egg.status === "unhatched")).toBe(true);
   });
 
@@ -180,6 +187,14 @@ describe("purchaseInventory", () => {
       )
     ).toThrow(InsufficientSlimeError);
     expect(repository.snapshot().softCurrency.slime).toBe(10);
-    expect(repository.snapshot().eggs).toEqual([]);
+    expect(repository.snapshot().eggs).toEqual([
+      {
+        earnedAtMs: 0,
+        id: "egg-1",
+        rarityPool: "earned-basic",
+        source: "earned",
+        status: "unhatched"
+      }
+    ]);
   });
 });

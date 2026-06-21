@@ -232,7 +232,17 @@ export function createStarterGardenSnail(): Snail {
 export function createInitialCarrierState(): CarrierState {
   return {
     arrivals: [],
-    eggs: [],
+    // New players start with one unhatched egg so they have something to hatch
+    // right away (alongside the starter Garden Snail).
+    eggs: [
+      {
+        earnedAtMs: 0,
+        id: "egg-1",
+        rarityPool: "earned-basic",
+        source: "earned",
+        status: "unhatched"
+      }
+    ],
     inventory: { cosmetics: [] },
     journeys: [],
     onboarding: {},

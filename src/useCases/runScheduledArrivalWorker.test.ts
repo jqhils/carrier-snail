@@ -129,8 +129,15 @@ describe("runScheduledArrivalWorker", () => {
     expect(completed.softCurrency).toEqual({ slime: 1 });
     expect(completed.eggs).toEqual([
       {
-        earnedAtMs: eta.earliestArrivalAtMs,
+        earnedAtMs: 0,
         id: "egg-1",
+        rarityPool: "earned-basic",
+        source: "earned",
+        status: "unhatched"
+      },
+      {
+        earnedAtMs: eta.earliestArrivalAtMs,
+        id: "egg-2",
         rarityPool: "earned-basic",
         source: "earned",
         status: "unhatched"

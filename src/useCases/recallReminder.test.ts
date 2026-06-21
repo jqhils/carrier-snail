@@ -63,7 +63,15 @@ describe("recallReminder", () => {
       id: "garden-1",
       status: "resting"
     });
-    expect(state.eggs).toEqual([]);
+    expect(state.eggs).toEqual([
+      {
+        earnedAtMs: 0,
+        id: "egg-1",
+        rarityPool: "earned-basic",
+        source: "earned",
+        status: "unhatched"
+      }
+    ]);
     expect(listInFlightReminders(state)).toEqual([]);
   });
 });

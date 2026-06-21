@@ -32,6 +32,20 @@ describe("stable state", () => {
     });
   });
 
+  it("grants a starter unhatched egg to new players", () => {
+    const state = createInitialCarrierState();
+
+    expect(state.eggs).toEqual([
+      {
+        earnedAtMs: 0,
+        id: "egg-1",
+        rarityPool: "earned-basic",
+        source: "earned",
+        status: "unhatched"
+      }
+    ]);
+  });
+
   it("shows a new user's starter Garden Snail and free capacity", () => {
     const stable = listStableSnails(createInitialCarrierState());
 

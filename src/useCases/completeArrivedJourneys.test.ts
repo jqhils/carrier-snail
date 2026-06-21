@@ -102,8 +102,15 @@ describe("completeArrivedJourneys", () => {
     expect(state.softCurrency).toEqual({ slime: 1 });
     expect(state.eggs).toEqual([
       {
-        earnedAtMs: arrivalMs,
+        earnedAtMs: 0,
         id: "egg-1",
+        rarityPool: "earned-basic",
+        source: "earned",
+        status: "unhatched"
+      },
+      {
+        earnedAtMs: arrivalMs,
+        id: "egg-2",
         rarityPool: "earned-basic",
         source: "earned",
         status: "unhatched"
