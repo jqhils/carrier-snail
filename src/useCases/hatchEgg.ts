@@ -1,5 +1,6 @@
 import type { Clock } from "./createReminderJourney";
 import {
+  BASE_STABLE_SLOTS,
   type CarrierRepository,
   type EggRarityPool,
   type Snail,
@@ -22,6 +23,13 @@ export class EggUnavailableError extends Error {
   constructor() {
     super("That egg is not available to hatch.");
     this.name = "EggUnavailableError";
+  }
+}
+
+export class StableFullError extends Error {
+  constructor() {
+    super("Your stable is full — set a snail free, or add a slot.");
+    this.name = "StableFullError";
   }
 }
 
@@ -95,15 +103,24 @@ export function hatchEgg(
     throw new EggUnavailableError();
   }
 
+  const maxSlots = BASE_STABLE_SLOTS + state.stableSlots.purchased;
+
+  if (state.snails.length >= maxSlots) {
+    throw new StableFullError();
+  }
+
   const roll = input.randomUnit?.() ?? Math.random();
   const rarity = selectRarityFromOdds(
     roll,
     getEggRarityPoolOdds(egg.rarityPool)
   );
   const snail = createSnailFromRarity({
+    id: createHatchedSnailId({
+      eggId: egg.id,
+      existingSnailIds: state.snails.map((candidate) => candidate.id)
+    }),
     rarity,
     seed: `${egg.id}:${egg.earnedAtMs}:${egg.rarityPool}`,
-    sequence: state.snails.length + 1
   });
   const hatchedAtMs = clock.now();
 
@@ -134,15 +151,14 @@ export function hatchEgg(
 }
 
 export function createSnailFromRarity({
+  id,
   rarity,
-  seed,
-  sequence
+  seed
 }: {
+  id: string;
   rarity: SnailRarity;
   seed: string;
-  sequence: number;
 }): Snail {
-  const id = `snail-${sequence}`;
   const species = selectSnailSpeciesForRarity({ rarity, seed });
 
   return {
@@ -163,4 +179,27 @@ export function createSnailFromRarity({
     temperament: species.temperament,
     trail: { ...species.trail }
   };
+}
+
+function createHatchedSnailId({
+  eggId,
+  existingSnailIds
+}: {
+  eggId: string;
+  existingSnailIds: string[];
+}): string {
+  const existing = new Set(existingSnailIds);
+  const baseId = `snail-${eggId}`;
+
+  if (!existing.has(baseId)) {
+    return baseId;
+  }
+
+  let suffix = 2;
+
+  while (existing.has(`${baseId}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseId}-${suffix}`;
 }

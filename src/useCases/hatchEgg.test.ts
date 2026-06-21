@@ -1,12 +1,14 @@
 import {
   createInitialCarrierState,
+  createStarterGardenSnail,
   InMemoryCarrierRepository,
   type CarrierState
 } from "./localCarrierState";
 import {
   getEggRarityPoolOdds,
   hatchEgg,
-  selectRarityFromOdds
+  selectRarityFromOdds,
+  StableFullError
 } from "./hatchEgg";
 import { getSnailSpecies } from "./snailSpecies";
 
@@ -84,6 +86,51 @@ describe("hatchEgg", () => {
       temperament: species.temperament,
       trail: species.trail
     });
+  });
+
+  it("blocks hatching at the stable cap without consuming the egg", () => {
+    const fullState = {
+      ...stateWithEarnedEgg(),
+      snails: Array.from({ length: 6 }, (_, index) => ({
+        ...createStarterGardenSnail(),
+        id: `snail-${index + 1}`
+      }))
+    };
+    const repository = new InMemoryCarrierRepository(fullState);
+
+    expect(() =>
+      hatchEgg(
+        { eggId: "egg-1", randomUnit: () => 0.1 },
+        {
+          clock: { now: () => 5000 },
+          repository
+        }
+      )
+    ).toThrow(StableFullError);
+    expect(repository.snapshot().eggs).toEqual(fullState.eggs);
+    expect(repository.snapshot().snails).toHaveLength(6);
+  });
+
+  it("hatches into a freed slot without reusing an owned snail id", () => {
+    const repository = new InMemoryCarrierRepository({
+      ...stateWithEarnedEgg(),
+      snails: Array.from({ length: 5 }, (_, index) => ({
+        ...createStarterGardenSnail(),
+        id: `snail-${index + 2}`
+      }))
+    });
+
+    const result = hatchEgg(
+      { eggId: "egg-1", randomUnit: () => 0.1 },
+      {
+        clock: { now: () => 5000 },
+        repository
+      }
+    );
+    const snailIds = repository.snapshot().snails.map((snail) => snail.id);
+
+    expect(snailIds).toContain(result.snail.id);
+    expect(new Set(snailIds).size).toBe(snailIds.length);
   });
 });
 

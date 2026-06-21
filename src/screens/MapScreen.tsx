@@ -61,7 +61,7 @@ import {
   ExpoLocalPushSender,
   requestArrivalNotificationPermission
 } from "../useCases/expoLocalPushSender";
-import { hatchEgg } from "../useCases/hatchEgg";
+import { hatchEgg, StableFullError } from "../useCases/hatchEgg";
 import {
   buildMapStyleUrl,
   coerceMapSkinId,
@@ -84,6 +84,7 @@ import {
   type PurchaseProductId
 } from "../useCases/purchaseInventory";
 import { renameSnail } from "../useCases/renameSnail";
+import { releaseSnail } from "../useCases/releaseSnail";
 import {
   createInitialCarrierState,
   getActiveJourney,
@@ -944,8 +945,32 @@ export function MapScreen({
       setFormError("");
       return result.snail;
     } catch (error) {
+      if (error instanceof StableFullError) {
+        throw error;
+      }
+
       setFormError(error instanceof Error ? error.message : "Hatch failed.");
       return undefined;
+    }
+  }
+
+  async function releaseOwnedSnail(snailId: string) {
+    try {
+      const repository = new InMemoryCarrierRepository(carrierState);
+
+      releaseSnail(
+        { snailId },
+        {
+          repository
+        }
+      );
+      const nextState = repository.snapshot();
+
+      await persistNextCarrierState(nextState);
+      setRequestedSelectedSnailId(nextState.snails[0]?.id ?? "");
+      setFormError("");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Release failed.");
     }
   }
 
@@ -1469,6 +1494,9 @@ export function MapScreen({
           }}
           onRenameSnail={(snailId, name) => {
             void renameOwnedSnail(snailId, name);
+          }}
+          onReleaseSnail={(snailId) => {
+            void releaseOwnedSnail(snailId);
           }}
           onSelectSnail={setRequestedSelectedSnailId}
           purchaseCatalog={purchaseCatalog}

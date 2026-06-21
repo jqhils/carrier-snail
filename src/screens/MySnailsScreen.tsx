@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Animated,
   Easing,
   Pressable,
@@ -13,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
 import { SnailSprite } from "../components/SnailSprite";
-import { getEggRarityPoolOdds } from "../useCases/hatchEgg";
+import { getEggRarityPoolOdds, StableFullError } from "../useCases/hatchEgg";
 import {
   getStableSnailDetail,
   type CarrierState,
@@ -41,6 +42,7 @@ type MySnailsScreenProps = {
   onHatchEgg: (eggId: string) => Promise<Snail | undefined>;
   onLevelSelectedSnail: () => void;
   onRenameSnail: (snailId: string, name: string) => void;
+  onReleaseSnail: (snailId: string) => void;
   onSelectSnail: (snailId: string) => void;
   purchaseCatalog: PurchaseCatalogProduct[];
   selectedCanLevel: boolean;
@@ -57,6 +59,7 @@ export function MySnailsScreen({
   onHatchEgg,
   onLevelSelectedSnail,
   onRenameSnail,
+  onReleaseSnail,
   onSelectSnail,
   purchaseCatalog,
   selectedCanLevel,
@@ -66,6 +69,7 @@ export function MySnailsScreen({
 }: MySnailsScreenProps) {
   const [detailSnailId, setDetailSnailId] = useState<string | undefined>();
   const [hatchingEggId, setHatchingEggId] = useState<string | undefined>();
+  const [fullStablePromptVisible, setFullStablePromptVisible] = useState(false);
   const [hatchReveal, setHatchReveal] = useState<
     { nonce: number; snail: Snail } | undefined
   >();
@@ -78,16 +82,38 @@ export function MySnailsScreen({
       return;
     }
 
-    setHatchingEggId(eggId);
-    const snail = await onHatchEgg(eggId);
-    setHatchingEggId(undefined);
+    try {
+      setHatchingEggId(eggId);
+      const snail = await onHatchEgg(eggId);
 
-    if (snail) {
-      setHatchReveal((current) => ({
-        nonce: (current?.nonce ?? 0) + 1,
-        snail
-      }));
+      if (snail) {
+        setFullStablePromptVisible(false);
+        setHatchReveal((current) => ({
+          nonce: (current?.nonce ?? 0) + 1,
+          snail
+        }));
+      }
+    } catch (error) {
+      if (error instanceof StableFullError) {
+        setFullStablePromptVisible(true);
+      }
+    } finally {
+      setHatchingEggId(undefined);
     }
+  }
+
+  function openReleaseCandidate() {
+    const candidate =
+      stable.snails.find((snail) => snail.status === "resting") ??
+      stable.snails[0];
+
+    if (!candidate) {
+      return;
+    }
+
+    onSelectSnail(candidate.id);
+    setDetailSnailId(candidate.id);
+    setFullStablePromptVisible(false);
   }
 
   if (stable.snails.length === 0) {
@@ -111,6 +137,7 @@ export function MySnailsScreen({
         onBack={() => setDetailSnailId(undefined)}
         onLevelSelectedSnail={onLevelSelectedSnail}
         onRenameSnail={onRenameSnail}
+        onReleaseSnail={onReleaseSnail}
       />
     );
   }
@@ -129,9 +156,47 @@ export function MySnailsScreen({
           </View>
           <Text numberOfLines={3} style={styles.capacity}>
             {stable.capacity.freeCount} resting, {stable.capacity.busyCount} out,{" "}
-            {stable.capacity.emptySlotCount} slots
+            {stable.capacity.freeSlots} free of {stable.capacity.maxSlots} slots
           </Text>
         </View>
+
+        {fullStablePromptVisible ? (
+          <View style={styles.fullStablePrompt}>
+            <Text style={styles.fullStableTitle}>Stable full</Text>
+            <Text style={styles.fullStableText}>
+              Your stable is full — set a snail free, or add a slot.
+            </Text>
+            <View style={styles.fullStableActions}>
+              <Pressable
+                accessibilityLabel="Choose a snail to set free"
+                accessibilityRole="button"
+                onPress={openReleaseCandidate}
+                style={({ pressed }) => [
+                  styles.fullStableSecondaryButton,
+                  pressed ? styles.fullStableSecondaryButtonPressed : null
+                ]}
+              >
+                <Text style={styles.fullStableSecondaryButtonText}>Set free</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Buy a stable slot"
+                accessibilityRole="button"
+                disabled={!canPurchase}
+                onPress={() => {
+                  setFullStablePromptVisible(false);
+                  onBuyProduct("stable-slot-single");
+                }}
+                style={({ pressed }) => [
+                  styles.fullStablePrimaryButton,
+                  !canPurchase ? styles.fullStablePrimaryButtonDisabled : null,
+                  pressed ? styles.fullStablePrimaryButtonPressed : null
+                ]}
+              >
+                <Text style={styles.fullStablePrimaryButtonText}>Add slot</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.snailList}>
           {stable.snails.map((snail) => {
@@ -278,6 +343,7 @@ function SnailDetailView({
   levelCost,
   onBack,
   onLevelSelectedSnail,
+  onReleaseSnail,
   onRenameSnail
 }: {
   canLevel: boolean;
@@ -286,8 +352,26 @@ function SnailDetailView({
   levelCost: number;
   onBack: () => void;
   onLevelSelectedSnail: () => void;
+  onReleaseSnail: (snailId: string) => void;
   onRenameSnail: (snailId: string, name: string) => void;
 }) {
+  function confirmRelease() {
+    Alert.alert(
+      `Set ${detail.name} free?`,
+      "They'll return to the garden, leaving a little slime behind. This can't be undone.",
+      [
+        {
+          style: "cancel",
+          text: "Keep"
+        },
+        {
+          onPress: () => onReleaseSnail(detail.id),
+          text: "Set free"
+        }
+      ]
+    );
+  }
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <FadeInView>
@@ -390,6 +474,33 @@ function SnailDetailView({
               label="Journeys completed"
               value={String(detail.journeysCompleted)}
             />
+          </View>
+
+          <View style={styles.releasePanel}>
+            <View style={styles.releaseCopy}>
+              <Text style={styles.renameLabel}>Set free</Text>
+              <Text style={styles.releaseText}>
+                Returns to the garden and leaves a little slime behind.
+              </Text>
+              {detail.status !== "resting" ? (
+                <Text style={styles.releaseHint}>
+                  Recall this snail home before setting it free.
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              accessibilityLabel={`Set ${detail.name} free`}
+              accessibilityRole="button"
+              disabled={detail.status !== "resting"}
+              onPress={confirmRelease}
+              style={({ pressed }) => [
+                styles.releaseButton,
+                detail.status !== "resting" ? styles.releaseButtonDisabled : null,
+                pressed ? styles.releaseButtonPressed : null
+              ]}
+            >
+              <Text style={styles.releaseButtonText}>Set free</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </FadeInView>
@@ -851,6 +962,68 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: "uppercase"
   },
+  fullStableActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12
+  },
+  fullStablePrimaryButton: {
+    alignItems: "center",
+    backgroundColor: "#365c8d",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 36,
+    minWidth: 88,
+    paddingHorizontal: 12
+  },
+  fullStablePrimaryButtonDisabled: {
+    backgroundColor: "#7c8580"
+  },
+  fullStablePrimaryButtonPressed: {
+    backgroundColor: "#294870"
+  },
+  fullStablePrimaryButtonText: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  fullStablePrompt: {
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(138, 111, 79, 0.24)",
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 14,
+    padding: 12
+  },
+  fullStableSecondaryButton: {
+    alignItems: "center",
+    backgroundColor: "#e6e0d1",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 36,
+    minWidth: 88,
+    paddingHorizontal: 12
+  },
+  fullStableSecondaryButtonPressed: {
+    backgroundColor: "#d8cfbe"
+  },
+  fullStableSecondaryButtonText: {
+    color: "#25332e",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  fullStableText: {
+    color: "#56645e",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4
+  },
+  fullStableTitle: {
+    color: "#25332e",
+    fontSize: 15,
+    fontWeight: "900"
+  },
   hatchButton: {
     alignItems: "center",
     backgroundColor: "#365c8d",
@@ -1115,6 +1288,53 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 14,
     paddingTop: 12
+  },
+  releaseButton: {
+    alignItems: "center",
+    backgroundColor: "#8a6f4f",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 36,
+    minWidth: 86,
+    paddingHorizontal: 12
+  },
+  releaseButtonDisabled: {
+    backgroundColor: "#a7aaa3"
+  },
+  releaseButtonPressed: {
+    backgroundColor: "#715a40"
+  },
+  releaseButtonText: {
+    color: "#fffaf0",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  releaseCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  releaseHint: {
+    color: "#8a6f4f",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 4
+  },
+  releasePanel: {
+    alignItems: "center",
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(138, 111, 79, 0.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+    padding: 12
+  },
+  releaseText: {
+    color: "#56645e",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4
   },
   screen: {
     backgroundColor: "#edf1e8",

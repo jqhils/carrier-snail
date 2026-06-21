@@ -1,5 +1,6 @@
 import {
   createInitialCarrierState,
+  createStarterGardenSnail,
   InMemoryCarrierRepository,
   listStableSnails
 } from "./localCarrierState";
@@ -113,6 +114,31 @@ describe("purchaseInventory", () => {
     ]);
   });
 
+  it("allows purchased eggs to queue when the stable is full", async () => {
+    const repository = new InMemoryCarrierRepository({
+      ...createInitialCarrierState(),
+      snails: Array.from({ length: 6 }, (_, index) => ({
+        ...createStarterGardenSnail(),
+        id: `snail-${index + 1}`
+      }))
+    });
+    const entitlementProvider = new FakeEntitlementProvider();
+
+    await purchaseInventory(
+      { productId: "egg-pack-small" },
+      {
+        clock: { now: () => 4000 },
+        entitlementProvider,
+        repository
+      }
+    );
+    const state = repository.snapshot();
+
+    expect(state.snails).toHaveLength(6);
+    expect(state.eggs).toHaveLength(3);
+    expect(state.eggs.every((egg) => egg.status === "unhatched")).toBe(true);
+  });
+
   it("uses entitlements to grant cosmetics and stable slots", async () => {
     const repository = new InMemoryCarrierRepository(createInitialCarrierState());
     const entitlementProvider = new FakeEntitlementProvider();
@@ -145,8 +171,10 @@ describe("purchaseInventory", () => {
     ]);
     expect(state.stableSlots).toEqual({ purchased: 1 });
     expect(listStableSnails(state).capacity).toMatchObject({
-      emptySlotCount: 1,
-      totalCount: 2
+      emptySlotCount: 6,
+      freeSlots: 6,
+      maxSlots: 7,
+      totalCount: 7
     });
   });
 
