@@ -56,9 +56,7 @@ export function GamesListScreen({
           onPress={onBack}
           style={({ pressed }) => [styles.back, pressed ? styles.pressed : null]}
         >
-          <Text numberOfLines={1} style={styles.backText}>
-            ‹ {snail.name}
-          </Text>
+          <Text style={styles.backText}>Back</Text>
         </Pressable>
         {typeof slimeBalance === "number" ? (
           <View style={styles.slimePill}>
@@ -311,8 +309,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 46
   },
-  back: { paddingHorizontal: 6, paddingVertical: 4 },
-  backText: { color: GREEN, fontSize: 16, fontWeight: "800", maxWidth: 220 },
+  back: {
+    alignItems: "center",
+    backgroundColor: "#f4f0e3",
+    borderColor: "rgba(37, 51, 46, 0.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 68,
+    paddingHorizontal: 10
+  },
+  backText: { color: "#25332e", fontSize: 13, fontWeight: "800" },
   best: { color: MUTED, fontSize: 12, fontWeight: "700" },
   bestNum: { color: GREEN, fontWeight: "800" },
   board2048: {
