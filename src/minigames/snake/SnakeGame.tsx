@@ -26,12 +26,12 @@ const COLORS = {
   apple: "#e24b4a",
   appleLeaf: "#5aa233",
   board: "#284b3b",
-  cardBg: "#fffaf0",
+  cardBg: "#f8f6ed",
   grid: "#2f5546",
   ink: "#173a2c",
   segment: "#8fd07a",
   segmentEdge: "#6bbd5b",
-  teal: "#11616a",
+  teal: "#2f5546",
   white: "#ffffff"
 };
 
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center"
   },
-  fill: { ...ABSOLUTE_FILL, backgroundColor: "#eef1e8" },
+  fill: { ...ABSOLUTE_FILL, backgroundColor: "#edf1e8" },
   hint: {
     backgroundColor: "rgba(23, 58, 44, 0.82)",
     borderRadius: 14,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     position: "absolute"
   },
   statLabel: {
-    color: "#2a2118",
+    color: "#25332e",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 14,

@@ -27,8 +27,8 @@ type Props = {
 };
 
 const GREEN = "#3f6d5b";
-const INK = "#2f4a3d";
-const MUTED = "#5a6b7a";
+const INK = "#25332e";
+const MUTED = "#56645e";
 
 // "Game Corner" — the per-snail games hub: a tile grid of games (each showing
 // this snail's best + Play) and a leaderboard of the stable's real top scores.
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   lRowFirst: { borderTopWidth: 0 },
   lScore: { color: INK, fontSize: 15, fontWeight: "900" },
   leader: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f6ed",
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 4
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   playText: { color: "#fff", fontSize: 13, fontWeight: "800" },
   playing: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f6ed",
     borderRadius: 16,
     flexDirection: "row",
     gap: 12,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     width: 22
   },
-  screen: { backgroundColor: "#eef1e8", flex: 1 },
+  screen: { backgroundColor: "#edf1e8", flex: 1 },
   sectionHead: {
     alignItems: "baseline",
     flexDirection: "row",
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     width: 26
   },
   tile: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f6ed",
     borderRadius: 18,
     overflow: "hidden"
   },

@@ -46,7 +46,7 @@ const COLORS = {
   pipeLight: "#bdee63",
   skyBottom: "#a9e7d8",
   skyTop: "#4ec3d4",
-  teal: "#11616a",
+  teal: "#2f5546",
   white: "#ffffff"
 };
 
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   card: {
-    backgroundColor: "#fffaf0",
+    backgroundColor: "#f8f6ed",
     borderColor: "rgba(17, 97, 106, 0.18)",
     borderRadius: 18,
     borderWidth: 2,
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   statLabel: {
-    color: "#2a2118",
+    color: "#25332e",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 14,

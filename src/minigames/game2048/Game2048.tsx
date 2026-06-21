@@ -25,29 +25,29 @@ import type { GameComponentProps } from "../types";
 // there so slide/pop animations still run (and to silence the warning).
 const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
-const BOARD_BG = "#cbb79b";
-const CELL_BG = "#dccdb4";
+const BOARD_BG = "#c1c8b8";
+const CELL_BG = "#d6dccc";
 const GAP = 10;
 const SWIPE_THRESHOLD = 18;
 const SLIDE_MS = 110;
 
 // Tile colors. 2048+ uses the app green so the win tile reads as "ours".
 const TILE_COLORS: Record<number, { bg: string; fg: string }> = {
-  2: { bg: "#eee4da", fg: "#5b5147" },
-  4: { bg: "#ede0c8", fg: "#5b5147" },
-  8: { bg: "#f2b179", fg: "#ffffff" },
-  16: { bg: "#f59563", fg: "#ffffff" },
-  32: { bg: "#f67c5f", fg: "#ffffff" },
-  64: { bg: "#f65e3b", fg: "#ffffff" },
-  128: { bg: "#edcf72", fg: "#ffffff" },
-  256: { bg: "#edcc61", fg: "#ffffff" },
-  512: { bg: "#edc850", fg: "#ffffff" },
-  1024: { bg: "#edc53f", fg: "#ffffff" },
+  2: { bg: "#ece4d3", fg: "#6d5a46" },
+  4: { bg: "#ddd0b8", fg: "#6d5a46" },
+  8: { bg: "#cfac79", fg: "#ffffff" },
+  16: { bg: "#c68f54", fg: "#ffffff" },
+  32: { bg: "#b9743f", fg: "#ffffff" },
+  64: { bg: "#a85a32", fg: "#ffffff" },
+  128: { bg: "#8a9a5e", fg: "#ffffff" },
+  256: { bg: "#6f9568", fg: "#ffffff" },
+  512: { bg: "#56896c", fg: "#ffffff" },
+  1024: { bg: "#487a61", fg: "#ffffff" },
   2048: { bg: "#3f6d5b", fg: "#ffffff" }
 };
 
 function tileColors(value: number): { bg: string; fg: string } {
-  return TILE_COLORS[value] ?? { bg: "#2f4a3d", fg: "#ffffff" };
+  return TILE_COLORS[value] ?? { bg: "#25332e", fg: "#ffffff" };
 }
 
 function fontFor(value: number, cell: number): number {
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     marginTop: 14
   },
   card: {
-    backgroundColor: "#fffaf0",
+    backgroundColor: "#f8f6ed",
     borderColor: "rgba(63, 109, 91, 0.18)",
     borderRadius: 18,
     borderWidth: 2,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     width: "82%"
   },
   cardTitle: {
-    color: "#2f4a3d",
+    color: "#25332e",
     fontSize: 26,
     fontWeight: "800",
     textAlign: "center"
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   screen: {
-    backgroundColor: "#eef1e8",
+    backgroundColor: "#edf1e8",
     flex: 1
   },
   secondaryButton: {
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11
   },
   secondaryButtonText: {
-    color: "#2f4a3d",
+    color: "#25332e",
     fontSize: 14,
     fontWeight: "700"
   },
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap"
   },
   statLabel: {
-    color: "#2a2118",
+    color: "#25332e",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 14,
@@ -526,12 +526,12 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   subtitle: {
-    color: "#5a6b7a",
+    color: "#56645e",
     fontSize: 13,
     marginTop: 2
   },
   swipeHint: {
-    color: "#5a6b7a",
+    color: "#56645e",
     fontSize: 13,
     marginTop: 10,
     textAlign: "center"
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     position: "absolute"
   },
   title: {
-    color: "#2f4a3d",
+    color: "#25332e",
     fontSize: 24,
     fontWeight: "900"
   },

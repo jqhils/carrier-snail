@@ -184,7 +184,7 @@ export function SnailGameFlowProvider({
 
 const styles = StyleSheet.create({
   overlay: {
-    backgroundColor: "#eef1e8",
+    backgroundColor: "#edf1e8",
     bottom: 0,
     left: 0,
     position: "absolute",
