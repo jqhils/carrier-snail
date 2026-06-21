@@ -5,17 +5,17 @@ export type TrailLineProperties = {
 };
 
 export const REMAINING_PATH_STYLE = {
-  casingColor: "rgba(248, 246, 237, 0.72)",
+  casingColor: "rgba(253, 246, 233, 0.72)",
   casingWidth: 7,
-  lineColor: "rgba(70, 86, 78, 0.78)",
+  lineColor: "rgba(111, 102, 128, 0.78)",
   lineDasharray: [2, 3],
   lineWidth: 3
 };
 
-const CASING_COLOR = { blue: 237, green: 246, red: 248 };
-const HIGHLIGHT_COLOR = { blue: 245, green: 252, red: 253 };
-const PALE_TRAIL_TINT = { blue: 140, green: 143, red: 75 };
-const PALE_LUMINANCE_THRESHOLD = 0.82;
+const CASING_COLOR = { blue: 233, green: 246, red: 253 };
+const HIGHLIGHT_COLOR = { blue: 233, green: 246, red: 253 };
+const PALE_TRAIL_TINT = { blue: 54, green: 35, red: 42 };
+const PALE_LUMINANCE_THRESHOLD = 0.75;
 const PALE_TINT_MIX = 0.45;
 
 export function buildTrailLineProperties({

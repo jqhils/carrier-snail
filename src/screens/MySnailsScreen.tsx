@@ -13,7 +13,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { PixelButton } from "../components/PixelButton";
+import { RarityBadge, SlimeChip, StatBar } from "../components/PixelUI";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors, pixelShadow, radii, text } from "../theme";
 import { getEggRarityPoolOdds, StableFullError } from "../useCases/hatchEgg";
 import {
   getStableSnailDetail,
@@ -181,10 +184,7 @@ export function MySnailsScreen({
             {stable.capacity.freeCount} resting · {stable.capacity.busyCount} out ·{" "}
             {stable.capacity.freeSlots} of {stable.capacity.maxSlots} slots free
           </Text>
-          <View style={styles.headerSlime}>
-            <View style={styles.slimeChipDot} />
-            <Text style={styles.slimeChipText}>{slimeBalance} slime</Text>
-          </View>
+          <SlimeChip count={slimeBalance} style={styles.headerSlime} />
         </View>
 
         {fullStablePromptVisible ? (
@@ -194,35 +194,24 @@ export function MySnailsScreen({
               Your stable is full — set a snail free, or add a slot.
             </Text>
             <View style={styles.fullStableActions}>
-              <Pressable
+              <PixelButton
                 accessibilityLabel="Choose a snail to set free"
-                accessibilityRole="button"
+                label="Set free"
                 onPress={openReleaseCandidate}
-                style={({ pressed }) => [
-                  styles.fullStableSecondaryButton,
-                  pressed ? styles.fullStableSecondaryButtonPressed : null
-                ]}
-              >
-                <Text style={styles.fullStableSecondaryButtonText}>Set free</Text>
-              </Pressable>
-              <Pressable
+                size="compact"
+                variant="neutral"
+              />
+              <PixelButton
                 accessibilityLabel="Buy a stable slot"
-                accessibilityRole="button"
                 disabled={slimeBalance < slotPrice}
+                label="Add slot"
                 onPress={() => {
                   setFullStablePromptVisible(false);
                   onBuyProduct("stable-slot-single");
                 }}
-                style={({ pressed }) => [
-                  styles.fullStablePrimaryButton,
-                  slimeBalance < slotPrice
-                    ? styles.fullStablePrimaryButtonDisabled
-                    : null,
-                  pressed ? styles.fullStablePrimaryButtonPressed : null
-                ]}
-              >
-                <Text style={styles.fullStablePrimaryButtonText}>Add slot</Text>
-              </Pressable>
+                size="compact"
+                variant="secondary"
+              />
             </View>
           </View>
         ) : null}
@@ -296,23 +285,16 @@ export function MySnailsScreen({
                     {formatOddsText(egg.rarityPool)}
                   </Text>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
+                <PixelButton
                   accessibilityLabel={`Hatch ${egg.id}`}
                   disabled={!!hatchingEggId}
+                  label={hatchingEggId === egg.id ? "Opening" : "Hatch"}
                   onPress={() => {
                     void hatchEggWithReveal(egg.id);
                   }}
-                  style={({ pressed }) => [
-                    styles.hatchButton,
-                    hatchingEggId ? styles.hatchButtonDisabled : null,
-                    pressed ? styles.hatchButtonPressed : null
-                  ]}
-                >
-                  <Text style={styles.hatchButtonText}>
-                    {hatchingEggId === egg.id ? "Opening" : "Hatch"}
-                  </Text>
-                </Pressable>
+                  size="compact"
+                  variant="gold"
+                />
               </View>
             ))}
           </View>
@@ -392,6 +374,9 @@ function SnailDetailView({
     );
   }
 
+  const expThreshold = expThresholdForLevel(detail.level);
+  const expValue = Math.min(detail.experiencePoints, expThreshold);
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <FadeInView>
@@ -445,42 +430,32 @@ function SnailDetailView({
               <Text numberOfLines={1} style={styles.levelText}>
                 Lv {detail.level}
               </Text>
-              <Text numberOfLines={1} style={styles.renameLabel}>
-                Exp{" "}
-                {Math.min(
-                  detail.experiencePoints,
-                  expThresholdForLevel(detail.level)
-                )}
-                /{expThresholdForLevel(detail.level)}
+              <Text numberOfLines={1} style={styles.levelExp}>
+                Exp {expValue}/{expThreshold}
               </Text>
+              <StatBar
+                max={expThreshold}
+                style={styles.levelBar}
+                value={expValue}
+              />
             </View>
-            <Pressable
-              accessibilityRole="button"
+            <PixelButton
               accessibilityLabel={`Level ${detail.name}`}
               disabled={!canLevel}
+              label={`Level ${levelCost}`}
               onPress={onLevelSelectedSnail}
-              style={({ pressed }) => [
-                styles.levelButton,
-                !canLevel ? styles.levelButtonDisabled : null,
-                pressed ? styles.levelButtonPressed : null
-              ]}
-            >
-              <Text style={styles.levelButtonText}>Level {levelCost}</Text>
-            </Pressable>
+              size="compact"
+            />
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Play games as ${detail.name}`}
-            onPress={onPlay}
-            style={({ pressed }) => [
-              styles.levelButton,
-              styles.detailPlayButton,
-              pressed ? styles.levelButtonPressed : null
-            ]}
-          >
-            <Text style={styles.levelButtonText}>Play games</Text>
-          </Pressable>
+          <View style={styles.detailPlayRow}>
+            <PixelButton
+              accessibilityLabel={`Play games as ${detail.name}`}
+              label="Play games"
+              onPress={onPlay}
+              variant="secondary"
+            />
+          </View>
 
           {detail.carryingText ? (
             <View style={styles.detailCarrying}>
@@ -529,19 +504,14 @@ function SnailDetailView({
                 </Text>
               ) : null}
             </View>
-            <Pressable
+            <PixelButton
               accessibilityLabel={`Set ${detail.name} free`}
-              accessibilityRole="button"
               disabled={detail.status !== "resting"}
+              label="Set free"
               onPress={confirmRelease}
-              style={({ pressed }) => [
-                styles.releaseButton,
-                detail.status !== "resting" ? styles.releaseButtonDisabled : null,
-                pressed ? styles.releaseButtonPressed : null
-              ]}
-            >
-              <Text style={styles.releaseButtonText}>Set free</Text>
-            </Pressable>
+              size="compact"
+              variant="danger"
+            />
           </View>
         </ScrollView>
       </FadeInView>
@@ -570,7 +540,7 @@ function RenameSnailRow({
           maxLength={MAX_SNAIL_NAME_LENGTH}
           onChangeText={setRenameText}
           placeholder={snail.name}
-          placeholderTextColor="#7d7a70"
+          placeholderTextColor={colors.textDisabled}
           returnKeyType="done"
           style={styles.renameInput}
           value={renameText}
@@ -581,19 +551,13 @@ function RenameSnailRow({
           </Text>
         ) : null}
       </View>
-      <Pressable
-        accessibilityRole="button"
+      <PixelButton
         accessibilityLabel={`Save name for ${snail.name}`}
         disabled={!canSave}
+        label="Save"
         onPress={() => onRenameSnail(snail.id, renameText)}
-        style={({ pressed }) => [
-          styles.renameButton,
-          !canSave ? styles.renameButtonDisabled : null,
-          pressed ? styles.renameButtonPressed : null
-        ]}
-      >
-        <Text style={styles.renameButtonText}>Save</Text>
-      </Pressable>
+        size="compact"
+      />
     </View>
   );
 }
@@ -748,9 +712,7 @@ function HatchRevealOverlay({
           </Animated.View>
         </View>
 
-        <Text style={styles.hatchRevealEyebrow}>
-          {formatLabel(reveal.snail.rarity)} hatch
-        </Text>
+        <RarityBadge rarity={reveal.snail.rarity} style={styles.hatchRevealBadge} />
         <Text numberOfLines={2} style={styles.hatchRevealName}>
           {reveal.snail.name}
         </Text>
@@ -758,17 +720,13 @@ function HatchRevealOverlay({
           {species.displayName} joined the stable
         </Text>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Dismiss hatch reveal for ${reveal.snail.name}`}
-          onPress={onDismiss}
-          style={({ pressed }) => [
-            styles.hatchRevealButton,
-            pressed ? styles.hatchRevealButtonPressed : null
-          ]}
-        >
-          <Text style={styles.hatchRevealButtonText}>Done</Text>
-        </Pressable>
+        <View style={styles.hatchRevealAction}>
+          <PixelButton
+            accessibilityLabel={`Dismiss hatch reveal for ${reveal.snail.name}`}
+            label="Done"
+            onPress={onDismiss}
+          />
+        </View>
       </Animated.View>
     </View>
   );
@@ -812,14 +770,14 @@ function canSaveRename(name: string, currentName: string): boolean {
 }
 
 const HATCH_CONFETTI_PARTICLES = [
-  { color: "#d6b94c", id: "a", rotate: 42, x: -112, y: -102 },
-  { color: "#4b8f8c", id: "b", rotate: -68, x: 96, y: -118 },
-  { color: "#b24836", id: "c", rotate: 92, x: -74, y: -64 },
-  { color: "#365c8d", id: "d", rotate: -36, x: 118, y: -52 },
-  { color: "#88a86b", id: "e", rotate: 128, x: -122, y: 18 },
-  { color: "#8a6f4f", id: "f", rotate: -104, x: 104, y: 28 },
-  { color: "#e0c85a", id: "g", rotate: 58, x: -34, y: -132 },
-  { color: "#5f9c9a", id: "h", rotate: -146, x: 38, y: -138 }
+  { color: colors.accentGold, id: "a", rotate: 42, x: -112, y: -102 },
+  { color: colors.secondary, id: "b", rotate: -68, x: 96, y: -118 },
+  { color: colors.accentPink, id: "c", rotate: 92, x: -74, y: -64 },
+  { color: colors.primary, id: "d", rotate: -36, x: 118, y: -52 },
+  { color: colors.accentLime, id: "e", rotate: 128, x: -122, y: 18 },
+  { color: colors.accentWarm, id: "f", rotate: -104, x: 104, y: 28 },
+  { color: colors.accentGold, id: "g", rotate: 58, x: -34, y: -132 },
+  { color: colors.accentPink, id: "h", rotate: -146, x: 38, y: -138 }
 ];
 
 function shopIcon(product: PurchaseCatalogProduct): string {
@@ -862,10 +820,7 @@ function ShopView({
             >
               <Text style={styles.backButtonText}>Back</Text>
             </Pressable>
-            <View style={styles.slimeChip}>
-              <View style={styles.slimeChipDot} />
-              <Text style={styles.slimeChipText}>{slimeBalance} slime</Text>
-            </View>
+            <SlimeChip count={slimeBalance} />
           </View>
 
           <View style={styles.shopHeader}>
@@ -894,21 +849,14 @@ function ShopView({
                       {formatPurchaseDetail(product)}
                     </Text>
                   </View>
-                  <Pressable
-                    accessibilityRole="button"
+                  <PixelButton
                     accessibilityLabel={`Buy ${product.label} for ${product.slimePrice} slime`}
                     disabled={!affordable}
+                    label={`${product.slimePrice} slime`}
                     onPress={() => onBuyProduct(product.id)}
-                    style={({ pressed }) => [
-                      styles.buyButton,
-                      !affordable ? styles.buyButtonDisabled : null,
-                      pressed ? styles.buyButtonPressed : null
-                    ]}
-                  >
-                    <Text style={styles.buyButtonText}>
-                      {product.slimePrice} slime
-                    </Text>
-                  </Pressable>
+                    size="compact"
+                    variant="secondary"
+                  />
                 </View>
               );
             })}
@@ -924,48 +872,25 @@ function ShopView({
 const styles = StyleSheet.create({
   backButton: {
     alignItems: "center",
-    backgroundColor: "#f4f0e3",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 34,
     minWidth: 68,
     paddingHorizontal: 10
   },
   backButtonPressed: {
-    backgroundColor: "#e6e0d1"
+    backgroundColor: colors.backgroundSunken
   },
   backButtonText: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "800"
-  },
-  buyButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 60,
-    paddingHorizontal: 10
-  },
-  buyButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  buyButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  buyButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.pixelLabel,
+    color: colors.textPrimary
   },
   capacity: {
-    color: "#56645e",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 18,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   content: {
@@ -974,61 +899,57 @@ const styles = StyleSheet.create({
     paddingTop: 20
   },
   detailCarrying: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 14,
     padding: 12
   },
   detailCarryingText: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 19
+    ...text.bodyStrong,
+    color: colors.textPrimary
   },
   detailHero: {
     alignItems: "center",
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.2)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 14,
     marginTop: 18,
-    padding: 14
+    padding: 14,
+    ...pixelShadow
   },
   detailHeroCopy: {
     flex: 1,
     minWidth: 0
   },
   detailLore: {
-    color: "#56645e",
-    fontSize: 13,
-    lineHeight: 18,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 8
   },
-  detailPlayButton: {
-    alignSelf: "stretch",
-    backgroundColor: "#b9743f",
+  detailPlayRow: {
     marginTop: 10
   },
   detailSpriteFrame: {
     alignItems: "center",
     aspectRatio: 1,
-    backgroundColor: "#edf1e8",
-    borderColor: "rgba(63, 109, 91, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.backgroundSunken,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     justifyContent: "center",
     maxWidth: 148,
     width: "38%"
   },
   detailStat: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     flexBasis: "48%",
     flexGrow: 1,
     minHeight: 72,
@@ -1036,9 +957,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   detailStatLabel: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "800",
+    ...text.pixelMicro,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   detailStatsGrid: {
@@ -1047,23 +967,18 @@ const styles = StyleSheet.create({
     gap: 9,
     marginTop: 14
   },
+  detailStatus: {
+    ...text.pixelLabel,
+    color: colors.primary
+  },
   detailStatValue: {
-    color: "#25332e",
-    fontSize: 15,
-    fontWeight: "800",
-    lineHeight: 19,
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     marginTop: 6
   },
-  detailStatus: {
-    color: "#3f6d5b",
-    fontSize: 13,
-    fontWeight: "800"
-  },
   detailTitle: {
-    color: "#25332e",
-    fontSize: 26,
-    fontWeight: "900",
-    lineHeight: 31,
+    ...text.bodyStrongLg,
+    color: colors.textPrimary,
     marginTop: 4
   },
   detailTopBar: {
@@ -1076,16 +991,15 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   eggList: {
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     gap: 8,
     marginTop: 22,
     paddingTop: 16
   },
   eggOdds: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   eggRow: {
@@ -1094,15 +1008,12 @@ const styles = StyleSheet.create({
     gap: 10
   },
   eggTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.bodyStrong,
+    color: colors.textPrimary
   },
   eyebrow: {
-    color: "#6d5a46",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   fullStableActions: {
@@ -1111,81 +1022,22 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12
   },
-  fullStablePrimaryButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 36,
-    minWidth: 88,
-    paddingHorizontal: 12
-  },
-  fullStablePrimaryButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  fullStablePrimaryButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  fullStablePrimaryButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "800"
-  },
   fullStablePrompt: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(138, 111, 79, 0.24)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginBottom: 14,
     padding: 12
   },
-  fullStableSecondaryButton: {
-    alignItems: "center",
-    backgroundColor: "#e6e0d1",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 36,
-    minWidth: 88,
-    paddingHorizontal: 12
-  },
-  fullStableSecondaryButtonPressed: {
-    backgroundColor: "#d8cfbe"
-  },
-  fullStableSecondaryButtonText: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "800"
-  },
   fullStableText: {
-    color: "#56645e",
-    fontSize: 13,
-    lineHeight: 18,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 4
   },
   fullStableTitle: {
-    color: "#25332e",
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  hatchButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 68,
-    paddingHorizontal: 10
-  },
-  hatchButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  hatchButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  hatchButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.pixelHeading,
+    color: colors.textPrimary
   },
   hatchConfettiLayer: {
     bottom: 0,
@@ -1204,7 +1056,7 @@ const styles = StyleSheet.create({
     width: 5
   },
   hatchEggCrack: {
-    backgroundColor: "#8a6f4f",
+    backgroundColor: colors.accentGoldBevel,
     borderRadius: 1,
     height: 32,
     left: 45,
@@ -1215,7 +1067,7 @@ const styles = StyleSheet.create({
     width: 3
   },
   hatchEggCrackSecond: {
-    backgroundColor: "#8a6f4f",
+    backgroundColor: colors.accentGoldBevel,
     borderRadius: 1,
     height: 26,
     left: 57,
@@ -1226,55 +1078,32 @@ const styles = StyleSheet.create({
     width: 3
   },
   hatchEggShell: {
-    backgroundColor: "#f3df9c",
-    borderColor: "rgba(138, 111, 79, 0.28)",
+    backgroundColor: colors.accentGold,
+    borderColor: colors.border,
     borderRadius: 50,
-    borderWidth: 1,
+    borderWidth: 2,
     height: 104,
     position: "absolute",
     width: 84
   },
-  hatchRevealButton: {
-    alignItems: "center",
+  hatchRevealAction: {
     alignSelf: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
-    justifyContent: "center",
-    marginTop: 18,
-    minHeight: 40,
-    minWidth: 92,
-    paddingHorizontal: 14
+    marginTop: 18
   },
-  hatchRevealButtonPressed: {
-    backgroundColor: "#315547"
-  },
-  hatchRevealButtonText: {
-    color: "#f8fafc",
-    fontSize: 14,
-    fontWeight: "800"
+  hatchRevealBadge: {
+    alignSelf: "center",
+    marginTop: 6
   },
   hatchRevealDetail: {
-    color: "#56645e",
-    fontSize: 13,
-    lineHeight: 18,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 6,
     textAlign: "center"
   },
-  hatchRevealEyebrow: {
-    color: "#8a6f4f",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-    marginTop: 6,
-    textAlign: "center",
-    textTransform: "uppercase"
-  },
   hatchRevealName: {
-    color: "#25332e",
-    fontSize: 26,
-    fontWeight: "900",
-    lineHeight: 31,
-    marginTop: 4,
+    ...text.bodyStrongLg,
+    color: colors.textPrimary,
+    marginTop: 8,
     textAlign: "center"
   },
   hatchRevealOverlay: {
@@ -1288,19 +1117,16 @@ const styles = StyleSheet.create({
     top: 0
   },
   hatchRevealPanel: {
-    backgroundColor: "#fbf8ed",
-    borderColor: "rgba(63, 109, 91, 0.22)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     overflow: "hidden",
     paddingBottom: 18,
     paddingHorizontal: 18,
     paddingTop: 16,
-    shadowColor: "#25332e",
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    width: "100%"
+    width: "100%",
+    ...pixelShadow
   },
   hatchSnailReveal: {
     alignItems: "center",
@@ -1315,33 +1141,25 @@ const styles = StyleSheet.create({
   header: {
     gap: 3
   },
-  levelButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 76,
-    paddingHorizontal: 10
+  headerSlime: {
+    alignSelf: "flex-start",
+    marginTop: 8
   },
-  levelButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  levelButtonPressed: {
-    backgroundColor: "#315547"
-  },
-  levelButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+  levelBar: {
+    marginTop: 8
   },
   levelCopy: {
     flex: 1,
     minWidth: 0
   },
+  levelExp: {
+    ...text.bodySm,
+    color: colors.textMuted,
+    marginTop: 2
+  },
   levelRow: {
     alignItems: "center",
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: 10,
@@ -1349,175 +1167,97 @@ const styles = StyleSheet.create({
     paddingTop: 12
   },
   levelText: {
-    color: "#25332e",
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
     minWidth: 0
   },
   quietEggState: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 22,
     padding: 14
   },
   quietEggText: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 17,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 4
   },
   quietEggTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "800"
-  },
-  renameButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 40,
-    minWidth: 64,
-    paddingHorizontal: 12
-  },
-  renameButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  renameButtonPressed: {
-    backgroundColor: "#315547"
-  },
-  renameButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "800"
-  },
-  renameCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  renameError: {
-    color: "#a13d2d",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 5
-  },
-  renameInput: {
-    backgroundColor: "#fdfcf5",
-    borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: "#25332e",
-    fontSize: 15,
-    minHeight: 40,
-    paddingHorizontal: 10
-  },
-  renameLabel: {
-    color: "#6d5a46",
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: 6,
-    textTransform: "uppercase"
-  },
-  renameRow: {
-    alignItems: "flex-end",
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 14,
-    paddingTop: 12
-  },
-  releaseButton: {
-    alignItems: "center",
-    backgroundColor: "#8a6f4f",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 36,
-    minWidth: 86,
-    paddingHorizontal: 12
-  },
-  releaseButtonDisabled: {
-    backgroundColor: "#a7aaa3"
-  },
-  releaseButtonPressed: {
-    backgroundColor: "#715a40"
-  },
-  releaseButtonText: {
-    color: "#fffaf0",
-    fontSize: 13,
-    fontWeight: "800"
+    ...text.pixelLabel,
+    color: colors.textPrimary
   },
   releaseCopy: {
     flex: 1,
     minWidth: 0
   },
   releaseHint: {
-    color: "#8a6f4f",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.accentWarm,
     marginTop: 4
   },
   releasePanel: {
     alignItems: "center",
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(138, 111, 79, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 12,
     marginTop: 14,
     padding: 12
   },
   releaseText: {
-    color: "#56645e",
-    fontSize: 13,
-    lineHeight: 18,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 4
   },
+  renameCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  renameError: {
+    ...text.bodySm,
+    color: colors.danger,
+    marginTop: 5
+  },
+  renameInput: {
+    ...text.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    color: colors.textPrimary,
+    minHeight: 40,
+    paddingHorizontal: 10
+  },
+  renameLabel: {
+    ...text.pixelLabel,
+    color: colors.accentWarm,
+    marginBottom: 6,
+    textTransform: "uppercase"
+  },
+  renameRow: {
+    alignItems: "flex-end",
+    borderTopColor: colors.borderHairline,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 12
+  },
   screen: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     flex: 1
-  },
-  headerSlime: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "#e7efe0",
-    borderRadius: 999,
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 5
-  },
-  slimeChip: {
-    alignItems: "center",
-    backgroundColor: "#e7efe0",
-    borderRadius: 999,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 11,
-    paddingVertical: 5
-  },
-  slimeChipDot: {
-    backgroundColor: "#5f8a5e",
-    borderRadius: 5,
-    height: 10,
-    width: 10
-  },
-  slimeChipText: {
-    color: "#3f6d5b",
-    fontSize: 13,
-    fontWeight: "800"
   },
   shopCard: {
     alignItems: "center",
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(37, 51, 46, 0.1)",
-    borderRadius: 14,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 12,
     padding: 14
@@ -1528,14 +1268,15 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   shopCardDetail: {
-    color: "#56645e",
-    fontSize: 13,
-    lineHeight: 18
+    ...text.bodySm,
+    color: colors.textMuted
   },
   shopCardIcon: {
     alignItems: "center",
-    backgroundColor: "#e7efe0",
-    borderRadius: 12,
+    backgroundColor: colors.accentLimeSoft,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     height: 46,
     justifyContent: "center",
     width: 46
@@ -1543,24 +1284,31 @@ const styles = StyleSheet.create({
   shopCardIconText: {
     fontSize: 24
   },
-  shopCardTitle: {
-    color: "#25332e",
-    fontSize: 16,
-    fontWeight: "800"
-  },
   shopCards: {
     gap: 12,
     marginTop: 18
   },
+  shopCardTitle: {
+    ...text.bodyStrongLg,
+    color: colors.textPrimary
+  },
+  shopDisclosure: {
+    ...text.bodySm,
+    color: colors.textMuted,
+    marginTop: 18
+  },
   shopEntry: {
     alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 14,
+    backgroundColor: colors.primary,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 22,
     paddingHorizontal: 18,
-    paddingVertical: 16
+    paddingVertical: 16,
+    ...pixelShadow
   },
   shopEntryBody: {
     flex: 1,
@@ -1568,28 +1316,23 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   shopEntryChevron: {
-    color: "#dfeee4",
-    fontSize: 26,
-    fontWeight: "800"
+    ...text.pixelHeading,
+    color: colors.textOnAccent
   },
   shopEntryPressed: {
-    backgroundColor: "#315547"
+    backgroundColor: colors.primaryPressed
   },
   shopEntrySub: {
-    color: "#dfeee4",
-    fontSize: 13,
-    fontWeight: "600"
+    ...text.body,
+    color: colors.textOnAccent
   },
   shopEntryTitle: {
-    color: "#f8faf6",
-    fontSize: 18,
-    fontWeight: "900"
+    ...text.pixelHeading,
+    color: colors.textOnAccent
   },
   shopEyebrow: {
-    color: "#557363",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   shopHeader: {
@@ -1597,53 +1340,16 @@ const styles = StyleSheet.create({
     marginTop: 16
   },
   shopHeading: {
-    color: "#25332e",
-    fontSize: 28,
-    fontWeight: "900"
+    ...text.pixelTitle,
+    color: colors.textPrimary
   },
   shopSubtitle: {
-    color: "#56645e",
-    fontSize: 15,
-    lineHeight: 21
+    ...text.body,
+    color: colors.textMuted
   },
-  shopUnavailable: {
-    color: "#a13d2d",
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 18
-  },
-  shopCopy: {
+  snailCopy: {
     flex: 1,
     minWidth: 0
-  },
-  shopDetail: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2
-  },
-  shopDisclosure: {
-    color: "#6d5a46",
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 18
-  },
-  shopList: {
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
-    borderTopWidth: 1,
-    gap: 9,
-    marginTop: 14,
-    paddingTop: 12
-  },
-  shopRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10
-  },
-  shopTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
   },
   snailIdentityRow: {
     alignItems: "center",
@@ -1651,68 +1357,55 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "space-between"
   },
-  snailCopy: {
-    flex: 1,
-    minWidth: 0
-  },
   snailItem: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     paddingHorizontal: 11,
     paddingVertical: 9
   },
   snailItemBusy: {
-    backgroundColor: "#e7ebe5",
-    borderColor: "rgba(86, 100, 94, 0.2)"
+    backgroundColor: colors.backgroundSunken
   },
   snailItemPressed: {
-    backgroundColor: "#e2eee5"
+    backgroundColor: colors.surfaceSelected
   },
   snailItemSelected: {
-    borderColor: "#3f6d5b",
-    borderWidth: 2
+    backgroundColor: colors.surfaceSelected,
+    borderColor: colors.primary
   },
   snailList: {
     gap: 9,
     marginTop: 22
   },
   snailMeta: {
-    color: "#56645e",
-    fontSize: 12,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 3
   },
   snailName: {
-    color: "#25332e",
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "800"
-  },
-  snailStats: {
-    color: "#6d5a46",
-    fontSize: 12,
-    marginTop: 3
-  },
-  snailStatus: {
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "700"
+    ...text.bodyStrong,
+    color: colors.textPrimary,
+    flex: 1
   },
   snailRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 10
   },
-  title: {
-    color: "#25332e",
-    fontSize: 24,
-    fontWeight: "800",
-    lineHeight: 30,
+  snailStats: {
+    ...text.bodyXs,
+    color: colors.textMuted,
     marginTop: 3
   },
-  titleBlock: {
-    flex: 1,
-    minWidth: 0
+  snailStatus: {
+    ...text.bodyStrongSm,
+    color: colors.primary
+  },
+  title: {
+    ...text.pixelTitle,
+    color: colors.textPrimary,
+    marginTop: 3
   }
 });

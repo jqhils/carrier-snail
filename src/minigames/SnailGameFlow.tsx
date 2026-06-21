@@ -8,6 +8,8 @@ import {
 } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { PixelButton } from "../components/PixelButton";
+import { colors, radii, space, text } from "../theme";
 import { GamesListScreen } from "./GamesListScreen";
 import { getHighScore, mergeHighScore, type HighScoreMap } from "./highScores";
 import { loadHighScores, persistHighScores } from "./highScoresStorage";
@@ -222,30 +224,24 @@ export function SnailGameFlowProvider({
             <View style={styles.pauseOverlay}>
               <View style={styles.pauseCard}>
                 <Text style={styles.pauseTitle}>Paused</Text>
-                <Pressable
-                  accessibilityRole="button"
+                <PixelButton
+                  label="Resume"
                   onPress={() => setMenuOpen(false)}
-                  style={styles.pauseButton}
-                >
-                  <Text style={styles.pauseButtonText}>Resume</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
+                  variant="primary"
+                />
+                <PixelButton
+                  label="Restart"
                   onPress={() => {
                     setRunKey((key) => key + 1);
                     setMenuOpen(false);
                   }}
-                  style={styles.pauseButton}
-                >
-                  <Text style={styles.pauseButtonText}>Restart</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
+                  variant="secondary"
+                />
+                <PixelButton
+                  label="Quit"
                   onPress={() => setStep("games")}
-                  style={[styles.pauseButton, styles.pauseButtonQuit]}
-                >
-                  <Text style={styles.pauseButtonText}>Quit</Text>
-                </Pressable>
+                  variant="danger"
+                />
               </View>
             </View>
           ) : null}
@@ -258,19 +254,21 @@ export function SnailGameFlowProvider({
 const styles = StyleSheet.create({
   menuButton: {
     alignItems: "center",
-    backgroundColor: "rgba(37,51,46,0.82)",
-    borderRadius: 18,
-    height: 36,
+    backgroundColor: colors.mapOverlay,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    height: 38,
     justifyContent: "center",
     position: "absolute",
-    right: 14,
+    right: space.md,
     top: 48,
-    width: 36,
+    width: 38,
     zIndex: 60
   },
-  menuButtonText: { color: "#f8f6ed", fontSize: 18, fontWeight: "800" },
+  menuButtonText: { ...text.pixelHeading, color: colors.textOnDark },
   overlay: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     bottom: 0,
     left: 0,
     position: "absolute",
@@ -278,24 +276,18 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 50
   },
-  pauseButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 10,
-    paddingVertical: 12
-  },
-  pauseButtonQuit: { backgroundColor: "#a85a32" },
-  pauseButtonText: { color: "#f8f6ed", fontSize: 15, fontWeight: "800" },
   pauseCard: {
-    backgroundColor: "#f8f6ed",
-    borderRadius: 18,
-    gap: 10,
-    padding: 22,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    gap: space.md,
+    padding: space.xl,
     width: 240
   },
   pauseOverlay: {
     alignItems: "center",
-    backgroundColor: "rgba(37,51,46,0.55)",
+    backgroundColor: colors.scrim,
     bottom: 0,
     justifyContent: "center",
     left: 0,
@@ -305,10 +297,9 @@ const styles = StyleSheet.create({
     zIndex: 60
   },
   pauseTitle: {
-    color: "#25332e",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 4,
+    ...text.pixelTitle,
+    color: colors.textPrimary,
+    marginBottom: space.xs,
     textAlign: "center"
   }
 });

@@ -7,7 +7,10 @@ import {
   useWindowDimensions
 } from "react-native";
 
+import { PixelButton } from "../components/PixelButton";
+import { RarityBadge, SlimeChip } from "../components/PixelUI";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors, pixelShadow, radii, space, text } from "../theme";
 import { GAMES } from "./gamesCatalog";
 import { getHighScore, type HighScoreMap } from "./highScores";
 import type { Snail } from "../useCases/localCarrierState";
@@ -26,9 +29,11 @@ type Props = {
   snail: Snail;
 };
 
-const GREEN = "#3f6d5b";
-const INK = "#25332e";
-const MUTED = "#56645e";
+// Local aliases so the GameArt sprite blocks read against semantic tokens:
+// GREEN is the primary CTA grape (2048's winning tile), INK the plum text/border
+// ink (the snake board).
+const GREEN = colors.primary;
+const INK = colors.textPrimary;
 
 // "Game Corner" — the per-snail games hub: a tile grid of games (each showing
 // this snail's best + Play) and a leaderboard of the stable's real top scores.
@@ -50,19 +55,15 @@ export function GamesListScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
+        <PixelButton
           accessibilityLabel={`Back to ${snail.name}`}
+          label="‹ Back"
           onPress={onBack}
-          style={({ pressed }) => [styles.back, pressed ? styles.pressed : null]}
-        >
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
+          size="compact"
+          variant="neutral"
+        />
         {typeof slimeBalance === "number" ? (
-          <View style={styles.slimePill}>
-            <View style={styles.slimeDot} />
-            <Text style={styles.slimeText}>{slimeBalance} slime</Text>
-          </View>
+          <SlimeChip count={slimeBalance} />
         ) : null}
       </View>
 
@@ -78,9 +79,15 @@ export function GamesListScreen({
             <Text style={styles.who} numberOfLines={1}>
               Playing as {snail.name}
             </Text>
-            <Text style={styles.sub} numberOfLines={1}>
-              Lv {snail.level} · {snail.rarity} · earns slime per run
-            </Text>
+            <View style={styles.playingMeta}>
+              <Text style={styles.sub} numberOfLines={1}>
+                Lv {snail.level}
+              </Text>
+              <RarityBadge rarity={snail.rarity} />
+              <Text style={styles.sub} numberOfLines={1}>
+                · earns slime per run
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -313,30 +320,26 @@ const styles = StyleSheet.create({
     top: 22,
     width: 11
   },
-  art: { height: 96, overflow: "hidden", position: "relative" },
+  art: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 2,
+    height: 96,
+    overflow: "hidden",
+    position: "relative"
+  },
   artFill: { height: "100%", position: "relative", width: "100%" },
   avatarTile: {
     alignItems: "center",
-    backgroundColor: "#eef3e6",
-    borderRadius: 12,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     height: 46,
     justifyContent: "center",
     width: 46
   },
-  back: {
-    alignItems: "center",
-    backgroundColor: "#f4f0e3",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 68,
-    paddingHorizontal: 10
-  },
-  backText: { color: "#25332e", fontSize: 13, fontWeight: "800" },
-  best: { color: MUTED, fontSize: 12, fontWeight: "700" },
-  bestNum: { color: GREEN, fontWeight: "800" },
+  best: { ...text.bodySm, color: colors.textMuted },
+  bestNum: { ...text.pixelLabel, color: colors.accentGoldBevel },
   board2048: {
     backgroundColor: "#cbb79b",
     flexDirection: "row",
@@ -351,15 +354,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 22
   },
-  content: { paddingBottom: 36, paddingHorizontal: 18 },
-  empty: { alignItems: "center", paddingHorizontal: 16, paddingVertical: 26 },
+  content: { paddingBottom: 36, paddingHorizontal: space.lg },
+  empty: { alignItems: "center", paddingHorizontal: space.lg, paddingVertical: space.xxl },
   emptySub: {
-    color: MUTED,
-    fontSize: 13,
-    marginTop: 4,
+    ...text.body,
+    color: colors.textMuted,
+    marginTop: space.xs,
     textAlign: "center"
   },
-  emptyTitle: { color: INK, fontSize: 16, fontWeight: "800" },
+  emptyTitle: { ...text.pixelHeading, color: colors.textPrimary },
   flex: { flex: 1 },
   grass: {
     backgroundColor: "#8fc46a",
@@ -371,44 +374,49 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0
   },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
   kicker: {
-    color: "#8a9684",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 2,
-    marginTop: 6
+    ...text.pixelLabel,
+    color: colors.accentWarm,
+    marginTop: space.sm,
+    textTransform: "uppercase"
   },
   lAvatar: {
     alignItems: "center",
-    backgroundColor: "#eef3e6",
-    borderRadius: 9,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     height: 34,
     justifyContent: "center",
     overflow: "hidden",
     width: 34
   },
-  lGame: { color: MUTED, fontSize: 12, marginTop: 1 },
-  lName: { color: INK, fontSize: 14, fontWeight: "800" },
+  lGame: { ...text.bodySm, color: colors.textMuted, marginTop: 1 },
+  lName: { ...text.bodyStrong, color: colors.textPrimary },
   lRow: {
     alignItems: "center",
-    borderTopColor: "#eef1e8",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     flexDirection: "row",
-    gap: 12,
-    paddingVertical: 11
+    gap: space.md,
+    paddingVertical: space.md
   },
   lRowFirst: { borderTopWidth: 0 },
-  lScore: { color: INK, fontSize: 15, fontWeight: "900" },
+  lScore: { ...text.pixelScore, color: colors.accentGoldBevel },
   leader: {
-    backgroundColor: "#f8f6ed",
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 4
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs
   },
   lockBadge: {
-    backgroundColor: "rgba(47,74,61,0.78)",
-    borderRadius: 10,
+    backgroundColor: colors.mapOverlay,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     paddingHorizontal: 8,
     paddingVertical: 3,
     position: "absolute",
@@ -416,17 +424,15 @@ const styles = StyleSheet.create({
     top: 8
   },
   lockText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1
+    ...text.pixelMicro,
+    color: colors.textOnDark
   },
   mystery: {
     alignItems: "center",
-    backgroundColor: "#dfe6d6",
+    backgroundColor: colors.backgroundSunken,
     justifyContent: "center"
   },
-  mysteryMark: { color: "#b3bea6", fontSize: 40, fontWeight: "900" },
+  mysteryMark: { ...text.pixelHero, color: colors.textDisabled, fontSize: 40 },
   pipe: { backgroundColor: "#73c63a", position: "absolute", width: 26 },
   pipeCap: {
     backgroundColor: "#69b834",
@@ -436,26 +442,35 @@ const styles = StyleSheet.create({
     width: 34
   },
   playPill: {
-    backgroundColor: GREEN,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6
+    backgroundColor: colors.primary,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs
   },
-  playText: { color: "#fff", fontSize: 13, fontWeight: "800" },
+  playText: { ...text.pixelMicro, color: colors.textOnAccent },
   playing: {
     alignItems: "center",
-    backgroundColor: "#f8f6ed",
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     flexDirection: "row",
-    gap: 12,
-    marginTop: 14,
-    padding: 10
+    gap: space.md,
+    marginTop: space.md,
+    padding: space.md
+  },
+  playingMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: space.xs,
+    marginTop: space.xs
   },
   pressed: { opacity: 0.85 },
   rank: {
-    color: GREEN,
-    fontSize: 15,
-    fontWeight: "900",
+    ...text.pixelLabel,
+    color: colors.primary,
     textAlign: "center",
     width: 22
   },
@@ -464,17 +479,17 @@ const styles = StyleSheet.create({
   saltMoon: { backgroundColor: "#f3efe1", borderRadius: 9, height: 18, position: "absolute", right: 12, top: 10, width: 18 },
   saltShaker: { backgroundColor: "#eef3f7", borderRadius: 3, height: 22, left: 80, position: "absolute", top: 30, width: 14 },
   saltSnail: { backgroundColor: "#e7cfa3", borderRadius: 6, bottom: 12, height: 12, left: 40, position: "absolute", width: 18 },
-  screen: { backgroundColor: "#edf1e8", flex: 1 },
+  screen: { backgroundColor: colors.background, flex: 1 },
   sectionHead: {
     alignItems: "baseline",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
-    marginTop: 18,
+    marginBottom: space.sm,
+    marginTop: space.lg,
     paddingHorizontal: 2
   },
-  sectionMeta: { color: MUTED, fontSize: 12 },
-  sectionTitle: { color: INK, fontSize: 18, fontWeight: "900" },
+  sectionMeta: { ...text.bodySm, color: colors.textMuted },
+  sectionTitle: { ...text.pixelHeading, color: colors.textPrimary },
   seg: {
     backgroundColor: "#8fd07a",
     borderRadius: 3,
@@ -482,22 +497,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 13
   },
-  slimeDot: {
-    backgroundColor: "#6fae7e",
-    borderRadius: 6,
-    height: 12,
-    width: 12
-  },
-  slimePill: {
-    alignItems: "center",
-    backgroundColor: "#e3ecdd",
-    borderRadius: 20,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  slimeText: { color: GREEN, fontSize: 14, fontWeight: "800" },
   snailDot: {
     backgroundColor: "#e7cfa3",
     borderRadius: 8,
@@ -508,13 +507,15 @@ const styles = StyleSheet.create({
     width: 20
   },
   soonPill: {
-    backgroundColor: "#e7ebe1",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6
+    backgroundColor: colors.disabledFill,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs
   },
-  soonText: { color: "#9aa79a", fontSize: 12, fontWeight: "800" },
-  sub: { color: MUTED, fontSize: 12, marginTop: 1 },
+  soonText: { ...text.pixelMicro, color: colors.textMuted },
+  sub: { ...text.bodySm, color: colors.textMuted },
   sun: {
     backgroundColor: "#fdf3c4",
     borderRadius: 13,
@@ -525,25 +526,28 @@ const styles = StyleSheet.create({
     width: 26
   },
   tile: {
-    backgroundColor: "#f8f6ed",
-    borderRadius: 18,
-    overflow: "hidden"
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    overflow: "hidden",
+    ...pixelShadow
   },
-  tileBody: { padding: 10 },
+  tileBody: { padding: space.md },
   tileMeta: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 6
+    marginTop: space.sm
   },
-  tileName: { color: INK, fontSize: 15, fontWeight: "900" },
-  title: { color: INK, fontSize: 30, fontWeight: "900", lineHeight: 34 },
+  tileName: { ...text.pixelLabel, color: colors.textPrimary },
+  title: { ...text.pixelHero, color: colors.textPrimary },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingTop: 8
+    paddingHorizontal: space.md,
+    paddingTop: space.sm
   },
-  who: { color: INK, fontSize: 15, fontWeight: "800" }
+  who: { ...text.bodyStrong, color: colors.textPrimary }
 });

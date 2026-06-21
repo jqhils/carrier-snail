@@ -40,36 +40,40 @@ import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Defs, Path, Pattern, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { colors, fontFamily } from "../../theme";
+
 type Interpolation = ReturnType<Animated.Value["interpolate"]>;
 
 const { width: W, height: H } = Dimensions.get("window");
 
 /* ----------------------------- palette ----------------------------- */
+// Converged onto the shared palette tokens. The dirt terrain keeps bespoke
+// sandy hex (no semantic token fits); everything thematic reads from colors.*.
 const C = {
-  skyTop: "#4ec3d4",
-  skyMid: "#6ad2cd",
-  skyLow: "#a9e7d8",
-  sun: "#fff6c8",
-  pipeLight: "#bdee63",
-  pipe: "#73c63a",
-  pipeDark: "#4f8b27",
-  pipeEdge: "#33611a",
-  capLight: "#cdf274",
-  grass: "#84cf4e",
-  grassDk: "#5aa233",
+  skyTop: colors.secondary,
+  skyMid: colors.secondary,
+  skyLow: colors.secondarySoft,
+  sun: colors.accentGoldSoft,
+  pipeLight: colors.accentLimeSoft,
+  pipe: colors.accentLime,
+  pipeDark: colors.accentLimeBevel,
+  pipeEdge: colors.border,
+  capLight: colors.accentLimeSoft,
+  grass: colors.accentLime,
+  grassDk: colors.accentLimeBevel,
   dirt: "#ded895",
   dirtDk: "#cdc57c",
-  accent: "#ffd02e",
-  white: "#ffffff",
-  ink: "#3a2a1c",
-  cream: "#fff3cf",
-  tealText: "#2f5546"
+  accent: colors.accentGold,
+  white: colors.textOnAccent,
+  ink: colors.border,
+  cream: colors.textOnDark,
+  tealText: colors.textPrimary
 } as const;
 
 /* ------------------------------ fonts ------------------------------ */
-const F_DISPLAY_SEMI = "Fredoka_600SemiBold";
-const F_DISPLAY_BOLD = "Fredoka_700Bold";
-const F_PIXEL = "PressStart2P_400Regular";
+const F_DISPLAY_SEMI = fontFamily.body;
+const F_DISPLAY_BOLD = fontFamily.bodyBold;
+const F_PIXEL = fontFamily.pixel;
 
 /* ------------------------------ layout ----------------------------- */
 const SNAIL_RATIO = 217 / 256; // businessman sprite h/w

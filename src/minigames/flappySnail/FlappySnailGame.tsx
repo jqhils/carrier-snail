@@ -29,25 +29,23 @@ import {
   type FlappyConfig,
   type FlappyState
 } from "./flappyEngine";
+import { PixelButton } from "../../components/PixelButton";
+import { colors, pixelShadow, radii, text } from "../../theme";
 
 // Bright "Flappy" palette — kept in sync with StartScreen.tsx so the title
-// screen and gameplay read as one game.
+// screen and gameplay read as one game. Pipes + sky read from palette tokens;
+// the dirt terrain keeps a bespoke sandy hex (no semantic token fits).
 const COLORS = {
-  accent: "#ffd02e",
-  capLight: "#cdf274",
-  cream: "#fff3cf",
+  capLight: colors.accentLimeSoft,
   dirt: "#ded895",
-  grass: "#84cf4e",
-  grassDark: "#5aa233",
-  ink: "#3a2a1c",
-  pipe: "#73c63a",
-  pipeDark: "#4f8b27",
-  pipeEdge: "#33611a",
-  pipeLight: "#bdee63",
-  skyBottom: "#a9e7d8",
-  skyTop: "#4ec3d4",
-  teal: "#2f5546",
-  white: "#ffffff"
+  grass: colors.accentLime,
+  grassDark: colors.accentLimeBevel,
+  pipe: colors.accentLime,
+  pipeDark: colors.accentLimeBevel,
+  pipeEdge: colors.border,
+  pipeLight: colors.accentLimeSoft,
+  skyBottom: colors.secondarySoft,
+  skyTop: colors.secondary
 };
 
 // In-game flyer. The picked snail's species sprite (Joseph's SNAIL_SPRITE_ASSETS)
@@ -255,26 +253,18 @@ export function FlappySnailGame({
                 : `Earned ×${multiplier.toFixed(2)} boost`}
             </Text>
 
-            <Pressable
-              accessibilityRole="button"
+            <PixelButton
+              label="Play again"
               onPress={playAgain}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>Play again</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={styles.primaryButton}
+              variant="primary"
+            />
+            <PixelButton
+              label="Back to games"
               onPress={onExit}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>Back to games</Text>
-            </Pressable>
+              style={styles.secondaryButton}
+              variant="neutral"
+            />
           </View>
         </View>
       ) : null}
@@ -354,56 +344,42 @@ const ABSOLUTE_FILL = {
 
 const styles = StyleSheet.create({
   boostText: {
-    color: COLORS.pipeDark,
-    fontSize: 16,
-    fontWeight: "800",
+    ...text.bodyStrong,
+    color: colors.accentLimeBevel,
     marginTop: 12,
     textAlign: "center"
   },
   card: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(17, 97, 106, 0.18)",
-    borderRadius: 18,
+    ...pixelShadow,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
     borderWidth: 2,
     maxWidth: 320,
     padding: 22,
     width: "82%"
   },
   cardTitle: {
-    color: COLORS.teal,
-    fontSize: 26,
-    fontWeight: "800",
+    ...text.pixelTitle,
+    color: colors.textPrimary,
     textAlign: "center"
   },
   fill: {
     ...ABSOLUTE_FILL
   },
   hint: {
-    color: COLORS.teal,
-    fontSize: 15,
-    fontWeight: "600",
+    ...text.pixelLabel,
+    color: colors.textPrimary,
     marginTop: 18
   },
   overlay: {
     ...ABSOLUTE_FILL,
     alignItems: "center",
-    backgroundColor: "rgba(17, 97, 106, 0.18)",
+    backgroundColor: colors.scrim,
     justifyContent: "center"
   },
-  pressed: {
-    opacity: 0.85
-  },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: COLORS.pipeDark,
-    borderRadius: 10,
-    marginTop: 18,
-    paddingVertical: 13
-  },
-  primaryButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "800"
+    marginTop: 18
   },
   readyWrap: {
     ...ABSOLUTE_FILL,
@@ -411,55 +387,40 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   score: {
-    color: COLORS.white,
-    fontSize: 56,
-    fontWeight: "900",
+    ...text.pixelScore,
+    color: colors.textPrimary,
     left: 0,
     position: "absolute",
     right: 0,
     textAlign: "center",
-    textShadowColor: "rgba(17, 97, 106, 0.85)",
+    textShadowColor: colors.pixelShadow,
     textShadowOffset: { height: 2, width: 0 },
-    textShadowRadius: 4,
+    textShadowRadius: 0,
     top: 64
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: "#dff0d8",
-    borderRadius: 10,
-    marginTop: 10,
-    paddingVertical: 11
-  },
-  secondaryButtonText: {
-    color: COLORS.teal,
-    fontSize: 14,
-    fontWeight: "700"
+    marginTop: 10
   },
   statLabel: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "700",
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     marginTop: 14,
     textAlign: "center"
   },
   statValue: {
-    color: COLORS.pipeDark,
-    fontSize: 44,
-    fontWeight: "800",
+    ...text.numberLg,
+    color: colors.accentLimeBevel,
     textAlign: "center"
   },
   subtitle: {
-    color: "#3c6b63",
-    fontSize: 16,
-    fontWeight: "600",
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 8,
     textAlign: "center"
   },
   title: {
-    color: COLORS.teal,
-    fontSize: 30,
-    fontWeight: "900",
-    letterSpacing: 1,
+    ...text.pixelTitle,
+    color: colors.textPrimary,
     textAlign: "center"
   }
 });

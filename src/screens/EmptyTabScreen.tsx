@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { colors, radii, text } from "../theme";
 
 type EmptyTabScreenProps = {
   body: string;
@@ -10,21 +11,21 @@ type EmptyTabScreenProps = {
   tone: "sage" | "cream" | "blue";
 };
 
+// Each tone keeps its name but resolves to a token-based palette: a tinted page
+// background with a brighter panel sitting on it. The chunky 2px ink border is
+// shared (see styles.panel), so tones differ only by their fills.
 const toneStyles = {
   blue: {
-    accent: "#365c8d",
-    background: "#eef2f6",
-    panel: "#f8f6ed"
+    background: colors.secondarySoft,
+    panel: colors.surface
   },
   cream: {
-    accent: "#8a6f4f",
-    background: "#f4f0e3",
-    panel: "#fbf8ed"
+    background: colors.background,
+    panel: colors.surface
   },
   sage: {
-    accent: "#3f6d5b",
-    background: "#edf1e8",
-    panel: "#f8f6ed"
+    background: colors.primarySoft,
+    panel: colors.surface
   }
 } as const;
 
@@ -43,18 +44,8 @@ export function EmptyTabScreen({
     >
       <FadeInView>
       <View style={styles.content}>
-        <View
-          style={[
-            styles.panel,
-            {
-              backgroundColor: palette.panel,
-              borderColor: `${palette.accent}33`
-            }
-          ]}
-        >
-          <Text style={[styles.eyebrow, { color: palette.accent }]}>
-            {eyebrow}
-          </Text>
+        <View style={[styles.panel, { backgroundColor: palette.panel }]}>
+          <Text style={styles.eyebrow}>{eyebrow}</Text>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.body}>{body}</Text>
         </View>
@@ -66,9 +57,8 @@ export function EmptyTabScreen({
 
 const styles = StyleSheet.create({
   body: {
-    color: "#5c6861",
-    fontSize: 15,
-    lineHeight: 22,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 9
   },
   content: {
@@ -78,14 +68,14 @@ const styles = StyleSheet.create({
     paddingVertical: 34
   },
   eyebrow: {
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   panel: {
-    borderRadius: 8,
-    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     paddingHorizontal: 20,
     paddingVertical: 22
   },
@@ -93,10 +83,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   title: {
-    color: "#25332e",
-    fontSize: 24,
-    fontWeight: "800",
-    lineHeight: 30,
+    ...text.pixelHeading,
+    color: colors.textPrimary,
     marginTop: 8
   }
 });

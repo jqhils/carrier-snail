@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   PanResponder,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -21,18 +20,16 @@ import {
   turn,
   type SnakeState
 } from "./snakeEngine";
+import { PixelButton } from "../../components/PixelButton";
+import { colors, pixelShadow, radii, text } from "../../theme";
 
+// Gameplay-canvas colors. The board fill + snake/food live on the Skia-free
+// View canvas; they read straight from the palette tokens.
 const COLORS = {
-  apple: "#e24b4a",
-  appleLeaf: "#5aa233",
-  board: "#284b3b",
-  cardBg: "#f8f6ed",
-  grid: "#2f5546",
-  ink: "#173a2c",
-  segment: "#8fd07a",
-  segmentEdge: "#6bbd5b",
-  teal: "#2f5546",
-  white: "#ffffff"
+  apple: colors.accentPink,
+  board: colors.backgroundSunken,
+  segment: colors.accentLime,
+  segmentEdge: colors.accentLimeBevel
 };
 
 // Snake, played as the picked snail — its species sprite (Joseph's
@@ -206,26 +203,18 @@ export function SnakeGame({
             <Text style={styles.boostText}>
               {rewardLabel ? rewardLabel(game.score) : ""}
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            <PixelButton
+              label="Play again"
               onPress={playAgain}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>Play again</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={styles.primaryButton}
+              variant="primary"
+            />
+            <PixelButton
+              label="Back to games"
               onPress={onExit}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>Back to games</Text>
-            </Pressable>
+              style={styles.secondaryButton}
+              variant="neutral"
+            />
           </View>
         </View>
       ) : null}
@@ -249,47 +238,46 @@ const styles = StyleSheet.create({
   },
   board: {
     backgroundColor: COLORS.board,
-    borderRadius: 10,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     overflow: "hidden",
     position: "relative"
   },
   boardWrap: { alignItems: "center", flex: 1, justifyContent: "center" },
   bestHint: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: "700",
+    ...text.bodyStrong,
+    color: colors.textOnDark,
     marginTop: 10,
     opacity: 0.9
   },
   boostText: {
-    color: COLORS.segmentEdge,
-    fontSize: 16,
-    fontWeight: "800",
+    ...text.bodyStrong,
+    color: colors.accentLimeBevel,
     marginTop: 12,
     textAlign: "center"
   },
   card: {
-    backgroundColor: COLORS.cardBg,
-    borderColor: "rgba(17, 97, 106, 0.18)",
-    borderRadius: 18,
+    ...pixelShadow,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
     borderWidth: 2,
     maxWidth: 320,
     padding: 22,
     width: "82%"
   },
   cardTitle: {
-    color: COLORS.teal,
-    fontSize: 26,
-    fontWeight: "800",
+    ...text.pixelTitle,
+    color: colors.textPrimary,
     textAlign: "center"
   },
-  fill: { ...ABSOLUTE_FILL, backgroundColor: "#edf1e8" },
+  fill: { ...ABSOLUTE_FILL, backgroundColor: colors.background },
   hint: {
-    backgroundColor: "rgba(23, 58, 44, 0.82)",
-    borderRadius: 14,
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "800",
+    ...text.pixelHeading,
+    backgroundColor: colors.mapOverlay,
+    borderRadius: radii.md,
+    color: colors.textOnDark,
     overflow: "hidden",
     paddingHorizontal: 18,
     paddingVertical: 10
@@ -298,36 +286,24 @@ const styles = StyleSheet.create({
   overlay: {
     ...ABSOLUTE_FILL,
     alignItems: "center",
-    backgroundColor: "rgba(23, 58, 44, 0.35)",
+    backgroundColor: colors.scrim,
     justifyContent: "center"
   },
-  pressed: { opacity: 0.85 },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: COLORS.segmentEdge,
-    borderRadius: 10,
-    marginTop: 18,
-    paddingVertical: 13
+    marginTop: 18
   },
-  primaryButtonText: { color: COLORS.white, fontSize: 16, fontWeight: "800" },
   score: {
-    color: COLORS.ink,
-    fontSize: 44,
-    fontWeight: "900",
+    ...text.pixelScore,
+    color: colors.textPrimary,
     left: 0,
     position: "absolute",
     right: 0,
     textAlign: "center",
-    top: 36
+    top: 40
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: "#dff0d8",
-    borderRadius: 10,
-    marginTop: 10,
-    paddingVertical: 11
+    marginTop: 10
   },
-  secondaryButtonText: { color: COLORS.teal, fontSize: 14, fontWeight: "700" },
   segment: {
     backgroundColor: COLORS.segment,
     borderColor: COLORS.segmentEdge,
@@ -336,16 +312,14 @@ const styles = StyleSheet.create({
     position: "absolute"
   },
   statLabel: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "700",
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     marginTop: 14,
     textAlign: "center"
   },
   statValue: {
-    color: COLORS.segmentEdge,
-    fontSize: 44,
-    fontWeight: "800",
+    ...text.numberLg,
+    color: colors.accentLimeBevel,
     textAlign: "center"
   }
 });

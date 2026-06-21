@@ -1,12 +1,9 @@
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { PixelButton } from "../components/PixelButton";
+import { RarityBadge, SlimeChip } from "../components/PixelUI";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors, radii, space, text } from "../theme";
 import type { Snail } from "../useCases/localCarrierState";
 
 type Props = {
@@ -34,18 +31,15 @@ export function SnailDetailScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
+        <PixelButton
+          accessibilityLabel="Back"
+          label="‹ Back"
           onPress={onBack}
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
+          size="compact"
+          variant="neutral"
+        />
         {typeof slimeBalance === "number" ? (
-          <Text style={styles.slime}>{slimeBalance} slime</Text>
+          <SlimeChip count={slimeBalance} />
         ) : null}
       </View>
 
@@ -61,9 +55,10 @@ export function SnailDetailScreen({
           <Text style={styles.name} numberOfLines={1}>
             {snail.name}
           </Text>
-          <Text style={styles.subtitle}>
-            Lv {snail.level} · {snail.rarity}
-          </Text>
+          <View style={styles.heroMeta}>
+            <Text style={styles.subtitle}>Lv {snail.level}</Text>
+            <RarityBadge rarity={snail.rarity} />
+          </View>
         </View>
 
         <View style={styles.statsCard}>
@@ -73,16 +68,12 @@ export function SnailDetailScreen({
           <Stat label="Status" value={snail.status === "resting" ? "Resting" : "On journey"} />
         </View>
 
-        <Pressable
-          accessibilityRole="button"
+        <PixelButton
+          label="Play Games"
           onPress={onPlayGames}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.primaryButtonText}>Play Games</Text>
-        </Pressable>
+          style={styles.primaryButton}
+          variant="primary"
+        />
 
         <StubButton label="Cosmetics" onPress={onCosmetics} />
         <StubButton label="Shop" onPress={onShop} />
@@ -111,146 +102,101 @@ function StubButton({
 }) {
   if (!onPress) {
     return (
-      <View style={[styles.secondaryButton, styles.secondaryDisabled]}>
-        <Text style={styles.secondaryDisabledText}>{label}</Text>
-        <Text style={styles.soonText}>soon</Text>
-      </View>
+      <PixelButton
+        accessibilityLabel={`${label} (coming soon)`}
+        disabled
+        label={`${label} · soon`}
+        style={styles.stubButton}
+        variant="secondary"
+      />
     );
   }
   return (
-    <Pressable
-      accessibilityRole="button"
+    <PixelButton
+      label={label}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.secondaryButton,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <Text style={styles.secondaryButtonText}>{label}</Text>
-    </Pressable>
+      style={styles.stubButton}
+      variant="secondary"
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  backButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 6
-  },
-  backText: {
-    color: "#3f6d5b",
-    fontSize: 16,
-    fontWeight: "700"
-  },
   content: {
-    padding: 18,
+    padding: space.lg,
     paddingBottom: 40
-  },
-  portraitTile: {
-    alignItems: "center",
-    backgroundColor: "#20271f",
-    borderRadius: 18,
-    justifyContent: "center",
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    width: "100%"
   },
   hero: {
     alignItems: "center",
-    paddingBottom: 18,
-    paddingTop: 6
+    paddingBottom: space.lg,
+    paddingTop: space.xs
+  },
+  heroMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: space.sm,
+    marginTop: space.sm
   },
   name: {
-    color: "#2f4a3d",
-    fontSize: 24,
-    fontWeight: "900"
+    ...text.pixelTitle,
+    color: colors.textPrimary,
+    marginTop: space.xs
+  },
+  portraitTile: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    justifyContent: "center",
+    marginBottom: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    width: "100%"
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 12,
-    marginTop: 18,
-    paddingVertical: 14
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "800"
-  },
-  pressed: {
-    opacity: 0.85
+    marginTop: space.lg
   },
   screen: {
-    backgroundColor: "#eef1e8",
+    backgroundColor: colors.background,
     flex: 1
   },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 10,
-    paddingVertical: 13
-  },
-  secondaryButtonText: {
-    color: "#2f4a3d",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  secondaryDisabled: {
-    backgroundColor: "#e7ebe1"
-  },
-  secondaryDisabledText: {
-    color: "#9aa79a",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  slime: {
-    color: "#3f6d5b",
-    fontSize: 14,
-    fontWeight: "800"
-  },
-  soonText: {
-    color: "#b3bdab",
-    fontSize: 12,
-    fontWeight: "700",
-    marginLeft: 8
-  },
   statLabel: {
-    color: "#5a6b7a",
-    fontSize: 15
+    ...text.body,
+    color: colors.textMuted
   },
   statRow: {
     alignItems: "center",
-    borderTopColor: "#eef1e8",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 11
+    paddingVertical: space.md
   },
   statValue: {
-    color: "#2f4a3d",
-    fontSize: 15,
-    fontWeight: "800"
+    ...text.bodyStrong,
+    color: colors.textPrimary
   },
   statsCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 4
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.xs
+  },
+  stubButton: {
+    marginTop: space.sm
   },
   subtitle: {
-    color: "#5a6b7a",
-    fontSize: 15,
-    fontWeight: "600",
-    marginTop: 4
+    ...text.bodyStrong,
+    color: colors.textMuted
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingTop: 8
+    paddingHorizontal: space.md,
+    paddingTop: space.sm
   }
 });

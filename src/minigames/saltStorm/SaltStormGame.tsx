@@ -36,28 +36,28 @@ import {
   type SaltConfig,
   type SaltState
 } from "./saltStormEngine";
+import { PixelButton } from "../../components/PixelButton";
+import { colors, pixelShadow, radii, text } from "../../theme";
 
+// Gameplay-canvas colors. Thematic roles read straight from the palette tokens;
+// a few drawn-shape shading values (chrome cap, glass highlights) keep bespoke
+// hex so the salt shaker still reads as a 3D object next to the pixel snails.
 const COLORS = {
   capHole: "#565d66",
-  capLight: "#c7cdd4",
-  capMid: "#a3abb4",
-  capShadow: "#828a93",
-  cardBg: "#fffaf0",
+  capLight: "#e7ecf2",
+  capMid: "#b8c0c9",
+  capShadow: "#8d96a1",
   glass: "#eef3f7",
   glassShadow: "#cdd5dd",
-  grass: "#6fae54",
-  grassLight: "#9bd47a",
+  grass: colors.accentLimeBevel,
+  grassLight: colors.accentLime,
   ground: "#6b5640",
-  groundDark: "#54422f",
-  ink: "#2c2f44",
-  label: "#d8694e",
-  moon: "#f3efe1",
-  salt: "#ffffff",
-  skyBottom: "#aeb6c8",
-  skyTop: "#454d68",
-  star: "#ffffff",
-  teal: "#34516b",
-  white: "#ffffff"
+  label: colors.danger,
+  moon: colors.accentGoldSoft,
+  salt: colors.textOnAccent,
+  skyBottom: colors.secondarySoft,
+  skyTop: colors.secondary,
+  star: colors.textOnAccent
 };
 
 // Salt Storm — the picked snail (its species sprite) slides along the ground
@@ -362,20 +362,18 @@ export function SaltStormGame({
             <Text style={styles.boostText}>
               {rewardLabel ? rewardLabel(game.score) : ""}
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            <PixelButton
+              label="Play again"
               onPress={playAgain}
-              style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null]}
-            >
-              <Text style={styles.primaryButtonText}>Play again</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={styles.primaryButton}
+              variant="primary"
+            />
+            <PixelButton
+              label="Back to games"
               onPress={onExit}
-              style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}
-            >
-              <Text style={styles.secondaryButtonText}>Back to games</Text>
-            </Pressable>
+              style={styles.secondaryButton}
+              variant="neutral"
+            />
           </View>
         </View>
       ) : null}
@@ -491,7 +489,7 @@ function Shell({ frame, p }: { frame: number; p: Pickup }) {
     <Group transform={[{ translateX: p.x }, { translateY: p.y }]}>
       <Circle cx={0} cy={0} r={s * 0.62 * pulse} color="rgba(120,210,180,0.3)" />
       <Circle cx={0} cy={0} r={s * 0.42} color="#7fd0b4" />
-      <Circle cx={0} cy={0} r={s * 0.42} color="#3f6d5b" style="stroke" strokeWidth={2} />
+      <Circle cx={0} cy={0} r={s * 0.42} color={colors.accentLimeBevel} style="stroke" strokeWidth={2} />
       <Circle cx={-s * 0.12} cy={-s * 0.12} r={s * 0.1} color="#eafff7" />
     </Group>
   );
@@ -500,85 +498,73 @@ function Shell({ frame, p }: { frame: number; p: Pickup }) {
 const ABSOLUTE_FILL = { bottom: 0, left: 0, position: "absolute", right: 0, top: 0 } as const;
 
 const styles = StyleSheet.create({
-  best: { color: "#e8ecf5", fontSize: 15, fontWeight: "700", marginTop: 12 },
-  boostText: { color: COLORS.teal, fontSize: 16, fontWeight: "800", marginTop: 12, textAlign: "center" },
+  best: { ...text.pixelLabel, color: colors.textPrimary, marginTop: 12 },
+  boostText: { ...text.bodyStrong, color: colors.primary, marginTop: 12, textAlign: "center" },
   card: {
-    backgroundColor: COLORS.cardBg,
-    borderColor: "rgba(52,81,107,0.2)",
-    borderRadius: 18,
+    ...pixelShadow,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
     borderWidth: 2,
     maxWidth: 320,
     padding: 22,
     width: "82%"
   },
-  cardTitle: { color: COLORS.teal, fontSize: 26, fontWeight: "800", textAlign: "center" },
+  cardTitle: { ...text.pixelTitle, color: colors.textPrimary, textAlign: "center" },
   fill: { ...ABSOLUTE_FILL },
   flashText: {
-    color: "#ffd250",
-    fontSize: 44,
-    fontWeight: "900",
+    ...text.pixelHero,
+    color: colors.accentGold,
     left: 0,
-    letterSpacing: 2,
     position: "absolute",
     right: 0,
     textAlign: "center",
-    textShadowColor: "rgba(44,47,68,0.6)",
+    textShadowColor: colors.pixelShadow,
     textShadowOffset: { height: 2, width: 0 },
-    textShadowRadius: 8,
+    textShadowRadius: 0,
     top: "40%"
   },
-  heart: { fontSize: 20, marginRight: 2 },
-  heartEmpty: { color: "rgba(255,255,255,0.25)" },
-  heartFull: { color: "#ff5a5a" },
+  heart: { fontSize: 22, marginRight: 2 },
+  heartEmpty: { color: colors.borderHairline },
+  heartFull: { color: colors.danger },
   hearts: { flexDirection: "row", left: 16, position: "absolute", top: 52 },
-  hint: { color: COLORS.white, fontSize: 15, fontWeight: "700", marginTop: 22 },
+  hint: { ...text.pixelLabel, color: colors.textPrimary, marginTop: 22 },
   levelText: {
-    color: "#dfe3ee",
-    fontSize: 15,
-    fontWeight: "800",
+    ...text.pixelLabel,
+    color: colors.textPrimary,
     left: 0,
-    letterSpacing: 1,
     position: "absolute",
     right: 0,
     textAlign: "center",
     top: 116
   },
-  overlay: { ...ABSOLUTE_FILL, alignItems: "center", backgroundColor: "rgba(44,47,68,0.34)", justifyContent: "center" },
-  pressed: { opacity: 0.85 },
-  primaryButton: { alignItems: "center", backgroundColor: COLORS.teal, borderRadius: 10, marginTop: 18, paddingVertical: 13 },
-  primaryButtonText: { color: COLORS.white, fontSize: 16, fontWeight: "800" },
+  overlay: { ...ABSOLUTE_FILL, alignItems: "center", backgroundColor: colors.scrim, justifyContent: "center" },
+  primaryButton: { marginTop: 18 },
   readyWrap: { ...ABSOLUTE_FILL, alignItems: "center", justifyContent: "center" },
   score: {
-    color: COLORS.white,
-    fontSize: 56,
-    fontWeight: "900",
+    ...text.pixelScore,
+    color: colors.textPrimary,
     left: 0,
     position: "absolute",
     right: 0,
     textAlign: "center",
-    textShadowColor: "rgba(44,47,68,0.85)",
+    textShadowColor: colors.pixelShadow,
     textShadowOffset: { height: 2, width: 0 },
-    textShadowRadius: 4,
+    textShadowRadius: 0,
     top: 64
   },
-  secondaryButton: { alignItems: "center", backgroundColor: "#dfe6ef", borderRadius: 10, marginTop: 10, paddingVertical: 11 },
-  secondaryButtonText: { color: COLORS.teal, fontSize: 14, fontWeight: "700" },
-  statLabel: { color: "#2a2118", fontSize: 14, fontWeight: "700", marginTop: 14, textAlign: "center" },
-  statValue: { color: COLORS.teal, fontSize: 44, fontWeight: "800", textAlign: "center" },
+  secondaryButton: { marginTop: 10 },
+  statLabel: { ...text.bodyStrong, color: colors.textPrimary, marginTop: 14, textAlign: "center" },
+  statValue: { ...text.numberLg, color: colors.primary, textAlign: "center" },
   shieldText: {
-    color: "#aef0d6",
-    fontSize: 16,
-    fontWeight: "900",
+    ...text.pixelLabel,
+    color: colors.accentLimeBevel,
     left: 0,
-    letterSpacing: 2,
     position: "absolute",
     right: 0,
     textAlign: "center",
-    textShadowColor: "rgba(44,47,68,0.8)",
-    textShadowOffset: { height: 1, width: 0 },
-    textShadowRadius: 3,
     top: 128
   },
-  subtitle: { color: "#dfe3ee", fontSize: 16, fontWeight: "600", marginTop: 8, textAlign: "center" },
-  title: { color: COLORS.white, fontSize: 34, fontWeight: "900", letterSpacing: 2, textAlign: "center" }
+  subtitle: { ...text.body, color: colors.textMuted, marginTop: 8, textAlign: "center" },
+  title: { ...text.pixelTitle, color: colors.textPrimary, textAlign: "center" }
 });

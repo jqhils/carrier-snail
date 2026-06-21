@@ -1,97 +1,29 @@
 import { StyleSheet } from "react-native";
 
+import { colors, pixelShadow, radii, softShadow, text } from "../theme";
+
 export const styles = StyleSheet.create({
-  recenterFab: {
-    alignItems: "center",
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(47, 96, 78, 0.2)",
-    borderRadius: 24,
-    borderWidth: 1,
-    elevation: 3,
-    height: 48,
-    justifyContent: "center",
-    position: "absolute",
-    right: 16,
-    shadowColor: "#1c2a22",
-    shadowOffset: { height: 2, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    width: 48
-  },
-  recenterFabPressed: {
-    backgroundColor: "#eceadd"
-  },
-  userDot: {
-    backgroundColor: "#365c8d",
-    borderColor: "#f6faf6",
-    borderRadius: 8,
-    borderWidth: 3,
-    height: 16,
-    width: 16
-  },
-  userDotHalo: {
-    alignItems: "center",
-    backgroundColor: "rgba(54, 92, 141, 0.18)",
-    borderRadius: 22,
-    height: 44,
-    justifyContent: "center",
-    width: 44
-  },
-  peekBar: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.18)",
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    paddingTop: 8
-  },
-  peekHandle: {
-    alignSelf: "center",
-    backgroundColor: "rgba(63, 109, 91, 0.35)",
-    borderRadius: 2,
-    height: 4,
-    width: 34
-  },
-  peekTextBlock: {
-    minWidth: 0
-  },
-  peekTitle: {
-    color: "#26352f",
-    fontSize: 15,
-    fontWeight: "800"
-  },
-  peekEta: {
-    color: "#5f6e66",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2
-  },
-  panelHandleHit: {
-    alignItems: "center",
-    paddingBottom: 10,
-    paddingTop: 2
-  },
   backgroundLocationButton: {
     alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 38,
     minWidth: 68,
     paddingHorizontal: 12
   },
   backgroundLocationButtonEnabled: {
-    backgroundColor: "#6a7b70"
+    backgroundColor: colors.secondary
   },
   backgroundLocationButtonPressed: {
-    backgroundColor: "#315547"
+    backgroundColor: colors.primaryPressed
   },
   backgroundLocationButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.pixelLabel,
+    color: colors.textOnAccent
   },
   backgroundLocationRow: {
     alignItems: "center",
@@ -100,61 +32,54 @@ export const styles = StyleSheet.create({
     marginTop: 10
   },
   backgroundLocationText: {
-    color: "#56645e",
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 16
+    ...text.bodySm,
+    color: colors.textMuted,
+    flex: 1
   },
   buyButton: {
     alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 34,
     minWidth: 60,
     paddingHorizontal: 10
   },
   buyButtonDisabled: {
-    backgroundColor: "#7c8580"
+    backgroundColor: colors.disabledFill
   },
   buyButtonPressed: {
-    backgroundColor: "#294870"
+    backgroundColor: colors.secondaryPressed
   },
   buyButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  controls: {
-    backgroundColor: "rgba(249, 247, 238, 0.97)",
-    borderTopColor: "rgba(38, 51, 46, 0.12)",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderTopWidth: 1,
-    bottom: 0,
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    right: 0
-  },
-  controlsContent: {
-    paddingBottom: 22,
-    paddingHorizontal: 18
-  },
-  sheetGrip: {
-    gap: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 18,
-    paddingTop: 10
-  },
-  sheetScroll: {
-    flex: 1
+    ...text.pixelLabel,
+    color: colors.textOnAccent
   },
   composerRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
     marginTop: 12
+  },
+  controls: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    borderWidth: 2,
+    bottom: 0,
+    left: 0,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    ...pixelShadow
+  },
+  controlsContent: {
+    paddingBottom: 22,
+    paddingHorizontal: 18
   },
   demoLegend: {
     flexDirection: "row",
@@ -164,10 +89,10 @@ export const styles = StyleSheet.create({
   },
   demoLegendItem: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.58)",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 6,
     minHeight: 30,
@@ -179,31 +104,24 @@ export const styles = StyleSheet.create({
     width: 10
   },
   demoLegendText: {
-    color: "#25332e",
-    fontSize: 12,
-    fontWeight: "700",
+    ...text.bodyStrongSm,
+    color: colors.textPrimary,
     maxWidth: 124
-  },
-  errorText: {
-    color: "#a13d2d",
-    fontSize: 13,
-    marginTop: 8
   },
   eggCopy: {
     flex: 1,
     minWidth: 0
   },
   eggList: {
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     gap: 8,
     marginTop: 10,
     paddingTop: 10
   },
   eggOdds: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   eggRow: {
@@ -212,79 +130,89 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   eggTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.bodyStrongSm,
+    color: colors.textPrimary
+  },
+  errorText: {
+    ...text.bodySm,
+    color: colors.danger,
+    marginTop: 8
   },
   hatchButton: {
     alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 34,
     minWidth: 68,
     paddingHorizontal: 10
   },
   hatchButtonPressed: {
-    backgroundColor: "#294870"
+    backgroundColor: colors.secondaryPressed
   },
   hatchButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.pixelLabel,
+    color: colors.textOnAccent
+  },
+  hiddenSurface: {
+    display: "none"
+  },
+  inFlightCopy: {
+    flex: 1,
+    minWidth: 0
   },
   inFlightItem: {
     alignItems: "center",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 10,
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 9
   },
-  inFlightCopy: {
-    flex: 1,
-    minWidth: 0
-  },
   inFlightList: {
     gap: 8,
     marginTop: 10
   },
   inFlightSnail: {
-    color: "#5d6d77",
-    fontSize: 12,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   inFlightText: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "600"
+    ...text.bodyStrong,
+    color: colors.textPrimary
   },
   levelButton: {
     alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 34,
     minWidth: 76,
     paddingHorizontal: 10
   },
   levelButtonDisabled: {
-    backgroundColor: "#7c8580"
+    backgroundColor: colors.disabledFill
   },
   levelButtonPressed: {
-    backgroundColor: "#315547"
+    backgroundColor: colors.primaryPressed
   },
   levelButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.pixelLabel,
+    color: colors.textOnAccent
   },
   levelRow: {
     alignItems: "center",
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     flexDirection: "row",
     gap: 10,
@@ -292,15 +220,14 @@ export const styles = StyleSheet.create({
     paddingTop: 10
   },
   levelText: {
-    color: "#25332e",
+    ...text.bodyStrongSm,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
     minWidth: 0
   },
   mapHint: {
-    backgroundColor: "rgba(20, 28, 24, 0.72)",
-    borderRadius: 8,
+    backgroundColor: colors.mapOverlay,
+    borderRadius: radii.sm,
     bottom: 10,
     left: 10,
     paddingHorizontal: 10,
@@ -309,13 +236,13 @@ export const styles = StyleSheet.create({
     right: 10
   },
   mapHintText: {
-    color: "#eef3ec",
-    fontSize: 12,
+    ...text.bodySm,
+    color: colors.textOnDark,
     textAlign: "center"
   },
   mapNotice: {
     alignItems: "center",
-    backgroundColor: "rgba(20, 28, 24, 0.55)",
+    backgroundColor: colors.scrim,
     bottom: 0,
     justifyContent: "center",
     left: 0,
@@ -325,15 +252,14 @@ export const styles = StyleSheet.create({
     top: 0
   },
   mapNoticeBody: {
-    color: "#dfe6df",
-    fontSize: 13,
+    ...text.body,
+    color: colors.textOnDark,
     marginTop: 4,
     textAlign: "center"
   },
   mapNoticeTitle: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "700"
+    ...text.pixelHeading,
+    color: colors.textOnDark
   },
   mapShell: {
     flex: 1
@@ -342,8 +268,8 @@ export const styles = StyleSheet.create({
     flex: 1
   },
   mapToggle: {
-    backgroundColor: "rgba(20, 28, 24, 0.72)",
-    borderRadius: 18,
+    backgroundColor: colors.mapOverlay,
+    borderRadius: radii.lg,
     left: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -351,65 +277,35 @@ export const styles = StyleSheet.create({
     top: 52
   },
   mapTogglePressed: {
-    backgroundColor: "rgba(20, 28, 24, 0.92)"
+    backgroundColor: colors.pixelShadow
   },
   mapToggleText: {
-    color: "#f3f7f1",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  snailMarker: {
-    alignItems: "center",
-    backgroundColor: "rgba(248, 246, 237, 0.92)",
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 28,
-    borderWidth: 2,
-    elevation: 3,
-    height: 56,
-    justifyContent: "center",
-    shadowColor: "#1c2a22",
-    shadowOffset: { height: 2, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    width: 56
-  },
-  snailMarkerHighlighted: {
-    borderColor: "#3f6d5b",
-    borderWidth: 3
-  },
-  snailMarkerPressed: {
-    opacity: 0.78,
-    transform: [{ scale: 0.96 }]
-  },
-  targetMarker: {
-    backgroundColor: "#1f5da2",
-    borderColor: "#ffffff",
-    borderRadius: 8,
-    borderWidth: 2,
-    height: 16,
-    width: 16
+    ...text.bodyStrongSm,
+    color: colors.textOnDark
   },
   meta: {
-    color: "#56645e",
-    fontSize: 13,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   onboardingButton: {
     alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     marginTop: 10,
     minHeight: 38,
     paddingHorizontal: 12
   },
   onboardingButtonPressed: {
-    backgroundColor: "#294870"
+    backgroundColor: colors.secondaryPressed
   },
   onboardingButtonText: {
-    color: "#f8fafc",
-    fontSize: 14,
-    fontWeight: "800"
+    ...text.pixelButton,
+    color: colors.textOnAccent
   },
   onboardingHeaderRow: {
     alignItems: "center",
@@ -418,40 +314,36 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   onboardingKicker: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   onboardingPanel: {
-    backgroundColor: "#f7f6ef",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 12,
     padding: 10
   },
   onboardingPrivacy: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 9
   },
   onboardingSnailBadge: {
     alignItems: "center",
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(63, 109, 91, 0.26)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     height: 34,
     justifyContent: "center",
     width: 34
   },
   onboardingSnailBadgeText: {
-    color: "#3f6d5b",
-    fontSize: 16,
-    fontWeight: "800"
+    ...text.pixelHeading,
+    color: colors.primary
   },
   onboardingStep: {
     alignItems: "flex-start",
@@ -463,76 +355,177 @@ export const styles = StyleSheet.create({
     marginTop: 10
   },
   onboardingStepNumber: {
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 17,
+    ...text.bodyStrongSm,
+    color: colors.primary,
     minWidth: 14
   },
   onboardingStepText: {
-    color: "#25332e",
+    ...text.bodySm,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
     minWidth: 0
   },
   onboardingTitle: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "800",
+    ...text.pixelHeading,
+    color: colors.textPrimary,
     marginTop: 2
   },
   onboardingTitleBlock: {
     flex: 1,
     minWidth: 0
   },
+  panelHandleHit: {
+    alignItems: "center",
+    paddingBottom: 10,
+    paddingTop: 2
+  },
+  peekBar: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    gap: 8,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8
+  },
+  peekEta: {
+    ...text.bodySm,
+    color: colors.textMuted,
+    marginTop: 2
+  },
+  peekHandle: {
+    alignSelf: "center",
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    height: 4,
+    width: 34
+  },
+  peekTextBlock: {
+    minWidth: 0
+  },
+  peekTitle: {
+    ...text.bodyStrongLg,
+    color: colors.textPrimary
+  },
   personalityButton: {
     alignItems: "center",
-    backgroundColor: "#edf1e8",
-    borderColor: "rgba(37, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 48,
     minWidth: 62,
     paddingHorizontal: 12
   },
   personalityButtonEnabled: {
-    backgroundColor: "#fff6ef",
-    borderColor: "rgba(178, 72, 54, 0.34)"
+    backgroundColor: colors.accentGoldSoft,
+    borderColor: colors.accentWarm
   },
   personalityButtonPressed: {
-    backgroundColor: "#e3ebe2"
+    backgroundColor: colors.backgroundSunken
   },
   personalityButtonText: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "800"
+    ...text.bodyStrongSm,
+    color: colors.textPrimary
+  },
+  recallButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.danger,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    justifyContent: "center",
+    minHeight: 34,
+    minWidth: 68,
+    paddingHorizontal: 10
+  },
+  recallButtonPressed: {
+    backgroundColor: colors.accentPinkSoft
+  },
+  recallButtonText: {
+    ...text.pixelLabel,
+    color: colors.danger
+  },
+  recenterFab: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    height: 48,
+    justifyContent: "center",
+    position: "absolute",
+    right: 16,
+    width: 48,
+    ...softShadow
+  },
+  recenterFabPressed: {
+    backgroundColor: colors.backgroundSunken
+  },
+  reminderInput: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    color: colors.textPrimary,
+    flex: 1,
+    ...text.bodyLg,
+    minHeight: 44,
+    paddingHorizontal: 12
   },
   screen: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     flex: 1
   },
-  hiddenSurface: {
-    display: "none"
+  sendButton: {
+    alignItems: "center",
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderBottomWidth: 5,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    minHeight: 44,
+    minWidth: 72,
+    justifyContent: "center",
+    paddingHorizontal: 14
+  },
+  sendButtonDisabled: {
+    backgroundColor: colors.disabledFill
+  },
+  sendButtonPressed: {
+    backgroundColor: colors.secondaryPressed
+  },
+  sendButtonText: {
+    ...text.pixelButton,
+    color: colors.textOnAccent
+  },
+  sheetGrip: {
+    gap: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 18,
+    paddingTop: 10
+  },
+  sheetScroll: {
+    flex: 1
   },
   shopCopy: {
     flex: 1,
     minWidth: 0
   },
   shopDetail: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   shopDisclosure: {
-    color: "#6d5a46",
-    fontSize: 12,
-    lineHeight: 16
+    ...text.bodySm,
+    color: colors.textMuted
   },
   shopList: {
-    borderTopColor: "rgba(43, 58, 52, 0.12)",
+    borderTopColor: colors.borderHairline,
     borderTopWidth: 1,
     gap: 9,
     marginTop: 10,
@@ -544,75 +537,32 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   shopTitle: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.bodyStrongSm,
+    color: colors.textPrimary
   },
-  sendButton: {
+  snailMarker: {
     alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    minHeight: 44,
-    minWidth: 72,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 2,
+    height: 56,
     justifyContent: "center",
-    paddingHorizontal: 14
+    width: 56,
+    ...softShadow
   },
-  sendButtonPressed: {
-    backgroundColor: "#294870"
+  snailMarkerHighlighted: {
+    borderColor: colors.primary,
+    borderWidth: 3
   },
-  sendButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  sendButtonText: {
-    color: "#f8fafc",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  reminderInput: {
-    backgroundColor: "#ffffff",
-    borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: "#25332e",
-    flex: 1,
-    fontSize: 16,
-    minHeight: 44,
-    paddingHorizontal: 12
-  },
-  recallButton: {
-    alignItems: "center",
-    backgroundColor: "#fff6ef",
-    borderColor: "rgba(161, 61, 45, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    minWidth: 68,
-    paddingHorizontal: 10
-  },
-  recallButtonPressed: {
-    backgroundColor: "#f8e5dc"
-  },
-  recallButtonText: {
-    color: "#a13d2d",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  statusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
-  },
-  statusActions: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8
+  snailMarkerPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.96 }]
   },
   stableCapacity: {
-    color: "#56645e",
+    ...text.bodyStrongSm,
+    color: colors.textMuted,
     flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
     marginLeft: 8,
     textAlign: "right"
   },
@@ -622,9 +572,9 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   stablePanel: {
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 12,
     padding: 10
   },
@@ -635,81 +585,113 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   stableSnailItem: {
-    backgroundColor: "#ffffff",
-    borderColor: "rgba(63, 109, 91, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     paddingHorizontal: 10,
     paddingVertical: 8
   },
   stableSnailItemBusy: {
-    backgroundColor: "#eef1ed",
-    borderColor: "rgba(86, 100, 94, 0.2)"
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.borderHairline
   },
   stableSnailItemPressed: {
-    backgroundColor: "#eef7f1"
+    backgroundColor: colors.primarySoft
   },
   stableSnailItemSelected: {
-    borderColor: "#3f6d5b",
-    borderWidth: 2
+    borderColor: colors.primary,
+    borderWidth: 3
   },
   stableSnailList: {
     gap: 8,
     marginTop: 8
   },
   stableSnailMeta: {
-    color: "#56645e",
-    fontSize: 12,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 3
   },
   stableSnailName: {
-    color: "#25332e",
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  stableSnailStatus: {
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "700"
+    ...text.bodyStrong,
+    color: colors.textPrimary,
+    flex: 1
   },
   stableSnailStats: {
-    color: "#6d5a46",
-    fontSize: 12,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 3
   },
+  stableSnailStatus: {
+    ...text.bodyStrongSm,
+    color: colors.primary
+  },
   stableTitle: {
-    color: "#25332e",
-    fontSize: 15,
-    fontWeight: "700"
+    ...text.pixelHeading,
+    color: colors.textPrimary
+  },
+  statusActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8
+  },
+  statusRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  targetMarker: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 2,
+    height: 16,
+    width: 16
   },
   title: {
-    color: "#25332e",
-    fontSize: 21,
-    fontWeight: "700"
+    ...text.pixelTitle,
+    color: colors.textPrimary
   },
   titleBlock: {
     flex: 1,
     minWidth: 0
   },
+  userDot: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 3,
+    height: 16,
+    width: 16
+  },
+  userDotHalo: {
+    alignItems: "center",
+    backgroundColor: colors.secondarySoft,
+    borderRadius: 22,
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
   warpButton: {
     alignItems: "center",
-    backgroundColor: "#25332e",
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     minWidth: 86,
     paddingHorizontal: 14,
     paddingVertical: 9
   },
   warpLabel: {
-    color: "#dce7d2",
-    fontSize: 11,
+    ...text.pixelMicro,
+    color: colors.textOnAccent,
     marginTop: 1,
     textTransform: "uppercase"
   },
   warpValue: {
-    color: "#fff7dc",
-    fontSize: 16,
-    fontWeight: "700"
+    ...text.pixelHeading,
+    color: colors.textOnAccent
   },
   watchActionRow: {
     alignItems: "center",
@@ -720,17 +702,14 @@ export const styles = StyleSheet.create({
     marginTop: 10
   },
   watchCarryingLabel: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     marginTop: 12,
     textTransform: "uppercase"
   },
   watchEta: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 10
   },
   watchHeaderRow: {
@@ -746,10 +725,10 @@ export const styles = StyleSheet.create({
   },
   watchJourneyTab: {
     alignItems: "center",
-    backgroundColor: "#f7f6ef",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 6,
     minHeight: 30,
@@ -757,17 +736,16 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 9
   },
   watchJourneyTabPressed: {
-    backgroundColor: "#eef7f1"
+    backgroundColor: colors.primarySoft
   },
   watchJourneyTabSelected: {
-    borderColor: "#3f6d5b",
-    borderWidth: 2
+    borderColor: colors.primary,
+    borderWidth: 3
   },
   watchJourneyTabText: {
-    color: "#25332e",
-    flexShrink: 1,
-    fontSize: 12,
-    fontWeight: "700"
+    ...text.bodyStrongSm,
+    color: colors.textPrimary,
+    flexShrink: 1
   },
   watchJourneyTabs: {
     flexDirection: "row",
@@ -776,37 +754,33 @@ export const styles = StyleSheet.create({
     marginTop: 10
   },
   watchKicker: {
-    color: "#6d5a46",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   watchMeta: {
-    color: "#56645e",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 6
   },
   watchPanel: {
-    backgroundColor: "rgba(248, 245, 235, 0.9)",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 12,
     padding: 12
   },
   watchProgress: {
-    color: "#3f6d5b",
-    fontSize: 15,
-    fontWeight: "900"
+    ...text.pixelHeading,
+    color: colors.primary
   },
   watchProgressPill: {
     alignItems: "center",
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(63, 109, 91, 0.22)",
-    borderRadius: 999,
-    borderWidth: 1,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 34,
     minWidth: 54,
@@ -814,26 +788,25 @@ export const styles = StyleSheet.create({
   },
   watchScrubButton: {
     alignItems: "center",
-    backgroundColor: "#edf1e8",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 30,
     minWidth: 48,
     paddingHorizontal: 8
   },
   watchScrubButtonPressed: {
-    backgroundColor: "#dfe9df"
+    backgroundColor: colors.backgroundSunken
   },
   watchScrubButtonSelected: {
-    backgroundColor: "#dfeee4",
-    borderColor: "#3f6d5b"
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary
   },
   watchScrubButtonText: {
-    color: "#25332e",
-    fontSize: 12,
-    fontWeight: "800"
+    ...text.bodyStrongSm,
+    color: colors.textPrimary
   },
   watchScrubRow: {
     flexDirection: "row",
@@ -844,25 +817,26 @@ export const styles = StyleSheet.create({
   },
   watchShareButton: {
     alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+    borderBottomWidth: 4,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     justifyContent: "center",
     minHeight: 32,
     minWidth: 88,
     paddingHorizontal: 10
   },
   watchShareButtonPressed: {
-    backgroundColor: "#294870"
+    backgroundColor: colors.secondaryPressed
   },
   watchShareButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.pixelLabel,
+    color: colors.textOnAccent
   },
   watchTitle: {
-    color: "#25332e",
-    fontSize: 18,
-    fontWeight: "900",
+    ...text.pixelHeading,
+    color: colors.textPrimary,
     marginTop: 2
   },
   watchTitleBlock: {
@@ -870,27 +844,23 @@ export const styles = StyleSheet.create({
     minWidth: 0
   },
   watchTodoText: {
-    color: "#25332e",
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 24,
+    ...text.bodyStrongLg,
+    color: colors.textPrimary,
     marginTop: 4
   },
   watchTrait: {
-    backgroundColor: "#f1eee4",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     flexGrow: 1,
     minWidth: 92,
     paddingHorizontal: 10,
     paddingVertical: 9
   },
   watchTraitLabel: {
-    color: "#6d746d",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0,
+    ...text.pixelMicro,
+    color: colors.textMuted,
     textTransform: "uppercase"
   },
   watchTraitRow: {
@@ -900,9 +870,8 @@ export const styles = StyleSheet.create({
     marginTop: 12
   },
   watchTraitValue: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "900",
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     marginTop: 3
   }
 });

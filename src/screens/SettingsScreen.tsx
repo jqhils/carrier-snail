@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { colors, radii, text } from "../theme";
 import {
   BACKGROUND_LOCATION_PERMISSION_COPY,
   type BackgroundLocationMode
@@ -71,9 +72,10 @@ export function SettingsScreen({
               <Switch
                 accessibilityLabel="Background location"
                 disabled={backgroundLocationBusy}
+                ios_backgroundColor={colors.disabledFill}
                 onValueChange={onToggleBackgroundLocation}
-                thumbColor="#f8f6ed"
-                trackColor={{ false: "#c4cdc3", true: "#3f6d5b" }}
+                thumbColor={colors.surface}
+                trackColor={{ false: colors.disabledFill, true: colors.primary }}
                 value={backgroundOn}
               />
             </View>
@@ -166,19 +168,18 @@ export function SettingsScreen({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 2,
     gap: 8,
     marginTop: 14,
     paddingHorizontal: 16,
     paddingVertical: 15
   },
   cardBody: {
-    color: "#5f6e66",
-    fontSize: 14,
-    lineHeight: 20
+    ...text.body,
+    color: colors.textMuted
   },
   cardHeaderRow: {
     alignItems: "center",
@@ -187,15 +188,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   cardStatus: {
-    color: "#557363",
-    fontSize: 13,
-    fontWeight: "700"
+    ...text.bodyStrongSm,
+    color: colors.primary
   },
   cardTitle: {
-    color: "#26352f",
+    ...text.pixelHeading,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 16,
-    fontWeight: "800",
     minWidth: 0
   },
   content: {
@@ -204,84 +203,75 @@ const styles = StyleSheet.create({
     paddingTop: 22
   },
   eyebrow: {
-    color: "#557363",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   header: {
-    gap: 6
+    gap: 8
   },
   screen: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     flex: 1
   },
   skinButton: {
-    backgroundColor: "#fdfcf5",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     minHeight: 60,
     paddingHorizontal: 12,
     paddingVertical: 10
   },
   skinButtonDetail: {
-    color: "#5f6e66",
-    fontSize: 12,
-    lineHeight: 16,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 3
   },
   skinButtonDetailSelected: {
-    color: "#3f6d5b"
+    color: colors.textPrimary
   },
   skinButtonPressed: {
-    backgroundColor: "#edf4ea"
+    backgroundColor: colors.surfaceSelected
   },
   skinButtonSelected: {
-    backgroundColor: "#dfeee4",
-    borderColor: "#3f6d5b",
-    borderWidth: 2
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary
   },
   skinButtonText: {
-    color: "#26352f",
-    fontSize: 14,
-    fontWeight: "900"
+    ...text.bodyStrong,
+    color: colors.textPrimary
   },
   skinButtonTextSelected: {
-    color: "#2f604e"
+    ...text.pixelLabel,
+    color: colors.primary
   },
   skinSelector: {
     gap: 8,
     marginTop: 2
   },
   subtitle: {
-    color: "#5f6e66",
-    fontSize: 15,
-    fontWeight: "600",
-    lineHeight: 21,
+    ...text.bodyLg,
+    color: colors.textMuted,
     maxWidth: 420
   },
   title: {
-    color: "#26352f",
-    fontSize: 28,
-    fontWeight: "900",
-    lineHeight: 33
+    ...text.pixelTitle,
+    color: colors.textPrimary
   },
   warpButton: {
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(47, 96, 78, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+    borderRadius: radii.md,
+    borderWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 8
   },
   warpButtonPressed: {
-    backgroundColor: "#cfe6d8"
+    backgroundColor: colors.surfaceSelected
   },
   warpValue: {
-    color: "#2f604e",
-    fontSize: 15,
-    fontWeight: "800"
+    ...text.bodyStrong,
+    color: colors.primary
   }
 });

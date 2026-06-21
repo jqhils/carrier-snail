@@ -4,7 +4,6 @@ import {
   Easing,
   PanResponder,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -20,44 +19,50 @@ import {
   type Game2048State
 } from "./engine2048";
 import type { GameComponentProps } from "../types";
+import { PixelButton } from "../../components/PixelButton";
+import { colors, fontFamily, pixelShadow, radii, text } from "../../theme";
 
 // The native animation driver doesn't exist on web; fall back to the JS driver
 // there so slide/pop animations still run (and to silence the warning).
 const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
-const BOARD_BG = "#c1c8b8";
-const CELL_BG = "#d6dccc";
+const BOARD_BG = colors.backgroundSunken;
+const CELL_BG = colors.surfaceAlt;
 const GAP = 10;
 const SWIPE_THRESHOLD = 18;
 const SLIDE_MS = 110;
 
-// Tile colors. 2048+ uses the app green so the win tile reads as "ours".
+// Tile colors — an escalating candy ramp. Low tiles read as tinted cream; the
+// ramp warms through tangerine/gold, peaks at hot pink/gold, then the 1024 and
+// 2048 (win) tiles land on lime + grape so the win tile reads as "ours".
 const TILE_COLORS: Record<number, { bg: string; fg: string }> = {
-  2: { bg: "#ece4d3", fg: "#6d5a46" },
-  4: { bg: "#ddd0b8", fg: "#6d5a46" },
-  8: { bg: "#cfac79", fg: "#ffffff" },
-  16: { bg: "#c68f54", fg: "#ffffff" },
-  32: { bg: "#b9743f", fg: "#ffffff" },
-  64: { bg: "#a85a32", fg: "#ffffff" },
-  128: { bg: "#8a9a5e", fg: "#ffffff" },
-  256: { bg: "#6f9568", fg: "#ffffff" },
-  512: { bg: "#56896c", fg: "#ffffff" },
-  1024: { bg: "#487a61", fg: "#ffffff" },
-  2048: { bg: "#3f6d5b", fg: "#ffffff" }
+  2: { bg: colors.surfaceAlt, fg: colors.textPrimary },
+  4: { bg: colors.accentGoldSoft, fg: colors.textPrimary },
+  8: { bg: colors.accentWarm, fg: colors.textOnAccent },
+  16: { bg: colors.accentWarmBevel, fg: colors.textOnAccent },
+  32: { bg: colors.accentGold, fg: colors.textPrimary },
+  64: { bg: colors.accentGoldBevel, fg: colors.textOnAccent },
+  128: { bg: colors.accentPink, fg: colors.textOnAccent },
+  256: { bg: colors.accentPinkBevel, fg: colors.textOnAccent },
+  512: { bg: colors.secondary, fg: colors.textOnAccent },
+  1024: { bg: colors.accentLime, fg: colors.textPrimary },
+  2048: { bg: colors.primary, fg: colors.textOnAccent }
 };
 
 function tileColors(value: number): { bg: string; fg: string } {
-  return TILE_COLORS[value] ?? { bg: "#25332e", fg: "#ffffff" };
+  return TILE_COLORS[value] ?? { bg: colors.primaryBevel, fg: colors.textOnAccent };
 }
 
+// Fredoka renders wider than the old system font, so the multipliers are pulled
+// in vs. the originals to keep 128 / 1024 / 2048 inside the cell.
 function fontFor(value: number, cell: number): number {
   if (value >= 1024) {
-    return cell * 0.32;
+    return cell * 0.28;
   }
   if (value >= 128) {
-    return cell * 0.4;
+    return cell * 0.36;
   }
-  return cell * 0.46;
+  return cell * 0.44;
 }
 
 type TileAnim = { pos: Animated.ValueXY; scale: Animated.Value };
@@ -253,16 +258,13 @@ export function Game2048({
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
+        <PixelButton
+          accessibilityLabel="Back"
+          label="‹ Back"
           onPress={onExit}
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
+          size="compact"
+          variant="neutral"
+        />
       </View>
 
       <View style={styles.header}>
@@ -320,14 +322,14 @@ export function Game2048({
             if (!anim) {
               return null;
             }
-            const colors = tileColors(tile.value);
+            const tc = tileColors(tile.value);
             return (
               <Animated.View
                 key={tile.id}
                 style={[
                   styles.tile,
                   {
-                    backgroundColor: colors.bg,
+                    backgroundColor: tc.bg,
                     height: cell,
                     left: GAP,
                     top: GAP,
@@ -342,9 +344,9 @@ export function Game2048({
               >
                 <Text
                   style={{
-                    color: colors.fg,
-                    fontSize: fontFor(tile.value, cell),
-                    fontWeight: "800"
+                    color: tc.fg,
+                    fontFamily: fontFamily.bodyBold,
+                    fontSize: fontFor(tile.value, cell)
                   }}
                 >
                   {tile.value}
@@ -365,26 +367,18 @@ export function Game2048({
               <Text style={styles.reward}>{rewardLabel(game.score)}</Text>
             ) : null}
 
-            <Pressable
-              accessibilityRole="button"
+            <PixelButton
+              label="Play again"
               onPress={playAgain}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>Play again</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={styles.primaryButton}
+              variant="primary"
+            />
+            <PixelButton
+              label="Back to games"
               onPress={onExit}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>Back to games</Text>
-            </Pressable>
+              style={styles.secondaryButton}
+              variant="neutral"
+            />
           </View>
         </View>
       ) : null}
@@ -393,18 +387,11 @@ export function Game2048({
 }
 
 const styles = StyleSheet.create({
-  backButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 6
-  },
-  backText: {
-    color: "#3f6d5b",
-    fontSize: 16,
-    fontWeight: "700"
-  },
   board: {
     backgroundColor: BOARD_BG,
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     position: "relative"
   },
   boardWrap: {
@@ -412,18 +399,18 @@ const styles = StyleSheet.create({
     marginTop: 14
   },
   card: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(63, 109, 91, 0.18)",
-    borderRadius: 18,
+    ...pixelShadow,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
     borderWidth: 2,
     maxWidth: 320,
     padding: 22,
     width: "82%"
   },
   cardTitle: {
-    color: "#25332e",
-    fontSize: 26,
-    fontWeight: "800",
+    ...text.pixelTitle,
+    color: colors.textPrimary,
     textAlign: "center"
   },
   header: {
@@ -435,7 +422,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     alignItems: "center",
-    backgroundColor: "rgba(47, 74, 61, 0.18)",
+    backgroundColor: colors.scrim,
     bottom: 0,
     justifyContent: "center",
     left: 0,
@@ -443,109 +430,83 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0
   },
-  pressed: {
-    opacity: 0.85
-  },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: "#3f6d5b",
-    borderRadius: 10,
-    marginTop: 18,
-    paddingVertical: 13
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "800"
+    marginTop: 18
   },
   reward: {
-    color: "#3f6d5b",
-    fontSize: 15,
-    fontWeight: "800",
+    ...text.bodyStrong,
+    color: colors.primary,
     marginTop: 10,
     textAlign: "center"
   },
   scoreBox: {
     alignItems: "center",
-    backgroundColor: "#cbb79b",
-    borderRadius: 10,
-    minWidth: 64,
+    backgroundColor: colors.backgroundSunken,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    minWidth: 68,
     paddingHorizontal: 10,
     paddingVertical: 6
   },
   scoreLabel: {
-    color: "#f3ece0",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1
+    ...text.pixelMicro,
+    color: colors.textMuted
   },
   scoreRow: {
     flexDirection: "row",
     gap: 8
   },
   scoreValue: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "900"
+    ...text.pixelScore,
+    color: colors.textPrimary
   },
   screen: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     flex: 1
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: "#e8edf6",
-    borderRadius: 10,
-    marginTop: 10,
-    paddingVertical: 11
-  },
-  secondaryButtonText: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "700"
+    marginTop: 10
   },
   slot: {
     backgroundColor: CELL_BG,
-    borderRadius: 8
+    borderRadius: radii.sm
   },
   slots: {
     flexDirection: "row",
     flexWrap: "wrap"
   },
   statLabel: {
-    color: "#25332e",
-    fontSize: 14,
-    fontWeight: "700",
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     marginTop: 14,
     textAlign: "center"
   },
   statValue: {
-    color: "#3f6d5b",
-    fontSize: 44,
-    fontWeight: "800",
+    ...text.numberLg,
+    color: colors.primary,
     textAlign: "center"
   },
   subtitle: {
-    color: "#56645e",
-    fontSize: 13,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 2
   },
   swipeHint: {
-    color: "#56645e",
-    fontSize: 13,
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 10,
     textAlign: "center"
   },
   tile: {
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: radii.sm,
     justifyContent: "center",
     position: "absolute"
   },
   title: {
-    color: "#25332e",
-    fontSize: 24,
-    fontWeight: "900"
+    ...text.pixelHeading,
+    color: colors.textPrimary
   },
   topBar: {
     flexDirection: "row",
@@ -553,9 +514,8 @@ const styles = StyleSheet.create({
     paddingTop: 8
   },
   wonPill: {
-    color: "#3f6d5b",
-    fontSize: 13,
-    fontWeight: "800",
+    ...text.bodyStrongSm,
+    color: colors.primary,
     marginTop: 10,
     textAlign: "center"
   }

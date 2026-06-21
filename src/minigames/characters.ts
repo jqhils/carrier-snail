@@ -6,18 +6,18 @@ import type { Character } from "./types";
 // and a powerUp label — no game code changes.
 export const CHARACTERS: Character[] = [
   {
-    accentColor: "#6f9e54",
-    bodyColor: "#cfe0a8",
+    accentColor: "#5fa233",
+    bodyColor: "#a8e85f",
     id: "classic",
     modifier: {},
     name: "Garden Snail",
     powerUp: "",
-    shellColor: "#9c6b3f",
+    shellColor: "#3f7a2a",
     tagline: "Just a snail. No tricks."
   },
   {
-    accentColor: "#e10600",
-    bodyColor: "#fbe7c6",
+    accentColor: "#ffc83d",
+    bodyColor: "#ffe08a",
     id: "redbull",
     modifier: { flapScale: 1.08, gravityScale: 0.8 },
     name: "Redbull Snail",
@@ -26,43 +26,43 @@ export const CHARACTERS: Character[] = [
     tagline: "It gives you wiiings."
   },
   {
-    accentColor: "#3c2a1f",
-    bodyColor: "#f0d6a8",
+    accentColor: "#7c5cff",
+    bodyColor: "#c4b3ff",
     id: "compsci",
     modifier: {},
     name: "Comp Sci Snail",
     powerUp: "",
-    shellColor: "#7a4a24",
+    shellColor: "#5a3fd6",
     tagline: "git commit -m 'crawl'"
   },
   {
-    accentColor: "#f2b705",
-    bodyColor: "#e7d6b0",
+    accentColor: "#ffc83d",
+    bodyColor: "#9fd9f2",
     id: "sydney-train",
     modifier: {},
     name: "Sydney Train Snail",
     powerUp: "",
-    shellColor: "#6b7280",
+    shellColor: "#1d8fc4",
     tagline: "Delayed. Always delayed."
   },
   {
-    accentColor: "#c8742a",
-    bodyColor: "#efd9b0",
+    accentColor: "#9d6bff",
+    bodyColor: "#c9b3ff",
     id: "usyd",
     modifier: {},
     name: "USYD Snail",
     powerUp: "",
-    shellColor: "#b5651d",
+    shellColor: "#6a45c8",
     tagline: "Sometimes crawls backwards."
   },
   {
-    accentColor: "#0aa3a3",
-    bodyColor: "#dfeceb",
+    accentColor: "#13c4c4",
+    bodyColor: "#7fe3e0",
     id: "uts",
     modifier: {},
     name: "UTS Snail",
     powerUp: "",
-    shellColor: "#222831",
+    shellColor: "#0a6e6e",
     tagline: "Hasn't moved in years."
   }
 ];

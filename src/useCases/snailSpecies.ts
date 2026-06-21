@@ -38,8 +38,8 @@ export type SnailSpecies = {
 export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
   {
     appearanceTint: {
-      bodyColor: "#d99f5f",
-      shellColor: "#7b4b34"
+      bodyColor: "#8fd14f",
+      shellColor: "#3f7a2a"
     },
     baseSpeedMetersPerHour: 48,
     displayName: "Garden Snail",
@@ -52,16 +52,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "garden",
     temperament: "steady",
     trail: {
-      color: "#f5f8ed",
+      color: "#5fa233",
       persistenceMs: 72 * 60 * 60 * 1000,
       texture: "glistening"
     },
-    trailColor: "#f5f8ed"
+    trailColor: "#5fa233"
   },
   {
     appearanceTint: {
-      bodyColor: "#d2a167",
-      shellColor: "#6d4a38"
+      bodyColor: "#e0a96b",
+      shellColor: "#6d3b1f"
     },
     baseSpeedMetersPerHour: 50,
     displayName: "Barista Snail",
@@ -74,16 +74,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "barista",
     temperament: "sleepy",
     trail: {
-      color: "#d7b58b",
+      color: "#c8742a",
       persistenceMs: 72 * 60 * 60 * 1000,
       texture: "glistening"
     },
-    trailColor: "#d7b58b"
+    trailColor: "#c8742a"
   },
   {
     appearanceTint: {
-      bodyColor: "#d3b97a",
-      shellColor: "#516f8f"
+      bodyColor: "#9fd9f2",
+      shellColor: "#1d8fc4"
     },
     baseSpeedMetersPerHour: 55,
     displayName: "Sydney Train Snail",
@@ -96,16 +96,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "sydney-train",
     temperament: "sleepy",
     trail: {
-      color: "#88a86b",
+      color: "#37b6e9",
       persistenceMs: 84 * 60 * 60 * 1000,
       texture: "glistening"
     },
-    trailColor: "#88a86b"
+    trailColor: "#37b6e9"
   },
   {
     appearanceTint: {
-      bodyColor: "#c7b68a",
-      shellColor: "#465870"
+      bodyColor: "#b9a3ff",
+      shellColor: "#5a3fd6"
     },
     baseSpeedMetersPerHour: 54,
     displayName: "Comp Sci Student Snail",
@@ -118,16 +118,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "comp-sci",
     temperament: "sleepy",
     trail: {
-      color: "#7ea0a4",
+      color: "#7c5cff",
       persistenceMs: 84 * 60 * 60 * 1000,
       texture: "misty"
     },
-    trailColor: "#7ea0a4"
+    trailColor: "#7c5cff"
   },
   {
     appearanceTint: {
-      bodyColor: "#d7b886",
-      shellColor: "#5e7650"
+      bodyColor: "#bcdcf5",
+      shellColor: "#2459a8"
     },
     baseSpeedMetersPerHour: 57,
     displayName: "Postal Snail",
@@ -140,16 +140,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "postal",
     temperament: "steady",
     trail: {
-      color: "#88a86b",
+      color: "#2f78d6",
       persistenceMs: 84 * 60 * 60 * 1000,
       texture: "glistening"
     },
-    trailColor: "#88a86b"
+    trailColor: "#2f78d6"
   },
   {
     appearanceTint: {
-      bodyColor: "#c6b98f",
-      shellColor: "#365c8d"
+      bodyColor: "#c9b3ff",
+      shellColor: "#6a45c8"
     },
     baseSpeedMetersPerHour: 63,
     displayName: "University of Sydney Snail",
@@ -162,16 +162,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "uni-sydney",
     temperament: "wanderer",
     trail: {
-      color: "#4b8f8c",
+      color: "#9d6bff",
       persistenceMs: 96 * 60 * 60 * 1000,
       texture: "misty"
     },
-    trailColor: "#4b8f8c"
+    trailColor: "#9d6bff"
   },
   {
     appearanceTint: {
-      bodyColor: "#c8b08b",
-      shellColor: "#386c73"
+      bodyColor: "#e8b98a",
+      shellColor: "#c0641f"
     },
     baseSpeedMetersPerHour: 65,
     displayName: "Absent Father Snail",
@@ -184,16 +184,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "absent-father",
     temperament: "wanderer",
     trail: {
-      color: "#5f9c9a",
+      color: "#e07b3a",
       persistenceMs: 96 * 60 * 60 * 1000,
       texture: "misty"
     },
-    trailColor: "#5f9c9a"
+    trailColor: "#e07b3a"
   },
   {
     appearanceTint: {
-      bodyColor: "#e6cf8e",
-      shellColor: "#5d4e9a"
+      bodyColor: "#ffe08a",
+      shellColor: "#e10600"
     },
     baseSpeedMetersPerHour: 78,
     displayName: "Red Bull Snail",
@@ -206,16 +206,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "red-bull",
     temperament: "steady",
     trail: {
-      color: "#d6b94c",
+      color: "#e8455e",
       persistenceMs: 144 * 60 * 60 * 1000,
       texture: "sparkling"
     },
-    trailColor: "#d6b94c"
+    trailColor: "#e8455e"
   },
   {
     appearanceTint: {
-      bodyColor: "#e7d8a1",
-      shellColor: "#b98d2d"
+      bodyColor: "#ffe39a",
+      shellColor: "#e0a313"
     },
     baseSpeedMetersPerHour: 82,
     displayName: "Golden Shell Snail",
@@ -228,16 +228,16 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "golden",
     temperament: "steady",
     trail: {
-      color: "#e0c85a",
+      color: "#f0b51f",
       persistenceMs: 144 * 60 * 60 * 1000,
       texture: "sparkling"
     },
-    trailColor: "#e0c85a"
+    trailColor: "#f0b51f"
   },
   {
     appearanceTint: {
-      bodyColor: "#d8b7a2",
-      shellColor: "#4b3342"
+      bodyColor: "#f0a8c8",
+      shellColor: "#7a2a52"
     },
     baseSpeedMetersPerHour: 52,
     displayName: "Backwards Snail",
@@ -250,11 +250,11 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     sprite: "backwards",
     temperament: "cursed",
     trail: {
-      color: "#b24836",
+      color: "#d14a8f",
       persistenceMs: 120 * 60 * 60 * 1000,
       texture: "inky"
     },
-    trailColor: "#b24836"
+    trailColor: "#d14a8f"
   }
 ];
 

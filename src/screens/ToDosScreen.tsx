@@ -12,24 +12,39 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FadeInView } from "../components/FadeInView";
+import { PixelButton } from "../components/PixelButton";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors, radii, space, text } from "../theme";
 import type { StableSnailListItem } from "../useCases/localCarrierState";
 import type { ToDoListItem } from "../useCases/todoUseCases";
 
-// Status accent + pill colors (ported from the #71 UI pass). Statuses without an
-// entry fall back to the "open" green theme.
+// Status accent + pill colors, remapped onto the semantic design tokens.
+// Statuses without an entry fall back to the "open" theme. `accent` drives the
+// card's full border tint; pill background/text recolor the status label.
 const STATUS_THEME: Record<
   string,
   { accent: string; pillBackground: string; pillText: string }
 > = {
-  arrived: { accent: "#c79233", pillBackground: "#f6ecd6", pillText: "#946612" },
-  done: { accent: "#9aa49b", pillBackground: "#e8ece9", pillText: "#5f6e66" },
-  "in-transit": {
-    accent: "#365c8d",
-    pillBackground: "#e2eaf4",
-    pillText: "#2c4d77"
+  arrived: {
+    accent: colors.accentGold,
+    pillBackground: colors.accentGoldSoft,
+    pillText: colors.accentGoldBevel
   },
-  open: { accent: "#5f8a5e", pillBackground: "#e7efe0", pillText: "#3f6d5b" }
+  done: {
+    accent: colors.success,
+    pillBackground: colors.accentLimeSoft,
+    pillText: colors.success
+  },
+  "in-transit": {
+    accent: colors.secondary,
+    pillBackground: colors.secondarySoft,
+    pillText: colors.secondaryPressed
+  },
+  open: {
+    accent: colors.border,
+    pillBackground: colors.surfaceAlt,
+    pillText: colors.textMuted
+  }
 };
 
 function statusThemeFor(status: string) {
@@ -125,25 +140,20 @@ export function ToDosScreen({
                 Keyboard.dismiss();
               }}
               placeholder="buy milk"
-              placeholderTextColor="#7d7a70"
+              placeholderTextColor={colors.textDisabled}
               returnKeyType="done"
               style={styles.reminderInput}
               value={toDoText}
             />
-            <Pressable
-              accessibilityRole="button"
+            <PixelButton
               accessibilityLabel="Add to-do"
+              label="Add"
               onPress={() => {
                 onCreateToDo();
                 Keyboard.dismiss();
               }}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed ? styles.primaryButtonPressed : null
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>Add</Text>
-            </Pressable>
+              variant="secondary"
+            />
           </View>
           {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
         </View>
@@ -163,10 +173,7 @@ export function ToDosScreen({
               return (
                 <View
                   key={todo.id}
-                  style={[
-                    styles.todoItem,
-                    { borderLeftColor: theme.accent, borderLeftWidth: 4 }
-                  ]}
+                  style={[styles.todoItem, { borderColor: theme.accent }]}
                 >
                   {editing ? (
                     <View style={styles.editBlock}>
@@ -179,28 +186,20 @@ export function ToDosScreen({
                         value={editingText}
                       />
                       <View style={styles.actionRow}>
-                        <Pressable
-                          accessibilityRole="button"
+                        <PixelButton
                           accessibilityLabel="Save to-do"
+                          label="Save"
                           onPress={onSaveEdit}
-                          style={({ pressed }) => [
-                            styles.smallButton,
-                            pressed ? styles.smallButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.smallButtonText}>Save</Text>
-                        </Pressable>
-                        <Pressable
-                          accessibilityRole="button"
+                          size="compact"
+                          variant="primary"
+                        />
+                        <PixelButton
                           accessibilityLabel="Cancel edit"
+                          label="Cancel"
                           onPress={onCancelEdit}
-                          style={({ pressed }) => [
-                            styles.ghostButton,
-                            pressed ? styles.ghostButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.ghostButtonText}>Cancel</Text>
-                        </Pressable>
+                          size="compact"
+                          variant="neutral"
+                        />
                       </View>
                     </View>
                   ) : (
@@ -244,67 +243,46 @@ export function ToDosScreen({
                       ) : null}
                       <View style={styles.actionRow}>
                         {todo.status === "in-transit" ? (
-                          <Pressable
-                            accessibilityRole="button"
+                          <PixelButton
                             accessibilityLabel={`Recall ${todo.text}`}
+                            label="Recall"
                             onPress={() => onRecallToDo(todo.id)}
-                            style={({ pressed }) => [
-                              styles.recallButton,
-                              pressed ? styles.recallButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.recallButtonText}>Recall</Text>
-                          </Pressable>
+                            size="compact"
+                            variant="danger"
+                          />
                         ) : todo.status !== "done" ? (
-                          <Pressable
-                            accessibilityRole="button"
+                          <PixelButton
                             accessibilityLabel={`Send a snail for ${todo.text}`}
                             disabled={!canSend}
+                            label="Send snail"
                             onPress={() => setPickerTodo(todo)}
-                            style={({ pressed }) => [
-                              styles.smallButton,
-                              !canSend ? styles.smallButtonDisabled : null,
-                              pressed ? styles.smallButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.smallButtonText}>Send snail</Text>
-                          </Pressable>
+                            size="compact"
+                            variant="secondary"
+                          />
                         ) : null}
                         {todo.status !== "done" ? (
-                          <Pressable
-                            accessibilityRole="button"
+                          <PixelButton
                             accessibilityLabel={`Complete ${todo.text}`}
+                            label="Done"
                             onPress={() => onCompleteToDo(todo.id)}
-                            style={({ pressed }) => [
-                              styles.ghostButton,
-                              pressed ? styles.ghostButtonPressed : null
-                            ]}
-                          >
-                            <Text style={styles.ghostButtonText}>Done</Text>
-                          </Pressable>
+                            size="compact"
+                            variant="neutral"
+                          />
                         ) : null}
-                        <Pressable
-                          accessibilityRole="button"
+                        <PixelButton
                           accessibilityLabel={`Edit ${todo.text}`}
+                          label="Edit"
                           onPress={() => onStartEdit(todo)}
-                          style={({ pressed }) => [
-                            styles.ghostButton,
-                            pressed ? styles.ghostButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.ghostButtonText}>Edit</Text>
-                        </Pressable>
-                        <Pressable
-                          accessibilityRole="button"
+                          size="compact"
+                          variant="neutral"
+                        />
+                        <PixelButton
                           accessibilityLabel={`Delete ${todo.text}`}
+                          label="Delete"
                           onPress={() => onDeleteToDo(todo.id)}
-                          style={({ pressed }) => [
-                            styles.deleteButton,
-                            pressed ? styles.deleteButtonPressed : null
-                          ]}
-                        >
-                          <Text style={styles.deleteButtonText}>Delete</Text>
-                        </Pressable>
+                          size="compact"
+                          variant="danger"
+                        />
                       </View>
                     </>
                   )}
@@ -337,17 +315,13 @@ export function ToDosScreen({
                   Choose a snail
                 </Text>
               </View>
-              <Pressable
+              <PixelButton
                 accessibilityLabel="Cancel snail selection"
-                accessibilityRole="button"
+                label="Cancel"
                 onPress={closePicker}
-                style={({ pressed }) => [
-                  styles.pickerCancelButton,
-                  pressed ? styles.pickerCancelButtonPressed : null
-                ]}
-              >
-                <Text style={styles.pickerCancelText}>Cancel</Text>
-              </Pressable>
+                size="compact"
+                variant="neutral"
+              />
             </View>
             <View style={styles.pickerList}>
               {restingSnails.map((snail) => (
@@ -391,14 +365,14 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: space.sm,
     marginTop: 10
   },
   composerPanel: {
-    backgroundColor: "#fbf8ed",
-    borderColor: "rgba(138, 111, 79, 0.2)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 18,
     padding: 12
   },
@@ -413,123 +387,74 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 20
   },
-  deleteButton: {
-    alignItems: "center",
-    backgroundColor: "#fff6ef",
-    borderColor: "rgba(161, 61, 45, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
+  countChip: {
+    backgroundColor: colors.accentLimeSoft,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 3
   },
-  deleteButtonPressed: {
-    backgroundColor: "#f8e5dc"
-  },
-  deleteButtonText: {
-    color: "#a13d2d",
-    fontSize: 13,
-    fontWeight: "700"
+  countChipText: {
+    ...text.pixelMicro,
+    color: colors.textPrimary
   },
   editBlock: {
     gap: 2
   },
   editInput: {
-    backgroundColor: "#fdfcf5",
-    borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: "#25332e",
-    fontSize: 16,
+    ...text.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    color: colors.textPrimary,
     minHeight: 44,
     paddingHorizontal: 12
   },
   emptyBody: {
-    color: "#56645e",
-    fontSize: 14,
-    lineHeight: 20,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 6
   },
   emptyList: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     marginTop: 14,
     padding: 14
   },
   emptyTitle: {
-    color: "#25332e",
-    fontSize: 18,
-    fontWeight: "800"
+    ...text.pixelHeading,
+    color: colors.textPrimary
   },
   errorText: {
-    color: "#a13d2d",
-    fontSize: 13,
+    ...text.bodySm,
+    color: colors.danger,
     marginTop: 8
   },
   eyebrow: {
-    color: "#8a6f4f",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
-  },
-  ghostButton: {
-    alignItems: "center",
-    backgroundColor: "#f4f0e3",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
-  },
-  ghostButtonPressed: {
-    backgroundColor: "#e6e0d1"
-  },
-  ghostButtonText: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "700"
   },
   header: {
     maxWidth: 360
   },
   noSnailPrompt: {
-    color: "#8a6f4f",
-    fontSize: 12,
-    lineHeight: 17,
+    ...text.bodySm,
+    color: colors.accentWarm,
     marginTop: 7
   },
   pickerBackdrop: {
-    backgroundColor: "rgba(20, 28, 24, 0.38)",
+    backgroundColor: colors.scrim,
     flex: 1,
     justifyContent: "flex-end"
   },
-  pickerCancelButton: {
-    alignItems: "center",
-    backgroundColor: "#f4f0e3",
-    borderColor: "rgba(37, 51, 46, 0.16)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
-  },
-  pickerCancelButtonPressed: {
-    backgroundColor: "#e6e0d1"
-  },
-  pickerCancelText: {
-    color: "#25332e",
-    fontSize: 13,
-    fontWeight: "800"
-  },
   pickerEyebrow: {
-    color: "#8a6f4f",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+    ...text.pixelLabel,
+    color: colors.accentWarm,
     textTransform: "uppercase"
   },
   pickerHeader: {
@@ -543,9 +468,11 @@ const styles = StyleSheet.create({
     marginTop: 14
   },
   pickerSheet: {
-    backgroundColor: "#f8f6ed",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    borderWidth: 2,
     paddingBottom: 28,
     paddingHorizontal: 18,
     paddingTop: 16
@@ -555,22 +482,20 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   pickerSnailMeta: {
-    color: "#56645e",
-    fontSize: 12,
-    fontWeight: "700",
+    ...text.bodySm,
+    color: colors.textMuted,
     marginTop: 3
   },
   pickerSnailName: {
-    color: "#25332e",
-    fontSize: 15,
-    fontWeight: "900"
+    ...text.bodyStrong,
+    color: colors.textPrimary
   },
   pickerSnailRow: {
     alignItems: "center",
-    backgroundColor: "#fffdf6",
-    borderColor: "rgba(63, 109, 91, 0.22)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     flexDirection: "row",
     gap: 10,
     minHeight: 68,
@@ -578,123 +503,53 @@ const styles = StyleSheet.create({
     paddingVertical: 8
   },
   pickerSnailRowPressed: {
-    backgroundColor: "#eef7f1"
+    backgroundColor: colors.surfaceAlt
   },
   pickerSnailRowSelected: {
-    borderColor: "#3f6d5b",
-    borderWidth: 2
+    backgroundColor: colors.surfaceSelected,
+    borderColor: colors.primary
   },
   pickerTitle: {
-    color: "#25332e",
-    fontSize: 20,
-    fontWeight: "900",
-    lineHeight: 24
+    ...text.pixelTitle,
+    color: colors.textPrimary
   },
   pickerTitleBlock: {
     flex: 1,
     minWidth: 0
   },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 44,
-    minWidth: 68,
-    paddingHorizontal: 14
-  },
-  primaryButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  primaryButtonText: {
-    color: "#f8fafc",
-    fontSize: 15,
-    fontWeight: "700"
-  },
-  recallButton: {
-    alignItems: "center",
-    backgroundColor: "#fff6ef",
-    borderColor: "rgba(161, 61, 45, 0.28)",
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
-  },
-  recallButtonPressed: {
-    backgroundColor: "#f8e5dc"
-  },
-  recallButtonText: {
-    color: "#a13d2d",
-    fontSize: 13,
-    fontWeight: "700"
-  },
   reminderInput: {
-    backgroundColor: "#fdfcf5",
-    borderColor: "rgba(38, 51, 46, 0.18)",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: "#25332e",
+    ...text.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 16,
     minHeight: 44,
     paddingHorizontal: 12
   },
   screen: {
-    backgroundColor: "#f4f0e3",
+    backgroundColor: colors.background,
     flex: 1
   },
-  smallButton: {
-    alignItems: "center",
-    backgroundColor: "#365c8d",
-    borderRadius: 8,
-    justifyContent: "center",
-    minHeight: 34,
-    paddingHorizontal: 10
-  },
-  smallButtonDisabled: {
-    backgroundColor: "#7c8580"
-  },
-  smallButtonPressed: {
-    backgroundColor: "#294870"
-  },
-  smallButtonText: {
-    color: "#f8fafc",
-    fontSize: 13,
-    fontWeight: "700"
-  },
   statusPill: {
-    backgroundColor: "#e8ede2",
-    borderRadius: 8,
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "800",
+    ...text.pixelMicro,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: 2,
     overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 4
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    textTransform: "uppercase"
   },
   subtitle: {
-    color: "#5c6861",
-    fontSize: 14,
-    lineHeight: 20,
+    ...text.body,
+    color: colors.textMuted,
     marginTop: 7
   },
-  countChip: {
-    backgroundColor: "#e7efe0",
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 3
-  },
-  countChipText: {
-    color: "#3f6d5b",
-    fontSize: 12,
-    fontWeight: "800"
-  },
   title: {
-    color: "#25332e",
-    fontSize: 24,
-    fontWeight: "800",
-    lineHeight: 30
+    ...text.pixelTitle,
+    color: colors.textPrimary
   },
   titleRow: {
     alignItems: "center",
@@ -709,10 +564,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   todoItem: {
-    backgroundColor: "#f8f6ed",
-    borderColor: "rgba(43, 58, 52, 0.12)",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 2,
     paddingHorizontal: 12,
     paddingVertical: 11
   },
@@ -721,10 +576,9 @@ const styles = StyleSheet.create({
     marginTop: 14
   },
   todoMeta: {
-    color: "#5d6d77",
+    ...text.bodySm,
+    color: colors.textMuted,
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
     minWidth: 0
   },
   todoMetaRow: {
@@ -734,11 +588,9 @@ const styles = StyleSheet.create({
     marginTop: 5
   },
   todoText: {
-    color: "#25332e",
+    ...text.bodyStrong,
+    color: colors.textPrimary,
     flex: 1,
-    fontSize: 15,
-    fontWeight: "800",
-    lineHeight: 20,
     minWidth: 0
   }
 });

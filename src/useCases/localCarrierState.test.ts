@@ -12,8 +12,8 @@ describe("stable state", () => {
 
     expect(state.snails[0]).toMatchObject({
       appearance: {
-        bodyColor: "#d99f5f",
-        shellColor: "#7b4b34"
+        bodyColor: "#8fd14f",
+        shellColor: "#3f7a2a"
       },
       baseSpeedMetersPerHour: 48,
       level: 1,
@@ -25,7 +25,7 @@ describe("stable state", () => {
       speciesId: "garden",
       temperament: "steady",
       trail: {
-        color: "#f5f8ed",
+        color: "#5fa233",
         persistenceMs: 72 * 60 * 60 * 1000,
         texture: "glistening"
       }

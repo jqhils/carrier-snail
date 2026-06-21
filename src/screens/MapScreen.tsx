@@ -24,6 +24,7 @@ import {
 
 import type { BottomTabId } from "../components/TabBar";
 import { SnailSprite } from "../components/SnailSprite";
+import { colors } from "../theme";
 import { styles } from "./mapScreen.styles";
 import { ExpoBackgroundLocationController } from "../background/expoBackgroundLocationController";
 import {
@@ -1295,7 +1296,7 @@ export function MapScreen({
               ]}
             >
               <MaterialCommunityIcons
-                color="#2f604e"
+                color={colors.primary}
                 name="crosshairs-gps"
                 size={22}
               />
