@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { SnailSprite } from "../components/SnailSprite";
 import {
   FIRST_RUN_ONBOARDING_STEPS,
   LOCATION_PRIVACY_PLAIN_LANGUAGE
@@ -18,6 +19,10 @@ export function OnboardingScreen({ onStart }: OnboardingScreenProps) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.hero}>
+          <SnailSprite speciesId="garden" size={132} />
+        </View>
+
         <View style={styles.header}>
           <Text style={styles.eyebrow}>First delivery</Text>
           <Text style={styles.title}>Garden Snail is ready</Text>
@@ -93,6 +98,10 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8
+  },
+  hero: {
+    alignItems: "center",
+    paddingVertical: 4
   },
   privacy: {
     color: "#6c766f",
