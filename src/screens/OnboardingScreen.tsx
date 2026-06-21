@@ -205,14 +205,18 @@ const styles = StyleSheet.create({
     width: "100%"
   },
   heroMap: {
-    ...StyleSheet.absoluteFillObject
-  },
-  heroSnail: {
-    bottom: 14,
+    bottom: 0,
     left: 0,
     position: "absolute",
     right: 0,
-    alignItems: "center"
+    top: 0
+  },
+  heroSnail: {
+    alignItems: "center",
+    bottom: 14,
+    left: 0,
+    position: "absolute",
+    right: 0
   },
   privacy: {
     color: "#6c766f",
