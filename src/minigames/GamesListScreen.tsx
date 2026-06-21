@@ -27,8 +27,8 @@ type Props = {
 };
 
 const GREEN = "#3f6d5b";
-const INK = "#2f4a3d";
-const MUTED = "#5a6b7a";
+const INK = "#25332e";
+const MUTED = "#56645e";
 
 // "Game Corner" — the per-snail games hub: a tile grid of games (each showing
 // this snail's best + Play) and a leaderboard of the stable's real top scores.
@@ -52,10 +52,13 @@ export function GamesListScreen({
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`Back to ${snail.name}`}
           onPress={onBack}
           style={({ pressed }) => [styles.back, pressed ? styles.pressed : null]}
         >
-          <Text style={styles.backText}>‹</Text>
+          <Text numberOfLines={1} style={styles.backText}>
+            ‹ {snail.name}
+          </Text>
         </Pressable>
         {typeof slimeBalance === "number" ? (
           <View style={styles.slimePill}>
@@ -323,7 +326,7 @@ const styles = StyleSheet.create({
     width: 46
   },
   back: { paddingHorizontal: 6, paddingVertical: 4 },
-  backText: { color: GREEN, fontSize: 26, fontWeight: "800" },
+  backText: { color: GREEN, fontSize: 16, fontWeight: "800", maxWidth: 220 },
   best: { color: MUTED, fontSize: 12, fontWeight: "700" },
   bestNum: { color: GREEN, fontWeight: "800" },
   board2048: {
@@ -390,7 +393,7 @@ const styles = StyleSheet.create({
   lRowFirst: { borderTopWidth: 0 },
   lScore: { color: INK, fontSize: 15, fontWeight: "900" },
   leader: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f6ed",
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 4
@@ -433,7 +436,7 @@ const styles = StyleSheet.create({
   playText: { color: "#fff", fontSize: 13, fontWeight: "800" },
   playing: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f6ed",
     borderRadius: 16,
     flexDirection: "row",
     gap: 12,
@@ -453,7 +456,7 @@ const styles = StyleSheet.create({
   saltMoon: { backgroundColor: "#f3efe1", borderRadius: 9, height: 18, position: "absolute", right: 12, top: 10, width: 18 },
   saltShaker: { backgroundColor: "#eef3f7", borderRadius: 3, height: 22, left: 80, position: "absolute", top: 30, width: 14 },
   saltSnail: { backgroundColor: "#e7cfa3", borderRadius: 6, bottom: 12, height: 12, left: 40, position: "absolute", width: 18 },
-  screen: { backgroundColor: "#eef1e8", flex: 1 },
+  screen: { backgroundColor: "#edf1e8", flex: 1 },
   sectionHead: {
     alignItems: "baseline",
     flexDirection: "row",
@@ -514,7 +517,7 @@ const styles = StyleSheet.create({
     width: 26
   },
   tile: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f6ed",
     borderRadius: 18,
     overflow: "hidden"
   },

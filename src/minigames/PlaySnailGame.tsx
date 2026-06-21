@@ -16,6 +16,7 @@ type Props = {
     reward: SnailGameReward,
     result: GameResult
   ) => void;
+  paused?: boolean;
   snail: Snail;
 };
 
@@ -23,7 +24,13 @@ type Props = {
 // first, then drops straight into play. On each finished run it reports a
 // snail-economy reward (slime + xp) for the host to credit. The reward is
 // slime/xp only — it never touches journeys or delivery time.
-export function PlaySnailGame({ bestScore = 0, onClose, onReward, snail }: Props) {
+export function PlaySnailGame({
+  bestScore = 0,
+  onClose,
+  onReward,
+  paused,
+  snail
+}: Props) {
   const character = useMemo(() => snailToCharacter(snail), [snail]);
   const snailSprite = SNAIL_SPRITE_ASSETS[snail.speciesId];
   const [started, setStarted] = useState(false);
@@ -42,6 +49,7 @@ export function PlaySnailGame({ bestScore = 0, onClose, onReward, snail }: Props
     <FlappySnailGame
       autoStart
       character={character}
+      paused={paused}
       snailSprite={snailSprite}
       onExit={onClose}
       onResult={(result: GameResult) => {

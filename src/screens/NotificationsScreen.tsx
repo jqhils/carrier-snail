@@ -110,6 +110,8 @@ const styles = StyleSheet.create({
   arrivalItem: {
     backgroundColor: "#f8f5eb",
     borderColor: "rgba(75, 91, 82, 0.16)",
+    borderLeftColor: "#3f8a63",
+    borderLeftWidth: 4,
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 16,

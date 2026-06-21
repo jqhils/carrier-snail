@@ -7,8 +7,9 @@ export type GameCatalogEntry = {
   name: string;
 };
 
-// The list the hub renders. Flippy is live; the rest slot in behind the same
-// GameComponentProps contract when they're built.
+// The list the hub renders. 2048 + Flappy shipped in the games-integration pass;
+// Snake came with the Flappy merge and is live too (originally scoped as a stub —
+// flip `available` to false here to hide it).
 export const GAMES: GameCatalogEntry[] = [
   {
     available: true,

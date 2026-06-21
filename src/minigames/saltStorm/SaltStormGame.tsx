@@ -69,11 +69,13 @@ export function SaltStormGame({
   character,
   onExit,
   onResult,
+  paused,
   rewardLabel,
   snailSprite
 }: GameComponentProps & {
   autoStart?: boolean;
   bestScore?: number;
+  paused?: boolean;
   rewardLabel?: (score: number) => string;
   snailSprite: ImageSourcePropType;
 }) {
@@ -158,11 +160,22 @@ export function SaltStormGame({
     setGame(stateRef.current);
   }
 
+  // Freeze the game while the pause menu is open (ref so the RAF loop sees the
+  // latest value without re-subscribing).
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    pausedRef.current = !!paused;
+  }, [paused]);
+
   useEffect(() => {
     let raf = 0;
     let mounted = true;
     const loop = () => {
       if (!mounted) {
+        return;
+      }
+      if (pausedRef.current) {
+        raf = requestAnimationFrame(loop); // paused: keep the loop alive, don't advance
         return;
       }
       const aim = targetRef.current ?? stateRef.current.snailX;

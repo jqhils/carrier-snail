@@ -17,6 +17,7 @@ export default function App() {
   const [hasUnseenNotifications, setHasUnseenNotifications] = useState(false);
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [completeOnboardingSignal, setCompleteOnboardingSignal] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
 
   return (
     <SafeAreaProvider>
@@ -26,15 +27,18 @@ export default function App() {
           <MapScreen
             activeTab={activeTab}
             completeOnboardingSignal={completeOnboardingSignal}
+            onGameActiveChange={setGameActive}
             onOnboardingVisibleChange={setOnboardingVisible}
             onUnseenNotificationsChange={setHasUnseenNotifications}
           />
         </View>
-        <TabBar
-          activeTab={activeTab}
-          hasUnseenNotifications={hasUnseenNotifications}
-          onChangeTab={setActiveTab}
-        />
+        {gameActive ? null : (
+          <TabBar
+            activeTab={activeTab}
+            hasUnseenNotifications={hasUnseenNotifications}
+            onChangeTab={setActiveTab}
+          />
+        )}
         {onboardingVisible ? (
           <View style={styles.onboardingOverlay}>
             <OnboardingScreen

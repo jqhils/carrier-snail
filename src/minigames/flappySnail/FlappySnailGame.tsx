@@ -46,7 +46,7 @@ const COLORS = {
   pipeLight: "#bdee63",
   skyBottom: "#a9e7d8",
   skyTop: "#4ec3d4",
-  teal: "#11616a",
+  teal: "#2f5546",
   white: "#ffffff"
 };
 
@@ -60,10 +60,12 @@ export function FlappySnailGame({
   character,
   onExit,
   onResult,
+  paused,
   rewardLabel,
   snailSprite
 }: GameComponentProps & {
   autoStart?: boolean;
+  paused?: boolean;
   rewardLabel?: (score: number) => string;
   snailSprite: ImageSourcePropType;
 }) {
@@ -90,6 +92,11 @@ export function FlappySnailGame({
     onResultRef.current = onResult;
   }, [onResult]);
 
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    pausedRef.current = Boolean(paused);
+  }, [paused]);
+
   // Rebuild before play if the viewport or character changes.
   useEffect(() => {
     if (stateRef.current.phase === "ready") {
@@ -105,6 +112,11 @@ export function FlappySnailGame({
 
     const loop = () => {
       if (!mounted) {
+        return;
+      }
+
+      if (pausedRef.current) {
+        raf = requestAnimationFrame(loop);
         return;
       }
 
@@ -349,7 +361,7 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   card: {
-    backgroundColor: "#fffaf0",
+    backgroundColor: "#f8f6ed",
     borderColor: "rgba(17, 97, 106, 0.18)",
     borderRadius: 18,
     borderWidth: 2,
@@ -424,7 +436,7 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   statLabel: {
-    color: "#2a2118",
+    color: "#25332e",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 14,

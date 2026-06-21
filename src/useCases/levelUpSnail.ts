@@ -23,6 +23,13 @@ export class InsufficientSlimeError extends Error {
   }
 }
 
+export class InsufficientExperienceError extends Error {
+  constructor() {
+    super("Not enough experience to level this snail yet.");
+    this.name = "InsufficientExperienceError";
+  }
+}
+
 export function levelUpSnail(
   input: LevelUpSnailInput,
   {
@@ -39,6 +46,10 @@ export function levelUpSnail(
 
   if (!snail) {
     throw new SnailNotLevelableError();
+  }
+
+  if (snail.experiencePoints < expThresholdForLevel(snail.level)) {
+    throw new InsufficientExperienceError();
   }
 
   const cost = levelUpCost(snail);
@@ -74,6 +85,12 @@ export function levelUpCost(snail: Pick<Snail, "level">): number {
   return Math.max(1, snail.level);
 }
 
+// Experience needed to advance from a given level. Earned from deliveries and
+// minigames; gates level-up alongside the slime cost.
+export function expThresholdForLevel(level: number): number {
+  return Math.max(1, level) * 10;
+}
+
 function applyLevelGrowth(snail: Snail): Snail {
   const nextLevel = snail.level + 1;
 
@@ -83,6 +100,10 @@ function applyLevelGrowth(snail: Snail): Snail {
     baseSpeedMetersPerHour: Math.min(
       raritySpeedCeiling[snail.rarity],
       roundToTwoDecimals(snail.baseSpeedMetersPerHour * 1.08)
+    ),
+    experiencePoints: Math.max(
+      0,
+      snail.experiencePoints - expThresholdForLevel(snail.level)
     ),
     level: nextLevel,
     reliability: Math.min(0.99, roundToThreeDecimals(snail.reliability + 0.025)),
