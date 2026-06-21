@@ -1,48 +1,54 @@
-# Games feature — both games + Game Corner dashboard (targets build/v1)
+# Games feature — three games + Game Corner dashboard
 
-Additive, all under `src/minigames/` (+ a web-only `App.web.tsx`). This is the
-full games feature in one branch:
+Additive, all under `src/minigames/` (+ web-only `App.web.tsx`). Stacked on
+feat/snail-flappy, so it includes everything that branch has, plus Snake:
 
-- **Flappy Snail** — flies the picked snail's **species sprite** (Joseph's
-  `SnailSprite` / `SNAIL_SPRITE_ASSETS` by `speciesId`), no businessman.
-- **2048 Snail** — animated tile slides; includes an input/animation fix (reads
-  latest state so the gesture can't act on stale state; JS driver on web, native
-  on device — **iOS path unchanged**).
-- **Game Corner dashboard** (`GamesListScreen.tsx`) — a tile grid (per-game art +
-  this snail's best + Play, "Soon" for Snake) and a **leaderboard built from REAL
-  stored high scores** across the stable, with a "No scores yet" empty state.
+- **Flappy Snail** — flies the picked snail's species sprite.
+- **2048 Snail** — animated tile slides (+ input/web fix; iOS path unchanged).
+- **Snail Snake** — NEW. Grid + tick based (smooth without a physics loop). The
+  snail's **species sprite is the snake head**; body trails as shell-green
+  segments. **Swipe to steer.** Pure engine (`snake/snakeEngine.ts`, seeded,
+  7 tests) + `snake/SnakeGame.tsx` + `PlaySnake.tsx` wrapper. Reward = slime+xp
+  (`scoreToSnakeReward`), same contract as the others. Enabled in the catalog;
+  dispatched in `SnailGameFlow`.
+- **Game Corner dashboard** (`GamesListScreen.tsx`) — tile grid (Snake's tile is
+  now "Play", not "Soon") + a leaderboard from REAL stored high scores, with a
+  "No scores yet" empty state.
 
-## Apply / push (VERIFY YOUR BRANCH FIRST)
-You already pushed `feat/snail-flappy` with both games — this UPDATES it:
+No new dependencies for Snake (plain RN Views + Image; no Skia).
+
+## Push — STACKED branch off feat/snail-flappy (VERIFY YOUR BRANCH FIRST)
 ```bash
 git checkout feat/snail-flappy
-git branch                         # confirm
-unzip -o snail-minigames.zip       # overwrites src/minigames/** + App.web.tsx
-
-npm run typecheck && npm run lint && npm test   # green
-git add -A
-git commit -m "feat: Game Corner dashboard + real-data leaderboard"
-git push                           # updates the open PR
+git pull
+git checkout -b game/snail-snake     # stacked on feat/snail-flappy
+git branch                           # confirm
+unzip -o snail-minigames.zip
+npm run typecheck && npm run lint && npm test
+git add -A && git commit -m "feat: Snake minigame (snail-sprite head, swipe)"
+git push -u origin game/snail-snake
 ```
-No new deps for the dashboard. (Flappy's 5 deps were already installed when you
-first pushed this branch.) PR targets **build/v1**, not main.
+**PR base = `feat/snail-flappy`** (NOT main, NOT build/v1). Because feat/snail-
+flappy isn't merged yet, targeting build/v1 would show Flappy+dashboard+Snake all
+at once. Set the base dropdown to feat/snail-flappy so the PR shows only the
+Snake delta. When feat/snail-flappy merges to build/v1, retarget this PR's base
+to build/v1.
 
-## Make games reachable + feed the leaderboard (edits to Joseph's files)
-1. **MapScreen.tsx** — wrap rendered tab content in `SnailGameFlowProvider`:
-   - `onReward={...}` credits slime,
-   - `slimeBalance={carrierState.softCurrency.slime}`,
-   - `snails={carrierState.snails}`  ← NEW: powers the leaderboard's names+sprites.
-2. **MySnailsScreen.tsx** — in the snail detail view add a "Play games" button:
-   `const { open } = useSnailGameFlow(); ... onPress={() => open(snail)}`.
-
-Without (2) there's no way to reach the games in-app. Without `snails` in (1) the
-leaderboard still renders but can't show other snails' names/sprites.
+## Reaching the games in-app (unchanged — Joseph's 2 edits cover all 3 games)
+1. MapScreen.tsx — wrap content in `SnailGameFlowProvider` (`onReward`,
+   `slimeBalance={carrierState.softCurrency.slime}`,
+   `snails={carrierState.snails}` for the leaderboard).
+2. MySnailsScreen.tsx — "Play games" button → `useSnailGameFlow().open(snail)`.
 
 ## Web preview
-`npx expo start --web` opens the dashboard; tap Play to launch either game.
-Motion is laggy on web (no native driver) — smooth on device. Behaviour/art only.
+`npx expo start --web` → dashboard; tap Play on any tile (incl. Snake) to launch.
+For Snake, drag/swipe to steer. Laggy on web, smooth on device.
+
+## Tuning dials (built blind — adjust on device)
+- Snake grid: `GRID_COLS=15`, `GRID_ROWS=17` (snakeEngine.ts).
+- Snake speed: base 150ms tick, speeds up with score (SnakeGame.tsx).
+- 2048 slide: `SLIDE_MS`; Flappy flyer: `SPRITE_W=64`.
 
 ## Unverified
-No device run yet. Logic + layout checked in a browser. Unseen on a real screen:
-animation smoothness and the games flying/sliding on a phone. Have whoever has
-Xcode watch those.
+No device run yet. Logic + layout checked in a browser. Unseen on a phone:
+animation/feel and the swipe responsiveness for Snake.

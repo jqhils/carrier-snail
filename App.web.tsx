@@ -10,10 +10,12 @@ import { SNAIL_SPRITE_ASSETS } from "./src/components/SnailSprite";
 import { createSnailFromRarity } from "./src/useCases/hatchEgg";
 import { GamesListScreen } from "./src/minigames/GamesListScreen";
 import { FlappySnailGame } from "./src/minigames/flappySnail/FlappySnailGame";
+import { SnakeGame } from "./src/minigames/snake/SnakeGame";
 import { Game2048 } from "./src/minigames/game2048/Game2048";
 import {
   scoreToSnail2048Reward,
-  scoreToSnailReward
+  scoreToSnailReward,
+  scoreToSnakeReward
 } from "./src/minigames/snailGameReward";
 import { snailToCharacter } from "./src/minigames/snailToCharacter";
 import type { GameId, GameResult } from "./src/minigames/types";
@@ -67,6 +69,24 @@ export default function App() {
           rewardLabel={(s: number) => {
             const reward = scoreToSnailReward(s);
             return reward.slime > 0 ? `Earned ${reward.slime} slime` : "Keep flying for slime";
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "snake") {
+    return (
+      <SafeAreaView style={styles.fill}>
+        <SnakeGame
+          character={snailToCharacter(ACTIVE)}
+          bestScore={MOCK_SCORES[`${ACTIVE.id}:snake`] ?? 0}
+          snailSprite={SNAIL_SPRITE_ASSETS[ACTIVE.speciesId]}
+          onExit={() => setScreen("dashboard")}
+          onResult={(r: GameResult) => console.log("snake", r, scoreToSnakeReward(r.score))}
+          rewardLabel={(s: number) => {
+            const reward = scoreToSnakeReward(s);
+            return reward.slime > 0 ? `Earned ${reward.slime} slime` : "Grow longer for slime";
           }}
         />
       </SafeAreaView>
