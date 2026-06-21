@@ -23,7 +23,7 @@ export const GAMES: GameCatalogEntry[] = [
     name: "2048 Snail"
   },
   {
-    available: false,
+    available: true,
     blurb: "Eat, grow, don't cross your own trail.",
     id: "snake",
     name: "Snail Snake"
