@@ -11,12 +11,9 @@ import {
 import { getEggRarityPoolOdds } from "./hatchEgg";
 import {
   getPurchaseCatalog,
+  InsufficientSlimeError,
   PURCHASE_FLOOR_DISCLOSURE,
-  purchaseInventory,
-  PurchaseAuthorizationMismatchError,
-  type EntitlementProvider,
-  type PurchaseAuthorization,
-  type PurchaseProductId
+  purchaseInventory
 } from "./purchaseInventory";
 
 const target = {
@@ -24,26 +21,15 @@ const target = {
   longitude: 151.2093
 };
 
-class FakeEntitlementProvider implements EntitlementProvider {
-  readonly purchasedProductIds: PurchaseProductId[] = [];
-
-  async purchase(productId: PurchaseProductId): Promise<PurchaseAuthorization> {
-    this.purchasedProductIds.push(productId);
-
-    return {
-      productId,
-      purchaseId: `sandbox-${this.purchasedProductIds.length}`,
-      purchasedAtMs: 5000
-    };
-  }
-}
-
-class FixedAuthorizationProvider implements EntitlementProvider {
-  constructor(private readonly authorization: PurchaseAuthorization) {}
-
-  async purchase(): Promise<PurchaseAuthorization> {
-    return this.authorization;
-  }
+function repositoryWithSlime(
+  slime: number,
+  overrides: Partial<ReturnType<typeof createInitialCarrierState>> = {}
+) {
+  return new InMemoryCarrierRepository({
+    ...createInitialCarrierState(),
+    ...overrides,
+    softCurrency: { slime }
+  });
 }
 
 describe("purchaseInventory", () => {
@@ -53,7 +39,7 @@ describe("purchaseInventory", () => {
     expect(PURCHASE_FLOOR_DISCLOSURE).toContain("never");
   });
 
-  it("discloses paid egg odds before purchase", () => {
+  it("discloses paid egg odds and a slime price before purchase", () => {
     const catalog = getPurchaseCatalog();
     const eggPack = catalog.find(({ id }) => id === "egg-pack-small");
 
@@ -65,23 +51,18 @@ describe("purchaseInventory", () => {
       },
       odds: getEggRarityPoolOdds("paid-premium")
     });
+    expect(eggPack?.slimePrice).toBeGreaterThan(0);
   });
 
-  it("uses entitlements to grant purchased eggs", async () => {
-    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
-    const entitlementProvider = new FakeEntitlementProvider();
+  it("spends slime to grant purchased eggs", () => {
+    const repository = repositoryWithSlime(50);
 
-    await purchaseInventory(
+    purchaseInventory(
       { productId: "egg-pack-small" },
-      {
-        clock: { now: () => 4000 },
-        entitlementProvider,
-        repository
-      }
+      { clock: { now: () => 5000 }, repository }
     );
     const state = repository.snapshot();
 
-    expect(entitlementProvider.purchasedProductIds).toEqual(["egg-pack-small"]);
     expect(state.eggs).toEqual([
       {
         earnedAtMs: 5000,
@@ -105,32 +86,23 @@ describe("purchaseInventory", () => {
         status: "unhatched"
       }
     ]);
+    expect(state.softCurrency.slime).toBe(25);
     expect(state.purchases).toEqual([
-      {
-        id: "sandbox-1",
-        productId: "egg-pack-small",
-        purchasedAtMs: 5000
-      }
+      { id: "slime-1", productId: "egg-pack-small", purchasedAtMs: 5000 }
     ]);
   });
 
-  it("allows purchased eggs to queue when the stable is full", async () => {
-    const repository = new InMemoryCarrierRepository({
-      ...createInitialCarrierState(),
+  it("allows purchased eggs to queue when the stable is full", () => {
+    const repository = repositoryWithSlime(50, {
       snails: Array.from({ length: 6 }, (_, index) => ({
         ...createStarterGardenSnail(),
         id: `snail-${index + 1}`
       }))
     });
-    const entitlementProvider = new FakeEntitlementProvider();
 
-    await purchaseInventory(
+    purchaseInventory(
       { productId: "egg-pack-small" },
-      {
-        clock: { now: () => 4000 },
-        entitlementProvider,
-        repository
-      }
+      { clock: { now: () => 4000 }, repository }
     );
     const state = repository.snapshot();
 
@@ -139,37 +111,29 @@ describe("purchaseInventory", () => {
     expect(state.eggs.every((egg) => egg.status === "unhatched")).toBe(true);
   });
 
-  it("uses entitlements to grant cosmetics and stable slots", async () => {
-    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
-    const entitlementProvider = new FakeEntitlementProvider();
+  it("spends slime to grant cosmetics and stable slots", () => {
+    const repository = repositoryWithSlime(50);
 
-    await purchaseInventory(
+    purchaseInventory(
       { productId: "cosmetic-trail-sparkle" },
-      {
-        clock: { now: () => 4000 },
-        entitlementProvider,
-        repository
-      }
+      { clock: { now: () => 4000 }, repository }
     );
-    await purchaseInventory(
+    purchaseInventory(
       { productId: "stable-slot-single" },
-      {
-        clock: { now: () => 6000 },
-        entitlementProvider,
-        repository
-      }
+      { clock: { now: () => 6000 }, repository }
     );
     const state = repository.snapshot();
 
     expect(state.inventory.cosmetics).toEqual([
       {
-        acquiredAtMs: 5000,
+        acquiredAtMs: 4000,
         id: "trail-sparkle",
         name: "Sparkling trail",
         source: "purchased"
       }
     ]);
     expect(state.stableSlots).toEqual({ purchased: 1 });
+    expect(state.softCurrency.slime).toBe(15);
     expect(listStableSnails(state).capacity).toMatchObject({
       emptySlotCount: 6,
       freeSlots: 6,
@@ -178,17 +142,12 @@ describe("purchaseInventory", () => {
     });
   });
 
-  it("does not let a purchased empty slot bypass the resting-snail rule", async () => {
-    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
-    const entitlementProvider = new FakeEntitlementProvider();
+  it("does not let a purchased empty slot bypass the resting-snail rule", () => {
+    const repository = repositoryWithSlime(50);
 
-    await purchaseInventory(
+    purchaseInventory(
       { productId: "stable-slot-single" },
-      {
-        clock: { now: () => 0 },
-        entitlementProvider,
-        repository
-      }
+      { clock: { now: () => 0 }, repository }
     );
     createReminderJourney(
       { text: "buy milk" },
@@ -211,60 +170,16 @@ describe("purchaseInventory", () => {
     ).toThrow(NoRestingSnailError);
   });
 
-  it("rejects entitlements that do not authorize the requested product", async () => {
-    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
-    const entitlementProvider = new FixedAuthorizationProvider({
-      productId: "stable-slot-single",
-      purchaseId: "sandbox-mismatch",
-      purchasedAtMs: 5000
-    });
+  it("rejects a purchase when slime is insufficient and leaves state untouched", () => {
+    const repository = repositoryWithSlime(10);
 
-    await expect(
+    expect(() =>
       purchaseInventory(
         { productId: "egg-pack-small" },
-        {
-          clock: { now: () => 4000 },
-          entitlementProvider,
-          repository
-        }
+        { clock: { now: () => 4000 }, repository }
       )
-    ).rejects.toThrow(PurchaseAuthorizationMismatchError);
-    expect(repository.snapshot()).toEqual(createInitialCarrierState());
-  });
-
-  it("does not grant the same entitlement purchase twice", async () => {
-    const repository = new InMemoryCarrierRepository(createInitialCarrierState());
-    const entitlementProvider = new FixedAuthorizationProvider({
-      productId: "egg-pack-small",
-      purchaseId: "sandbox-repeat",
-      purchasedAtMs: 5000
-    });
-
-    await purchaseInventory(
-      { productId: "egg-pack-small" },
-      {
-        clock: { now: () => 4000 },
-        entitlementProvider,
-        repository
-      }
-    );
-    await purchaseInventory(
-      { productId: "egg-pack-small" },
-      {
-        clock: { now: () => 6000 },
-        entitlementProvider,
-        repository
-      }
-    );
-    const state = repository.snapshot();
-
-    expect(state.eggs).toHaveLength(3);
-    expect(state.purchases).toEqual([
-      {
-        id: "sandbox-repeat",
-        productId: "egg-pack-small",
-        purchasedAtMs: 5000
-      }
-    ]);
+    ).toThrow(InsufficientSlimeError);
+    expect(repository.snapshot().softCurrency.slime).toBe(10);
+    expect(repository.snapshot().eggs).toEqual([]);
   });
 });

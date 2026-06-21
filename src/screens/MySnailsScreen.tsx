@@ -36,7 +36,7 @@ import { getSnailSpecies } from "../useCases/snailSpecies";
 import { EmptyTabScreen } from "./EmptyTabScreen";
 
 type MySnailsScreenProps = {
-  canPurchase: boolean;
+  slimeBalance: number;
   carrierState: CarrierState;
   formError: string;
   onBuyProduct: (productId: PurchaseProductId) => void;
@@ -53,7 +53,6 @@ type MySnailsScreenProps = {
 };
 
 export function MySnailsScreen({
-  canPurchase,
   carrierState,
   formError,
   onBuyProduct,
@@ -65,6 +64,7 @@ export function MySnailsScreen({
   purchaseCatalog,
   selectedCanLevel,
   selectedSnailId,
+  slimeBalance,
   stable,
   unhatchedEggs
 }: MySnailsScreenProps) {
@@ -72,6 +72,9 @@ export function MySnailsScreen({
   const [hatchingEggId, setHatchingEggId] = useState<string | undefined>();
   const [fullStablePromptVisible, setFullStablePromptVisible] = useState(false);
   const [shopVisible, setShopVisible] = useState(false);
+  const slotPrice =
+    purchaseCatalog.find((product) => product.id === "stable-slot-single")
+      ?.slimePrice ?? 0;
   const gameFlow = useSnailGameFlow();
 
   function playSnailGames(snailId: string) {
@@ -140,10 +143,10 @@ export function MySnailsScreen({
   if (shopVisible) {
     return (
       <ShopView
-        canPurchase={canPurchase}
         onBack={() => setShopVisible(false)}
         onBuyProduct={onBuyProduct}
         purchaseCatalog={purchaseCatalog}
+        slimeBalance={slimeBalance}
       />
     );
   }
@@ -178,6 +181,10 @@ export function MySnailsScreen({
             {stable.capacity.freeCount} resting · {stable.capacity.busyCount} out ·{" "}
             {stable.capacity.freeSlots} of {stable.capacity.maxSlots} slots free
           </Text>
+          <View style={styles.headerSlime}>
+            <View style={styles.slimeChipDot} />
+            <Text style={styles.slimeChipText}>{slimeBalance} slime</Text>
+          </View>
         </View>
 
         {fullStablePromptVisible ? (
@@ -201,14 +208,16 @@ export function MySnailsScreen({
               <Pressable
                 accessibilityLabel="Buy a stable slot"
                 accessibilityRole="button"
-                disabled={!canPurchase}
+                disabled={slimeBalance < slotPrice}
                 onPress={() => {
                   setFullStablePromptVisible(false);
                   onBuyProduct("stable-slot-single");
                 }}
                 style={({ pressed }) => [
                   styles.fullStablePrimaryButton,
-                  !canPurchase ? styles.fullStablePrimaryButtonDisabled : null,
+                  slimeBalance < slotPrice
+                    ? styles.fullStablePrimaryButtonDisabled
+                    : null,
                   pressed ? styles.fullStablePrimaryButtonPressed : null
                 ]}
               >
@@ -824,15 +833,15 @@ function shopIcon(product: PurchaseCatalogProduct): string {
 }
 
 function ShopView({
-  canPurchase,
   onBack,
   onBuyProduct,
-  purchaseCatalog
+  purchaseCatalog,
+  slimeBalance
 }: {
-  canPurchase: boolean;
   onBack: () => void;
   onBuyProduct: (productId: PurchaseProductId) => void;
   purchaseCatalog: PurchaseCatalogProduct[];
+  slimeBalance: number;
 }) {
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
@@ -853,52 +862,58 @@ function ShopView({
             >
               <Text style={styles.backButtonText}>Back</Text>
             </Pressable>
+            <View style={styles.slimeChip}>
+              <View style={styles.slimeChipDot} />
+              <Text style={styles.slimeChipText}>{slimeBalance} slime</Text>
+            </View>
           </View>
 
           <View style={styles.shopHeader}>
             <Text style={styles.shopEyebrow}>Carrier Shop</Text>
             <Text style={styles.shopHeading}>Shop</Text>
             <Text style={styles.shopSubtitle}>
-              Eggs, cosmetics, and stable space for your snails.
+              Spend the slime you earn from deliveries and games.
             </Text>
           </View>
 
           <View style={styles.shopCards}>
-            {purchaseCatalog.map((product) => (
-              <View key={product.id} style={styles.shopCard}>
-                <View style={styles.shopCardIcon}>
-                  <Text style={styles.shopCardIconText}>{shopIcon(product)}</Text>
+            {purchaseCatalog.map((product) => {
+              const affordable = slimeBalance >= product.slimePrice;
+              return (
+                <View key={product.id} style={styles.shopCard}>
+                  <View style={styles.shopCardIcon}>
+                    <Text style={styles.shopCardIconText}>
+                      {shopIcon(product)}
+                    </Text>
+                  </View>
+                  <View style={styles.shopCardBody}>
+                    <Text numberOfLines={1} style={styles.shopCardTitle}>
+                      {product.label}
+                    </Text>
+                    <Text numberOfLines={2} style={styles.shopCardDetail}>
+                      {formatPurchaseDetail(product)}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Buy ${product.label} for ${product.slimePrice} slime`}
+                    disabled={!affordable}
+                    onPress={() => onBuyProduct(product.id)}
+                    style={({ pressed }) => [
+                      styles.buyButton,
+                      !affordable ? styles.buyButtonDisabled : null,
+                      pressed ? styles.buyButtonPressed : null
+                    ]}
+                  >
+                    <Text style={styles.buyButtonText}>
+                      {product.slimePrice} slime
+                    </Text>
+                  </Pressable>
                 </View>
-                <View style={styles.shopCardBody}>
-                  <Text numberOfLines={1} style={styles.shopCardTitle}>
-                    {product.label}
-                  </Text>
-                  <Text numberOfLines={2} style={styles.shopCardDetail}>
-                    {formatPurchaseDetail(product)}
-                  </Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Buy ${product.label}`}
-                  disabled={!canPurchase}
-                  onPress={() => onBuyProduct(product.id)}
-                  style={({ pressed }) => [
-                    styles.buyButton,
-                    !canPurchase ? styles.buyButtonDisabled : null,
-                    pressed ? styles.buyButtonPressed : null
-                  ]}
-                >
-                  <Text style={styles.buyButtonText}>Buy</Text>
-                </Pressable>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
-          {!canPurchase ? (
-            <Text style={styles.shopUnavailable}>
-              Purchases are unavailable right now.
-            </Text>
-          ) : null}
           <Text style={styles.shopDisclosure}>{PURCHASE_FLOOR_DISCLOSURE}</Text>
         </ScrollView>
       </FadeInView>
@@ -1465,6 +1480,37 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#edf1e8",
     flex: 1
+  },
+  headerSlime: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#e7efe0",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 5
+  },
+  slimeChip: {
+    alignItems: "center",
+    backgroundColor: "#e7efe0",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 5
+  },
+  slimeChipDot: {
+    backgroundColor: "#5f8a5e",
+    borderRadius: 5,
+    height: 10,
+    width: 10
+  },
+  slimeChipText: {
+    color: "#3f6d5b",
+    fontSize: 13,
+    fontWeight: "800"
   },
   shopCard: {
     alignItems: "center",

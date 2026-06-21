@@ -45,7 +45,6 @@ import {
   createCarrierSupabaseClient,
   installSupabaseAutoRefresh
 } from "../backend/supabaseClient";
-import { createRevenueCatEntitlementProvider } from "../payments/revenueCatEntitlementProvider";
 import { completeArrivedJourneys } from "../useCases/completeArrivedJourneys";
 import {
   hasUnseenArrivals,
@@ -130,19 +129,6 @@ const FALLBACK_MAP_STYLE_URL =
   process.env.EXPO_PUBLIC_MAP_STYLE_URL ?? DEMO_MAP_STYLE_URL;
 const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY;
 const MAP_SKIN_STORAGE_KEY = "carrier-snail.map-skin";
-const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
-const REVENUECAT_ANDROID_API_KEY =
-  process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
-const REVENUECAT_PRODUCT_IDENTIFIERS = {
-  "cosmetic-trail-sparkle":
-    process.env.EXPO_PUBLIC_REVENUECAT_COSMETIC_TRAIL_SPARKLE_ID ??
-    "cosmetic-trail-sparkle",
-  "egg-pack-small":
-    process.env.EXPO_PUBLIC_REVENUECAT_EGG_PACK_SMALL_ID ?? "egg-pack-small",
-  "stable-slot-single":
-    process.env.EXPO_PUBLIC_REVENUECAT_STABLE_SLOT_SINGLE_ID ??
-    "stable-slot-single"
-} satisfies Record<PurchaseProductId, string>;
 
 const RUNTIME_MODE = __DEV__ ? "development" : "production";
 const WATCH_SCRUB_STOPS = [
@@ -340,16 +326,6 @@ export function MapScreen({
     onGameActiveChange(gameActive);
   }, [gameActive, onGameActiveChange]);
   const purchaseCatalog = useMemo(() => getPurchaseCatalog(), []);
-  const entitlementProvider = useMemo(
-    () =>
-      createRevenueCatEntitlementProvider({
-        androidApiKey: REVENUECAT_ANDROID_API_KEY,
-        appUserId: backendSession?.user.id ?? "local-carrier",
-        iosApiKey: REVENUECAT_IOS_API_KEY,
-        productIdentifiers: REVENUECAT_PRODUCT_IDENTIFIERS
-      }),
-    [backendSession?.user.id]
-  );
   const pushSender = useMemo(() => new ExpoLocalPushSender(), []);
   const backgroundLocationController = useMemo(
     () => new ExpoBackgroundLocationController(),
@@ -1074,19 +1050,13 @@ export function MapScreen({
   }
 
   async function buyCatalogProduct(productId: PurchaseProductId) {
-    if (!entitlementProvider) {
-      setFormError("RevenueCat API keys are required for purchases.");
-      return;
-    }
-
     try {
       const repository = new InMemoryCarrierRepository(carrierState);
 
-      await purchaseInventory(
+      purchaseInventory(
         { productId },
         {
           clock: { now: () => Date.now() },
-          entitlementProvider,
           repository
         }
       );
@@ -1529,7 +1499,7 @@ export function MapScreen({
 
       {activeTab === "snails" ? (
         <MySnailsScreen
-          canPurchase={!!entitlementProvider}
+          slimeBalance={carrierState.softCurrency.slime}
           carrierState={carrierState}
           formError={formError}
           onBuyProduct={(productId) => {

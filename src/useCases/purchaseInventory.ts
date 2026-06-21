@@ -43,6 +43,7 @@ export type PurchaseCatalogProduct = {
   id: PurchaseProductId;
   label: string;
   odds?: RarityPoolOdd[];
+  slimePrice: number;
 };
 
 export type PurchaseInventoryInput = {
@@ -76,7 +77,8 @@ const PURCHASE_CATALOG: PurchaseCatalogProduct[] = [
     },
     id: "egg-pack-small",
     label: "Egg pack",
-    odds: getEggRarityPoolOdds("paid-premium")
+    odds: getEggRarityPoolOdds("paid-premium"),
+    slimePrice: 25
   },
   {
     description: "A sparkling trail cosmetic.",
@@ -86,7 +88,8 @@ const PURCHASE_CATALOG: PurchaseCatalogProduct[] = [
       kind: "cosmetic"
     },
     id: "cosmetic-trail-sparkle",
-    label: "Sparkling trail"
+    label: "Sparkling trail",
+    slimePrice: 15
   },
   {
     description: "One extra stable slot.",
@@ -95,7 +98,8 @@ const PURCHASE_CATALOG: PurchaseCatalogProduct[] = [
       kind: "stable-slot"
     },
     id: "stable-slot-single",
-    label: "Stable slot"
+    label: "Stable slot",
+    slimePrice: 20
   }
 ];
 
@@ -107,30 +111,34 @@ export function getPurchaseCatalog(): PurchaseCatalogProduct[] {
   }));
 }
 
-export async function purchaseInventory(
+export class InsufficientSlimeError extends Error {
+  constructor() {
+    super("Not enough slime for this purchase.");
+    this.name = "InsufficientSlimeError";
+  }
+}
+
+// Purchases are paid for in slime (the soft currency earned from deliveries +
+// minigames). Check the balance, deduct the price, grant the item.
+export function purchaseInventory(
   input: PurchaseInventoryInput,
   {
     clock,
-    entitlementProvider,
     repository
   }: {
     clock: Clock;
-    entitlementProvider: EntitlementProvider;
     repository: CarrierRepository;
   }
-): Promise<void> {
+): void {
   const product = findProduct(input.productId);
-  const authorization = await entitlementProvider.purchase(input.productId);
-  const purchasedAtMs = authorization.purchasedAtMs ?? clock.now();
   const state = repository.snapshot();
+  const balance = state.softCurrency?.slime ?? 0;
 
-  if (authorization.productId !== input.productId) {
-    throw new PurchaseAuthorizationMismatchError();
+  if (balance < product.slimePrice) {
+    throw new InsufficientSlimeError();
   }
 
-  if (state.purchases.some((purchase) => purchase.id === authorization.purchaseId)) {
-    return;
-  }
+  const purchasedAtMs = clock.now();
 
   repository.save({
     ...applyGrant({
@@ -141,11 +149,14 @@ export async function purchaseInventory(
     purchases: [
       ...state.purchases,
       {
-        id: authorization.purchaseId,
-        productId: authorization.productId,
+        id: `slime-${state.purchases.length + 1}`,
+        productId: product.id,
         purchasedAtMs
       }
-    ]
+    ],
+    softCurrency: {
+      slime: balance - product.slimePrice
+    }
   });
 }
 

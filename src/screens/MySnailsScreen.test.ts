@@ -54,7 +54,7 @@ describe("MySnailsScreen", () => {
     renderer.act(() => {
       tree = renderer.create(
         React.createElement(MySnailsScreen, {
-          canPurchase: false,
+          slimeBalance: 0,
           carrierState,
           formError: "",
           onBuyProduct: () => undefined,
@@ -119,7 +119,7 @@ describe("MySnailsScreen", () => {
     renderer.act(() => {
       tree = renderer.create(
         React.createElement(MySnailsScreen, {
-          canPurchase: true,
+          slimeBalance: 50,
           carrierState,
           formError: "",
           onBuyProduct: (productId: PurchaseProductId) => {
