@@ -1,53 +1,48 @@
-# Snail minigames — Flappy + 2048 (targets build/v1)
+# Games feature — both games + Game Corner dashboard (targets build/v1)
 
-Both games on one branch, cut against **build/v1** (the live trunk). Additive:
-everything is under `src/minigames/`. Both games fly/show the **picked snail's
-species** via Joseph's `SnailSprite` / `SNAIL_SPRITE_ASSETS` (by `speciesId`) —
-my old per-id sprite set is gone.
+Additive, all under `src/minigames/` (+ a web-only `App.web.tsx`). This is the
+full games feature in one branch:
 
-- **Flappy Snail** — Skia game; flies the chosen snail's species sprite, sized by
-  each sprite's true aspect. (9 species face right; `backwards` faces left, which
-  suits it.)
-- **2048 Snail** — animated tile-sliding board (Animated slide + merge/spawn
-  pops), pure seeded engine. No sprites, no Skia.
+- **Flappy Snail** — flies the picked snail's **species sprite** (Joseph's
+  `SnailSprite` / `SNAIL_SPRITE_ASSETS` by `speciesId`), no businessman.
+- **2048 Snail** — animated tile slides; includes an input/animation fix (reads
+  latest state so the gesture can't act on stale state; JS driver on web, native
+  on device — **iOS path unchanged**).
+- **Game Corner dashboard** (`GamesListScreen.tsx`) — a tile grid (per-game art +
+  this snail's best + Play, "Soon" for Snake) and a **leaderboard built from REAL
+  stored high scores** across the stable, with a "No scores yet" empty state.
 
-## Branch + apply
+## Apply / push (VERIFY YOUR BRANCH FIRST)
+You already pushed `feat/snail-flappy` with both games — this UPDATES it:
 ```bash
-git fetch origin
-git checkout -b feat/snail-minigames origin/build/v1
-unzip -o snail-minigames.zip            # writes src/minigames/**
+git checkout feat/snail-flappy
+git branch                         # confirm
+unzip -o snail-minigames.zip       # overwrites src/minigames/** + App.web.tsx
 
-# Flappy's title screen needs 5 deps build/v1 doesn't have yet (2048 needs none):
-npx expo install expo-linear-gradient react-native-svg expo-font \
-  @expo-google-fonts/fredoka @expo-google-fonts/press-start-2p
-
-npm run typecheck && npm run lint && npm test   # green on build/v1 (130 tests)
-git add src/minigames package.json package-lock.json
-git commit -m "feat: snail minigames (Flappy + animated 2048), per-species sprites"
-git push -u origin feat/snail-minigames
+npm run typecheck && npm run lint && npm test   # green
+git add -A
+git commit -m "feat: Game Corner dashboard + real-data leaderboard"
+git push                           # updates the open PR
 ```
+No new deps for the dashboard. (Flappy's 5 deps were already installed when you
+first pushed this branch.) PR targets **build/v1**, not main.
 
-## Make it reachable (2 edits — do with a teammate on a device; NOT in this branch)
-1. **MapScreen.tsx** — wrap the rendered tab content in `SnailGameFlowProvider`,
-   passing `onReward` (credit slime like `levelUpSnail`) and
-   `slimeBalance={carrierState.softCurrency.slime}`.
-2. **MySnailsScreen.tsx** — in Joseph's snail detail view (#67) add a
-   "Play games" button: `const { open } = useSnailGameFlow(); ... onPress={() => open(snail)}`.
+## Make games reachable + feed the leaderboard (edits to Joseph's files)
+1. **MapScreen.tsx** — wrap rendered tab content in `SnailGameFlowProvider`:
+   - `onReward={...}` credits slime,
+   - `slimeBalance={carrierState.softCurrency.slime}`,
+   - `snails={carrierState.snails}`  ← NEW: powers the leaderboard's names+sprites.
+2. **MySnailsScreen.tsx** — in the snail detail view add a "Play games" button:
+   `const { open } = useSnailGameFlow(); ... onPress={() => open(snail)}`.
 
-## Sprites / fonts
-- No new image assets — uses build/v1's `assets/snails/*` (Joseph's 10).
-- Fonts degrade to system if not loaded; for the exact title look, load
-  Fredoka + Press Start 2P at app root with `useFonts`, and wrap root in
-  `SafeAreaProvider`.
+Without (2) there's no way to reach the games in-app. Without `snails` in (1) the
+leaderboard still renders but can't show other snails' names/sprites.
+
+## Web preview
+`npx expo start --web` opens the dashboard; tap Play to launch either game.
+Motion is laggy on web (no native driver) — smooth on device. Behaviour/art only.
 
 ## Unverified
-Built without a device (no Xcode / SDK 56 too new for store Expo Go). Logic is
-tested; what's unseen on a real screen: Flappy flying the new sprites, and the
-2048 slide/pop timing. Dials — Flappy: `SPRITE_W` (FlappySnailGame); 2048:
-`SLIDE_MS = 110` + spring tension/friction (Game2048).
-
-## If you'd rather keep 2048 separate
-`feature-2048.zip` (2048-only, Flappy disabled) still exists. But merging both a
-2048-only branch and a Flappy branch will conflict on `gamesCatalog.ts` +
-`SnailGameFlow.tsx` (each toggles the other game). One branch (this one) avoids
-that.
+No device run yet. Logic + layout checked in a browser. Unseen on a real screen:
+animation smoothness and the games flying/sliding on a phone. Have whoever has
+Xcode watch those.

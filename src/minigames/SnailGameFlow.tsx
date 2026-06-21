@@ -50,8 +50,11 @@ type ProviderProps = {
     reward: SnailGameReward,
     result: GameResult
   ) => void;
-  // Display-only current slime balance, shown on the detail screen.
+  // Display-only current slime balance, shown on the detail + games screens.
   slimeBalance?: number;
+  // All owned snails — lets the games screen show a real cross-stable
+  // leaderboard. Host passes carrierState.snails.
+  snails?: Snail[];
 };
 
 // Wrap the app content with this once (high enough to overlay everything and to
@@ -62,7 +65,8 @@ export function SnailGameFlowProvider({
   onOpenCosmetics,
   onOpenShop,
   onReward,
-  slimeBalance
+  slimeBalance,
+  snails
 }: ProviderProps) {
   const [snail, setSnail] = useState<Snail | null>(null);
   const [step, setStep] = useState<Step>("detail");
@@ -132,6 +136,8 @@ export function SnailGameFlowProvider({
           {step === "games" ? (
             <GamesListScreen
               snail={snail}
+              snails={snails}
+              slimeBalance={slimeBalance}
               highScores={highScores}
               onBack={() => setStep("detail")}
               onPlay={(gameId) => {

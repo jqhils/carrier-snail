@@ -1,75 +1,92 @@
-// WEB-ONLY entry (Metro resolves App.web.tsx over App.tsx on web). The full app
-// can't run on web because MapLibre is native-only, so this renders just the
-// games — which use no native modules — so you can play/preview them in a
-// browser without Xcode or a device. Native builds ignore this file entirely.
+// WEB-ONLY entry (Metro picks App.web.tsx over App.tsx on web). The full app
+// can't run on web (MapLibre is native-only); this previews just the games +
+// the Game Corner dashboard, which use no native modules. Native ignores this
+// file. NOTE: web has no native animation driver, so motion looks laggy here;
+// it's smooth on a real device.
 import { useState } from "react";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, StyleSheet } from "react-native";
 
+import { SNAIL_SPRITE_ASSETS } from "./src/components/SnailSprite";
+import { createSnailFromRarity } from "./src/useCases/hatchEgg";
+import { GamesListScreen } from "./src/minigames/GamesListScreen";
+import { FlappySnailGame } from "./src/minigames/flappySnail/FlappySnailGame";
 import { Game2048 } from "./src/minigames/game2048/Game2048";
-import { scoreToSnail2048Reward } from "./src/minigames/snailGameReward";
-import type { Character, GameId } from "./src/minigames/types";
+import {
+  scoreToSnail2048Reward,
+  scoreToSnailReward
+} from "./src/minigames/snailGameReward";
+import { snailToCharacter } from "./src/minigames/snailToCharacter";
+import type { GameId, GameResult } from "./src/minigames/types";
 
-// A stand-in snail so the games have a character to render as.
-const PREVIEW_CHARACTER: Character = {
-  accentColor: "#3f6d5b",
-  bodyColor: "#cfe0a8",
-  id: "garden",
-  modifier: {},
-  name: "Garden Snail",
-  powerUp: "",
-  shellColor: "#9c6b3f",
-  tagline: "web preview"
+// A few real (mock) snails so the dashboard + leaderboard have data to show.
+const SNAILS = [
+  createSnailFromRarity({ rarity: "common", seed: "alpha", sequence: 1 }),
+  createSnailFromRarity({ rarity: "uncommon", seed: "bravo", sequence: 2 }),
+  createSnailFromRarity({ rarity: "rare", seed: "charlie", sequence: 3 })
+];
+const ACTIVE = SNAILS[0];
+// Seed some high scores so "Top scores" isn't empty in the preview.
+const MOCK_SCORES: Record<string, number> = {
+  [`${SNAILS[1].id}:2048`]: 3120,
+  [`${SNAILS[0].id}:2048`]: 2340,
+  [`${SNAILS[2].id}:flappy`]: 18,
+  [`${SNAILS[0].id}:flappy`]: 11
 };
 
+type Screen = "dashboard" | GameId;
+
 export default function App() {
-  const [game, setGame] = useState<GameId | null>("2048");
+  const [screen, setScreen] = useState<Screen>("dashboard");
+
+  if (screen === "2048") {
+    return (
+      <SafeAreaView style={styles.fill}>
+        <Game2048
+          character={snailToCharacter(ACTIVE)}
+          bestScore={MOCK_SCORES[`${ACTIVE.id}:2048`] ?? 0}
+          onExit={() => setScreen("dashboard")}
+          onResult={(r) => console.log("2048", r, scoreToSnail2048Reward(r.score))}
+          rewardLabel={(s) => {
+            const reward = scoreToSnail2048Reward(s);
+            return reward.slime > 0 ? `Earned ${reward.slime} slime` : "Merge higher for slime";
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "flappy") {
+    return (
+      <SafeAreaView style={styles.fill}>
+        <FlappySnailGame
+          autoStart
+          character={snailToCharacter(ACTIVE)}
+          snailSprite={SNAIL_SPRITE_ASSETS[ACTIVE.speciesId]}
+          onExit={() => setScreen("dashboard")}
+          onResult={(r: GameResult) => console.log("flappy", r, scoreToSnailReward(r.score))}
+          rewardLabel={(s: number) => {
+            const reward = scoreToSnailReward(s);
+            return reward.slime > 0 ? `Earned ${reward.slime} slime` : "Keep flying for slime";
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.fill}>
-      {game === "2048" ? (
-        <Game2048
-          character={PREVIEW_CHARACTER}
-          bestScore={0}
-          onExit={() => setGame(null)}
-          onResult={(result) =>
-            console.log("2048 result", result, scoreToSnail2048Reward(result.score))
-          }
-          rewardLabel={(score) => {
-            const reward = scoreToSnail2048Reward(score);
-            return reward.slime > 0
-              ? `Earned ${reward.slime} slime`
-              : "Merge higher for slime";
-          }}
-        />
-      ) : (
-        <View style={styles.menu}>
-          <Text style={styles.title}>Games preview</Text>
-          <Text style={styles.hint}>Drag with the mouse to swipe tiles.</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setGame("2048")}
-            style={({ pressed }) => [styles.btn, pressed ? styles.pressed : null]}
-          >
-            <Text style={styles.btnText}>Play 2048 Snail</Text>
-          </Pressable>
-        </View>
-      )}
+      <GamesListScreen
+        snail={ACTIVE}
+        snails={SNAILS}
+        slimeBalance={240}
+        highScores={MOCK_SCORES}
+        onBack={() => console.log("back to snail detail")}
+        onPlay={(gameId) => setScreen(gameId)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  btn: {
-    backgroundColor: "#3f6d5b",
-    borderRadius: 12,
-    marginTop: 20,
-    paddingHorizontal: 28,
-    paddingVertical: 14
-  },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  fill: { backgroundColor: "#eef1e8", flex: 1 },
-  hint: { color: "#5a6b7a", fontSize: 14, marginTop: 8 },
-  menu: { alignItems: "center", flex: 1, justifyContent: "center", padding: 24 },
-  pressed: { opacity: 0.85 },
-  title: { color: "#2f4a3d", fontSize: 28, fontWeight: "900" }
+  fill: { backgroundColor: "#eef1e8", flex: 1 }
 });
