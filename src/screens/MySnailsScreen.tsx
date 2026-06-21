@@ -172,13 +172,11 @@ export function MySnailsScreen({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={styles.titleBlock}>
-            <Text style={styles.eyebrow}>Stable</Text>
-            <Text style={styles.title}>My Snails</Text>
-          </View>
-          <Text numberOfLines={3} style={styles.capacity}>
-            {stable.capacity.freeCount} resting, {stable.capacity.busyCount} out,{" "}
-            {stable.capacity.freeSlots} free of {stable.capacity.maxSlots} slots
+          <Text style={styles.eyebrow}>Stable</Text>
+          <Text style={styles.title}>My Snails</Text>
+          <Text style={styles.capacity}>
+            {stable.capacity.freeCount} resting · {stable.capacity.busyCount} out ·{" "}
+            {stable.capacity.freeSlots} of {stable.capacity.maxSlots} slots free
           </Text>
         </View>
 
@@ -950,12 +948,10 @@ const styles = StyleSheet.create({
   },
   capacity: {
     color: "#56645e",
-    flex: 1,
     fontSize: 13,
     fontWeight: "700",
     lineHeight: 18,
-    marginLeft: 12,
-    textAlign: "right"
+    marginTop: 2
   },
   content: {
     paddingBottom: 22,
@@ -1068,8 +1064,8 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(43, 58, 52, 0.12)",
     borderTopWidth: 1,
     gap: 8,
-    marginTop: 14,
-    paddingTop: 12
+    marginTop: 22,
+    paddingTop: 16
   },
   eggOdds: {
     color: "#56645e",
@@ -1302,9 +1298,7 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
+    gap: 3
   },
   levelButton: {
     alignItems: "center",
@@ -1351,8 +1345,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(63, 109, 91, 0.16)",
     borderRadius: 8,
     borderWidth: 1,
-    marginTop: 14,
-    padding: 12
+    marginTop: 22,
+    padding: 14
   },
   quietEggText: {
     color: "#56645e",
@@ -1509,7 +1503,8 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   shopCards: {
-    gap: 12
+    gap: 12,
+    marginTop: 18
   },
   shopEntry: {
     alignItems: "center",
@@ -1517,6 +1512,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     flexDirection: "row",
     justifyContent: "space-between",
+    marginTop: 22,
     paddingHorizontal: 18,
     paddingVertical: 16
   },
@@ -1552,7 +1548,7 @@ const styles = StyleSheet.create({
   },
   shopHeader: {
     gap: 6,
-    marginBottom: 4
+    marginTop: 16
   },
   shopHeading: {
     color: "#25332e",
@@ -1567,7 +1563,8 @@ const styles = StyleSheet.create({
   shopUnavailable: {
     color: "#a13d2d",
     fontSize: 13,
-    fontWeight: "700"
+    fontWeight: "700",
+    marginTop: 18
   },
   shopCopy: {
     flex: 1,
@@ -1582,7 +1579,8 @@ const styles = StyleSheet.create({
   shopDisclosure: {
     color: "#6d5a46",
     fontSize: 12,
-    lineHeight: 16
+    lineHeight: 16,
+    marginTop: 18
   },
   shopList: {
     borderTopColor: "rgba(43, 58, 52, 0.12)",
@@ -1632,7 +1630,7 @@ const styles = StyleSheet.create({
   },
   snailList: {
     gap: 9,
-    marginTop: 16
+    marginTop: 22
   },
   snailMeta: {
     color: "#56645e",
