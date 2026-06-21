@@ -11,7 +11,7 @@ export type GameCatalogEntry = {
 // GameComponentProps contract when they're built.
 export const GAMES: GameCatalogEntry[] = [
   {
-    available: false,
+    available: true,
     blurb: "Tap to flap your snail through the gaps.",
     id: "flappy",
     name: "Flappy Snail"
@@ -23,7 +23,7 @@ export const GAMES: GameCatalogEntry[] = [
     name: "2048 Snail"
   },
   {
-    available: false,
+    available: true,
     blurb: "Eat, grow, don't cross your own trail.",
     id: "snake",
     name: "Snail Snake"

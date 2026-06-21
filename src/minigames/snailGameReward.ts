@@ -35,6 +35,18 @@ export function scoreToSnail2048Reward(score: number): SnailGameReward {
   };
 }
 
+// Snake scores are food-count based (low, like Flappy) — one slime per 2 food,
+// same cap, so a long snake lands a few slime.
+const FOOD_PER_SLIME_SNAKE = 2;
+
+export function scoreToSnakeReward(score: number): SnailGameReward {
+  const safe = Math.max(0, Math.floor(score));
+  return {
+    experiencePoints: safe * 2,
+    slime: Math.min(MAX_SLIME_PER_RUN, Math.floor(safe / FOOD_PER_SLIME_SNAKE))
+  };
+}
+
 // Optional host helper: credit a reward onto owned snails + the slime balance.
 // Generic over the snail shape so it has no hard dependency on the full
 // CarrierState — purely additive, returns the pieces to merge back in.
