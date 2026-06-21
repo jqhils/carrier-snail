@@ -90,7 +90,9 @@ export function SnailGameFlowProvider({
     () => ({
       open: (next: Snail) => {
         setSnail(next);
-        setStep("detail");
+        // The app's own My Snails detail page (#58) is the snail detail screen;
+        // enter Park07's flow directly at the games hub.
+        setStep("games");
       }
     }),
     []
@@ -140,7 +142,7 @@ export function SnailGameFlowProvider({
               snails={snails}
               slimeBalance={slimeBalance}
               highScores={highScores}
-              onBack={() => setStep("detail")}
+              onBack={() => setSnail(null)}
               onPlay={(gameId) => {
                 setActiveGame(gameId);
                 setStep("playing");

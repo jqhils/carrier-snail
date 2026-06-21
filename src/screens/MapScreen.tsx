@@ -111,6 +111,11 @@ import {
   type ToDoListItem
 } from "../useCases/todoUseCases";
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
+import {
+  creditSnailGameReward,
+  type SnailGameReward
+} from "../minigames/snailGameReward";
+import { SnailGameFlowProvider } from "../minigames/SnailGameFlow";
 import { MySnailsScreen } from "./MySnailsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { SettingsScreen } from "./SettingsScreen";
@@ -364,6 +369,26 @@ export function MapScreen({
       }
     },
     [backendSession, timeWarpFactor]
+  );
+
+  // Credit a finished minigame run: slime to the balance + experience to the
+  // snail that played, persisted like any other state change. Stays outside the
+  // Delivery Floor (snailGameReward never touches journey timing).
+  const handleGameReward = useCallback(
+    (snailId: string, reward: SnailGameReward) => {
+      const credited = creditSnailGameReward(
+        carrierState.snails,
+        snailId,
+        reward,
+        carrierState.softCurrency.slime
+      );
+      void persistNextCarrierState({
+        ...carrierState,
+        snails: credited.snails,
+        softCurrency: { slime: credited.slime }
+      });
+    },
+    [carrierState, persistNextCarrierState]
   );
   const markNotificationsViewed = useCallback(() => {
     if (!hasUnseenArrivals(carrierState)) {
@@ -1122,6 +1147,11 @@ export function MapScreen({
   }
 
   return (
+    <SnailGameFlowProvider
+      onReward={handleGameReward}
+      slimeBalance={carrierState.softCurrency.slime}
+      snails={carrierState.snails}
+    >
     <View style={styles.screen}>
       <View
         style={[
@@ -1568,6 +1598,7 @@ export function MapScreen({
         />
       ) : null}
     </View>
+    </SnailGameFlowProvider>
   );
 }
 

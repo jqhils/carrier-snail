@@ -28,6 +28,7 @@ import type {
   PurchaseCatalogProduct,
   PurchaseProductId
 } from "../useCases/purchaseInventory";
+import { useSnailGameFlow } from "../minigames/SnailGameFlow";
 import { expThresholdForLevel, levelUpCost } from "../useCases/levelUpSnail";
 import { PURCHASE_FLOOR_DISCLOSURE } from "../useCases/purchaseInventory";
 import { MAX_SNAIL_NAME_LENGTH } from "../useCases/renameSnail";
@@ -70,6 +71,14 @@ export function MySnailsScreen({
   const [detailSnailId, setDetailSnailId] = useState<string | undefined>();
   const [hatchingEggId, setHatchingEggId] = useState<string | undefined>();
   const [fullStablePromptVisible, setFullStablePromptVisible] = useState(false);
+  const gameFlow = useSnailGameFlow();
+
+  function playSnailGames(snailId: string) {
+    const snail = carrierState.snails.find((entry) => entry.id === snailId);
+    if (snail) {
+      gameFlow.open(snail);
+    }
+  }
   const [hatchReveal, setHatchReveal] = useState<
     { nonce: number; snail: Snail } | undefined
   >();
@@ -136,6 +145,7 @@ export function MySnailsScreen({
         levelCost={levelUpCost(detail)}
         onBack={() => setDetailSnailId(undefined)}
         onLevelSelectedSnail={onLevelSelectedSnail}
+        onPlay={() => playSnailGames(detail.id)}
         onRenameSnail={onRenameSnail}
         onReleaseSnail={onReleaseSnail}
       />
@@ -343,6 +353,7 @@ function SnailDetailView({
   levelCost,
   onBack,
   onLevelSelectedSnail,
+  onPlay,
   onReleaseSnail,
   onRenameSnail
 }: {
@@ -352,6 +363,7 @@ function SnailDetailView({
   levelCost: number;
   onBack: () => void;
   onLevelSelectedSnail: () => void;
+  onPlay: () => void;
   onReleaseSnail: (snailId: string) => void;
   onRenameSnail: (snailId: string, name: string) => void;
 }) {
@@ -448,6 +460,19 @@ function SnailDetailView({
               <Text style={styles.levelButtonText}>Level {levelCost}</Text>
             </Pressable>
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Play games as ${detail.name}`}
+            onPress={onPlay}
+            style={({ pressed }) => [
+              styles.levelButton,
+              styles.detailPlayButton,
+              pressed ? styles.levelButtonPressed : null
+            ]}
+          >
+            <Text style={styles.levelButtonText}>Play games</Text>
+          </Pressable>
 
           {detail.carryingText ? (
             <View style={styles.detailCarrying}>
@@ -877,6 +902,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 8
+  },
+  detailPlayButton: {
+    alignSelf: "stretch",
+    backgroundColor: "#b9743f",
+    marginTop: 10
   },
   detailSpriteFrame: {
     alignItems: "center",

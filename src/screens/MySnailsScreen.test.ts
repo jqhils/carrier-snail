@@ -13,6 +13,13 @@ import type { PurchaseProductId } from "../useCases/purchaseInventory";
 import { getSnailSpecies } from "../useCases/snailSpecies";
 import { MySnailsScreen } from "./MySnailsScreen";
 
+// MySnailsScreen pulls in the games flow (and its native-dep game components)
+// just to open the per-snail games hub. This test doesn't exercise games, so
+// stub the hook to keep those native modules out of the Jest import graph.
+jest.mock("../minigames/SnailGameFlow", () => ({
+  useSnailGameFlow: () => ({ open: () => {} })
+}));
+
 declare const require: <T = unknown>(id: string) => T;
 
 type TestInstance = {
