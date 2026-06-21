@@ -41,6 +41,9 @@ export function useSnailGameFlow(): SnailGameFlow {
 
 type ProviderProps = {
   children: ReactNode;
+  // Fires when the games overlay opens/closes (active = a snail's flow is open).
+  // The host uses this to hide chrome (tab bar) + pause background work for perf.
+  onActiveChange?: (active: boolean) => void;
   // Optional stub routes a teammate owns (cosmetics / shop).
   onOpenCosmetics?: (snail: Snail) => void;
   onOpenShop?: (snail: Snail) => void;
@@ -63,6 +66,7 @@ type ProviderProps = {
 // detail -> games -> game stack as an overlay on top of `children`.
 export function SnailGameFlowProvider({
   children,
+  onActiveChange,
   onOpenCosmetics,
   onOpenShop,
   onReward,
@@ -85,6 +89,11 @@ export function SnailGameFlowProvider({
       active = false;
     };
   }, []);
+
+  // Tell the host whenever the overlay opens or closes.
+  useEffect(() => {
+    onActiveChange?.(snail !== null);
+  }, [snail, onActiveChange]);
 
   const value = useMemo<SnailGameFlow>(
     () => ({
