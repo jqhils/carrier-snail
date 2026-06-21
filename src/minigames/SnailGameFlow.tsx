@@ -11,6 +11,7 @@ import { StyleSheet, View } from "react-native";
 import { GamesListScreen } from "./GamesListScreen";
 import { getHighScore, mergeHighScore, type HighScoreMap } from "./highScores";
 import { loadHighScores, persistHighScores } from "./highScoresStorage";
+import { PlaySnailGame } from "./PlaySnailGame";
 import { Play2048 } from "./Play2048";
 import { SnailDetailScreen } from "./SnailDetailScreen";
 import type { SnailGameReward } from "./snailGameReward";
@@ -137,6 +138,15 @@ export function SnailGameFlowProvider({
                 setActiveGame(gameId);
                 setStep("playing");
               }}
+            />
+          ) : null}
+
+          {step === "playing" && activeGame === "flappy" ? (
+            <PlaySnailGame
+              snail={snail}
+              bestScore={getHighScore(highScores, snail.id, "flappy")}
+              onClose={() => setStep("games")}
+              onReward={handleReward}
             />
           ) : null}
 
