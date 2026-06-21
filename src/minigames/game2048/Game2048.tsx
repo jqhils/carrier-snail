@@ -3,6 +3,7 @@ import {
   Animated,
   Easing,
   PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,9 +16,14 @@ import {
 import {
   applyMove,
   createInitialState,
-  type Direction
+  type Direction,
+  type Game2048State
 } from "./engine2048";
 import type { GameComponentProps } from "../types";
+
+// The native animation driver doesn't exist on web; fall back to the JS driver
+// there so slide/pop animations still run (and to silence the warning).
+const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 const BOARD_BG = "#cbb79b";
 const CELL_BG = "#dccdb4";
@@ -74,6 +80,17 @@ export function Game2048({
   const py = (row: number) => row * stride;
 
   const [game, setGame] = useState(() => createInitialState());
+  // The gesture handler can capture a stale `game` (notably on web, where
+  // PanResponder handlers aren't re-bound each render), so the move logic reads
+  // the latest state from this holder. Stored in a useState Map (mutated via
+  // set/get, like animMap below) so it trips neither the ref nor the
+  // no-mutate-state lint rules.
+  const [latest] = useState(
+    () => new Map<string, Game2048State>([["game", game]])
+  );
+  useEffect(() => {
+    latest.set("game", game);
+  }, [game, latest]);
   // Animation values per tile id, held in (mutable) state so they persist across
   // renders without a ref. We mutate the Map and drive re-renders via setGame.
   const [animMap] = useState(() => {
@@ -94,7 +111,7 @@ export function Game2048({
         friction: 5,
         tension: 140,
         toValue: 1,
-        useNativeDriver: true
+        useNativeDriver: USE_NATIVE_DRIVER
       }).start();
     });
   }, [animMap]);
@@ -106,15 +123,16 @@ export function Game2048({
         friction: 5,
         tension: 150,
         toValue: 1,
-        useNativeDriver: true
+        useNativeDriver: USE_NATIVE_DRIVER
       })
     ]).start();
 
   const applyMoveDir = (direction: Direction) => {
-    if (game.over) {
+    const current = latest.get("game") ?? game;
+    if (current.over) {
       return;
     }
-    const result = applyMove(game, direction);
+    const result = applyMove(current, direction);
     if (!result.moved) {
       return;
     }
@@ -127,7 +145,7 @@ export function Game2048({
           duration: SLIDE_MS,
           easing: Easing.out(Easing.quad),
           toValue: { x: px(tile.col), y: py(tile.row) },
-          useNativeDriver: true
+          useNativeDriver: USE_NATIVE_DRIVER
         }).start();
       }
     }
@@ -146,12 +164,12 @@ export function Game2048({
           Animated.timing(anim.scale, {
             duration: 80,
             toValue: 1.18,
-            useNativeDriver: true
+            useNativeDriver: USE_NATIVE_DRIVER
           }),
           Animated.timing(anim.scale, {
             duration: 80,
             toValue: 1,
-            useNativeDriver: true
+            useNativeDriver: USE_NATIVE_DRIVER
           })
         ]).start();
       }
@@ -172,6 +190,7 @@ export function Game2048({
       }
     }
 
+    latest.set("game", result.state);
     setGame(result.state);
 
     if (result.state.over) {
@@ -222,9 +241,10 @@ export function Game2048({
         friction: 5,
         tension: 140,
         toValue: 1,
-        useNativeDriver: true
+        useNativeDriver: USE_NATIVE_DRIVER
       }).start();
     }
+    latest.set("game", fresh);
     setGame(fresh);
   }
 

@@ -11,7 +11,9 @@ import { StyleSheet, View } from "react-native";
 import { GamesListScreen } from "./GamesListScreen";
 import { getHighScore, mergeHighScore, type HighScoreMap } from "./highScores";
 import { loadHighScores, persistHighScores } from "./highScoresStorage";
+import { PlaySnailGame } from "./PlaySnailGame";
 import { Play2048 } from "./Play2048";
+import { PlaySnake } from "./PlaySnake";
 import { SnailDetailScreen } from "./SnailDetailScreen";
 import type { SnailGameReward } from "./snailGameReward";
 import type { GameId, GameResult } from "./types";
@@ -49,8 +51,11 @@ type ProviderProps = {
     reward: SnailGameReward,
     result: GameResult
   ) => void;
-  // Display-only current slime balance, shown on the detail screen.
+  // Display-only current slime balance, shown on the detail + games screens.
   slimeBalance?: number;
+  // All owned snails — lets the games screen show a real cross-stable
+  // leaderboard. Host passes carrierState.snails.
+  snails?: Snail[];
 };
 
 // Wrap the app content with this once (high enough to overlay everything and to
@@ -61,7 +66,8 @@ export function SnailGameFlowProvider({
   onOpenCosmetics,
   onOpenShop,
   onReward,
-  slimeBalance
+  slimeBalance,
+  snails
 }: ProviderProps) {
   const [snail, setSnail] = useState<Snail | null>(null);
   const [step, setStep] = useState<Step>("detail");
@@ -131,6 +137,8 @@ export function SnailGameFlowProvider({
           {step === "games" ? (
             <GamesListScreen
               snail={snail}
+              snails={snails}
+              slimeBalance={slimeBalance}
               highScores={highScores}
               onBack={() => setStep("detail")}
               onPlay={(gameId) => {
@@ -140,10 +148,28 @@ export function SnailGameFlowProvider({
             />
           ) : null}
 
+          {step === "playing" && activeGame === "flappy" ? (
+            <PlaySnailGame
+              snail={snail}
+              bestScore={getHighScore(highScores, snail.id, "flappy")}
+              onClose={() => setStep("games")}
+              onReward={handleReward}
+            />
+          ) : null}
+
           {step === "playing" && activeGame === "2048" ? (
             <Play2048
               snail={snail}
               bestScore={getHighScore(highScores, snail.id, "2048")}
+              onClose={() => setStep("games")}
+              onReward={handleReward}
+            />
+          ) : null}
+
+          {step === "playing" && activeGame === "snake" ? (
+            <PlaySnake
+              snail={snail}
+              bestScore={getHighScore(highScores, snail.id, "snake")}
               onClose={() => setStep("games")}
               onReward={handleReward}
             />
