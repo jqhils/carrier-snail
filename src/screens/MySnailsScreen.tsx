@@ -482,20 +482,20 @@ function HatchRevealOverlay({
         duration: 240,
         easing: Easing.out(Easing.quad),
         toValue: 1,
-        useNativeDriver: true
+        useNativeDriver: false
       }),
       Animated.parallel([
         Animated.timing(confettiProgress, {
           duration: 720,
           easing: Easing.out(Easing.cubic),
           toValue: 1,
-          useNativeDriver: true
+          useNativeDriver: false
         }),
         Animated.timing(snailProgress, {
           duration: 360,
           easing: Easing.out(Easing.cubic),
           toValue: 1,
-          useNativeDriver: true
+          useNativeDriver: false
         })
       ])
     ]);
@@ -512,10 +512,6 @@ function HatchRevealOverlay({
   const eggOpacity = eggProgress.interpolate({
     inputRange: [0, 0.8, 1],
     outputRange: [1, 1, 0]
-  });
-  const snailOpacity = snailProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1]
   });
   const snailScale = snailProgress.interpolate({
     inputRange: [0, 1],
@@ -588,10 +584,10 @@ function HatchRevealOverlay({
             <View style={styles.hatchEggCrackSecond} />
           </Animated.View>
           <Animated.View
+            testID="hatch-reveal-sprite-frame"
             style={[
               styles.hatchSnailReveal,
               {
-                opacity: snailOpacity,
                 transform: [{ scale: snailScale }]
               }
             ]}
