@@ -20,6 +20,8 @@ export function NotificationsScreen({
     onViewed();
   }, [onViewed]);
 
+  const unseenCount = arrivals.filter((arrival) => !arrival.seen).length;
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <FadeInView>
@@ -29,7 +31,14 @@ export function NotificationsScreen({
       >
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Notifications</Text>
-          <Text style={styles.title}>Arrivals</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Arrivals</Text>
+            {unseenCount > 0 ? (
+              <View style={styles.unreadChip}>
+                <Text style={styles.unreadChipText}>{unseenCount} new</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.subtitle}>
             A quiet ledger of the thoughts that made the whole crawl.
           </Text>
@@ -38,26 +47,45 @@ export function NotificationsScreen({
         {arrivals.length > 0 ? (
           <View style={styles.arrivalList}>
             {arrivals.map((arrival) => (
-              <View key={arrival.id} style={styles.arrivalItem}>
-                <View style={styles.arrivalHeader}>
-                  <Text numberOfLines={1} style={styles.snailName}>
-                    {arrival.snailName}
-                  </Text>
-                  {!arrival.seen ? (
-                    <Text style={styles.unseenPill}>New</Text>
-                  ) : null}
+              <View
+                key={arrival.id}
+                style={[
+                  styles.arrivalItem,
+                  !arrival.seen ? styles.arrivalItemUnseen : null
+                ]}
+              >
+                <View style={styles.arrivalRow}>
+                  <View
+                    style={[
+                      styles.avatar,
+                      !arrival.seen ? styles.avatarUnseen : null
+                    ]}
+                  >
+                    <Text style={styles.avatarGlyph}>🐌</Text>
+                  </View>
+                  <View style={styles.arrivalBody}>
+                    <View style={styles.arrivalHeader}>
+                      <Text numberOfLines={1} style={styles.snailName}>
+                        {arrival.snailName}
+                      </Text>
+                      {!arrival.seen ? (
+                        <Text style={styles.unseenPill}>New</Text>
+                      ) : null}
+                    </View>
+                    <Text numberOfLines={3} style={styles.arrivalText}>
+                      {arrival.text}
+                    </Text>
+                    <Text style={styles.arrivalTime}>
+                      Landed {formatArrivalTime(arrival.arrivedAtMs, nowMs)}
+                    </Text>
+                  </View>
                 </View>
-                <Text numberOfLines={3} style={styles.arrivalText}>
-                  {arrival.text}
-                </Text>
-                <Text style={styles.arrivalTime}>
-                  Landed {formatArrivalTime(arrival.arrivedAtMs, nowMs)}
-                </Text>
               </View>
             ))}
           </View>
         ) : (
           <View style={styles.emptyState}>
+            <Text style={styles.emptyGlyph}>🐚</Text>
             <Text style={styles.emptyTitle}>No shells on the mat</Text>
             <Text style={styles.emptyBody}>
               When a snail finally reaches you, its delivery settles here.
@@ -92,6 +120,10 @@ function formatArrivalTime(arrivedAtMs: number, nowMs: number): string {
 }
 
 const styles = StyleSheet.create({
+  arrivalBody: {
+    flex: 1,
+    minWidth: 0
+  },
   arrivalHeader: {
     alignItems: "center",
     flexDirection: "row",
@@ -99,28 +131,57 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   arrivalItem: {
-    backgroundColor: "#f8f5eb",
-    borderColor: "rgba(75, 91, 82, 0.16)",
-    borderRadius: 8,
+    backgroundColor: "#fbfaf3",
+    borderColor: "rgba(75, 91, 82, 0.14)",
+    borderRadius: 16,
     borderWidth: 1,
+    elevation: 1,
     paddingHorizontal: 16,
-    paddingVertical: 15
+    paddingVertical: 15,
+    shadowColor: "#2f3a30",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10
+  },
+  arrivalItemUnseen: {
+    backgroundColor: "#f4faf0",
+    borderColor: "rgba(47, 96, 78, 0.22)",
+    borderLeftColor: "#3f8a63",
+    borderLeftWidth: 4
   },
   arrivalList: {
     gap: 12
   },
+  arrivalRow: {
+    flexDirection: "row",
+    gap: 13
+  },
   arrivalText: {
     color: "#2c3933",
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "800",
-    lineHeight: 24,
-    marginTop: 10
+    lineHeight: 23,
+    marginTop: 8
   },
   arrivalTime: {
     color: "#6c766f",
     fontSize: 13,
     fontWeight: "700",
     marginTop: 9
+  },
+  avatar: {
+    alignItems: "center",
+    backgroundColor: "#eef2e8",
+    borderRadius: 999,
+    height: 42,
+    justifyContent: "center",
+    width: 42
+  },
+  avatarGlyph: {
+    fontSize: 20
+  },
+  avatarUnseen: {
+    backgroundColor: "#dcefe0"
   },
   content: {
     gap: 22,
@@ -137,14 +198,23 @@ const styles = StyleSheet.create({
     maxWidth: 310,
     textAlign: "center"
   },
+  emptyGlyph: {
+    fontSize: 36,
+    marginBottom: 10
+  },
   emptyState: {
     alignItems: "center",
-    backgroundColor: "#f8f5eb",
-    borderColor: "rgba(75, 91, 82, 0.16)",
-    borderRadius: 8,
+    backgroundColor: "#fbfaf3",
+    borderColor: "rgba(75, 91, 82, 0.14)",
+    borderRadius: 16,
     borderWidth: 1,
+    elevation: 1,
     paddingHorizontal: 24,
-    paddingVertical: 34
+    paddingVertical: 36,
+    shadowColor: "#2f3a30",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10
   },
   emptyTitle: {
     color: "#31443a",
@@ -184,9 +254,25 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     lineHeight: 38
   },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10
+  },
+  unreadChip: {
+    backgroundColor: "#dcefe0",
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 4
+  },
+  unreadChipText: {
+    color: "#2f604e",
+    fontSize: 12,
+    fontWeight: "900"
+  },
   unseenPill: {
-    backgroundColor: "#dfeee4",
-    borderColor: "rgba(47, 96, 78, 0.16)",
+    backgroundColor: "#cfe9d6",
+    borderColor: "rgba(47, 96, 78, 0.2)",
     borderRadius: 999,
     borderWidth: 1,
     color: "#2f604e",
