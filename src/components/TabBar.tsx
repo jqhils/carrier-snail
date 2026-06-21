@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { colors, radii, space, text } from "../theme";
+
 export type BottomTabId =
   | "snails"
   | "map"
@@ -23,14 +25,18 @@ type BottomTab = {
   icon: TabIconName;
   id: BottomTabId;
   label: string;
+  short: string;
 };
 
+// `label` stays the full word (accessibility / screen readers); `short` is the
+// punchy pixel-font display label, since Press Start 2P at tab size can't fit
+// "Notifications".
 const TABS: BottomTab[] = [
-  { icon: "snail", id: "snails", label: "My Snails" },
-  { icon: "map-marker", id: "map", label: "Map" },
-  { icon: "format-list-checks", id: "todos", label: "To Dos" },
-  { icon: "bell", id: "notifications", label: "Notifications" },
-  { icon: "cog", id: "settings", label: "Settings" }
+  { icon: "snail", id: "snails", label: "My Snails", short: "SNAILS" },
+  { icon: "map-marker", id: "map", label: "Map", short: "MAP" },
+  { icon: "format-list-checks", id: "todos", label: "To Dos", short: "TO DOS" },
+  { icon: "bell", id: "notifications", label: "Notifications", short: "INBOX" },
+  { icon: "cog", id: "settings", label: "Settings", short: "SETTINGS" }
 ];
 
 type TabBarProps = {
@@ -76,7 +82,7 @@ function TabBarItem({
       >
         <View style={styles.iconSlot}>
           <MaterialCommunityIcons
-            color={selected ? "#2f604e" : "#64736c"}
+            color={selected ? colors.primary : colors.textMuted}
             name={tab.icon}
             size={23}
           />
@@ -86,7 +92,7 @@ function TabBarItem({
           numberOfLines={1}
           style={[styles.tabLabel, selected ? styles.tabLabelSelected : null]}
         >
-          {tab.label}
+          {tab.short}
         </Text>
       </Animated.View>
     </Pressable>
@@ -127,48 +133,49 @@ const styles = StyleSheet.create({
     width: 34
   },
   notificationDot: {
-    backgroundColor: "#6d8c79",
-    borderColor: "#f5f2e8",
-    borderRadius: 5,
+    backgroundColor: colors.accentPink,
+    borderColor: colors.surface,
+    borderRadius: 6,
     borderWidth: 2,
-    height: 10,
+    height: 12,
     position: "absolute",
-    right: 1,
-    top: 1,
-    width: 10
+    right: 0,
+    top: 0,
+    width: 12
   },
   shell: {
-    backgroundColor: "#f5f2e8",
-    borderTopColor: "rgba(42, 56, 50, 0.14)",
-    borderTopWidth: 1,
-    paddingHorizontal: 10,
-    paddingTop: 8
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    borderTopWidth: 3,
+    paddingHorizontal: space.sm,
+    paddingTop: space.sm
   },
   tab: {
     alignItems: "center",
-    borderRadius: 8,
+    borderColor: "transparent",
+    borderRadius: radii.sm,
+    borderWidth: 2,
     flex: 1,
     justifyContent: "center",
     minHeight: 54,
     minWidth: 0,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     paddingVertical: 5
   },
   tabContent: {
     alignItems: "center",
-    gap: 2
+    gap: 3
   },
   tabLabel: {
-    color: "#64736c",
-    fontSize: 11,
-    fontWeight: "700"
+    ...text.pixelTab,
+    color: colors.textMuted
   },
   tabLabelSelected: {
-    color: "#2f604e",
-    fontWeight: "800"
+    color: colors.primary
   },
   tabSelected: {
-    backgroundColor: "#dfeee4"
+    backgroundColor: colors.surfaceSelected,
+    borderColor: colors.primary
   },
   tabs: {
     alignItems: "center",

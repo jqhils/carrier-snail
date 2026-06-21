@@ -1,3 +1,6 @@
+import { Fredoka_600SemiBold, Fredoka_700Bold } from "@expo-google-fonts/fredoka";
+import { PressStart2P_400Regular } from "@expo-google-fonts/press-start-2p";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -9,15 +12,25 @@ import {
 } from "./src/components/TabBar";
 import { MapScreen } from "./src/screens/MapScreen";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
+import { colors } from "./src/theme";
 
 const DEFAULT_TAB: BottomTabId = "map";
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Fredoka_600SemiBold,
+    Fredoka_700Bold,
+    PressStart2P_400Regular
+  });
   const [activeTab, setActiveTab] = useState<BottomTabId>(DEFAULT_TAB);
   const [hasUnseenNotifications, setHasUnseenNotifications] = useState(false);
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [completeOnboardingSignal, setCompleteOnboardingSignal] = useState(0);
   const [gameActive, setGameActive] = useState(false);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider>
@@ -55,7 +68,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   app: {
-    backgroundColor: "#edf1e8",
+    backgroundColor: colors.background,
     flex: 1
   },
   content: {

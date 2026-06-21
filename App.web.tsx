@@ -3,10 +3,14 @@
 // the Game Corner dashboard, which use no native modules. Native ignores this
 // file. NOTE: web has no native animation driver, so motion looks laggy here;
 // it's smooth on a real device.
+import { Fredoka_600SemiBold, Fredoka_700Bold } from "@expo-google-fonts/fredoka";
+import { PressStart2P_400Regular } from "@expo-google-fonts/press-start-2p";
+import { useFonts } from "expo-font";
 import { useState } from "react";
 import { SafeAreaView, StyleSheet } from "react-native";
 
 import { SNAIL_SPRITE_ASSETS } from "./src/components/SnailSprite";
+import { colors } from "./src/theme";
 import { createSnailFromRarity } from "./src/useCases/hatchEgg";
 import { GamesListScreen } from "./src/minigames/GamesListScreen";
 import { FlappySnailGame } from "./src/minigames/flappySnail/FlappySnailGame";
@@ -40,7 +44,16 @@ const MOCK_SCORES: Record<string, number> = {
 type Screen = "dashboard" | GameId;
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Fredoka_600SemiBold,
+    Fredoka_700Bold,
+    PressStart2P_400Regular
+  });
   const [screen, setScreen] = useState<Screen>("dashboard");
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   if (screen === "2048") {
     return (
@@ -128,5 +141,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  fill: { backgroundColor: "#eef1e8", flex: 1 }
+  fill: { backgroundColor: colors.background, flex: 1 }
 });
