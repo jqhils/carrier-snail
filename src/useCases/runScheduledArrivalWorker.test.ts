@@ -109,7 +109,8 @@ describe("runScheduledArrivalWorker", () => {
       {
         reminderId: "reminder-1",
         text: "check passport",
-        title: "Carrier Snail arrived"
+        title: "Carrier Snail arrived",
+        userId: "carrier-user-1"
       }
     ]);
     expect(completed.journeys[0]).toMatchObject({
@@ -162,7 +163,8 @@ describe("runScheduledArrivalWorker", () => {
       {
         reminderId: "todo-1",
         text: "check passport",
-        title: "Carrier Snail arrived"
+        title: "Carrier Snail arrived",
+        userId: "carrier-user-1"
       }
     ]);
     expect(completed.todos[0]).toMatchObject({
