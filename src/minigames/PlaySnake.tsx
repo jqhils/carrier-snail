@@ -15,12 +15,19 @@ type Props = {
     reward: SnailGameReward,
     result: GameResult
   ) => void;
+  paused?: boolean;
   snail: Snail;
 };
 
 // Play Snake *as* a specific owned snail — its species sprite is the head. On
 // game over it reports a slime + xp reward, same contract as Flappy and 2048.
-export function PlaySnake({ bestScore = 0, onClose, onReward, snail }: Props) {
+export function PlaySnake({
+  bestScore = 0,
+  onClose,
+  onReward,
+  paused,
+  snail
+}: Props) {
   const character = useMemo(() => snailToCharacter(snail), [snail]);
   const snailSprite = SNAIL_SPRITE_ASSETS[snail.speciesId];
 
@@ -28,6 +35,7 @@ export function PlaySnake({ bestScore = 0, onClose, onReward, snail }: Props) {
     <SnakeGame
       character={character}
       bestScore={bestScore}
+      paused={paused}
       snailSprite={snailSprite}
       onExit={onClose}
       onResult={(result: GameResult) => {

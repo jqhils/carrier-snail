@@ -45,11 +45,13 @@ export function SnakeGame({
   character,
   onExit,
   onResult,
+  paused,
   rewardLabel,
   snailSprite
 }: GameComponentProps & {
   autoStart?: boolean;
   bestScore?: number;
+  paused?: boolean;
   rewardLabel?: (score: number) => string;
   snailSprite: ImageSourcePropType;
 }) {
@@ -89,13 +91,13 @@ export function SnakeGame({
   // changes; the functional update always sees the latest state.
   const speedLevel = Math.min(12, Math.floor(game.score / 4));
   useEffect(() => {
-    if (game.phase !== "playing") {
+    if (game.phase !== "playing" || paused) {
       return;
     }
     const delay = Math.max(70, 150 - speedLevel * 8);
     const id = setInterval(() => setGame((s) => step(s)), delay);
     return () => clearInterval(id);
-  }, [game.phase, speedLevel]);
+  }, [game.phase, paused, speedLevel]);
 
   const turnTo = useCallback(
     (dir: Parameters<typeof turn>[1]) => setGame((s) => turn(s, dir)),

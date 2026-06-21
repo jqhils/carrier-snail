@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GamesListScreen } from "./GamesListScreen";
 import { getHighScore, mergeHighScore, type HighScoreMap } from "./highScores";
@@ -76,6 +76,9 @@ export function SnailGameFlowProvider({
   const [snail, setSnail] = useState<Snail | null>(null);
   const [step, setStep] = useState<Step>("detail");
   const [activeGame, setActiveGame] = useState<GameId>("flappy");
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Bumping this remounts the active game — the menu's Restart.
+  const [runKey, setRunKey] = useState(0);
   const [highScores, setHighScores] = useState<HighScoreMap>({});
 
   useEffect(() => {
@@ -154,6 +157,7 @@ export function SnailGameFlowProvider({
               onBack={() => setSnail(null)}
               onPlay={(gameId) => {
                 setActiveGame(gameId);
+                setMenuOpen(false);
                 setStep("playing");
               }}
             />
@@ -161,15 +165,18 @@ export function SnailGameFlowProvider({
 
           {step === "playing" && activeGame === "flappy" ? (
             <PlaySnailGame
+              key={runKey}
               snail={snail}
               bestScore={getHighScore(highScores, snail.id, "flappy")}
               onClose={() => setStep("games")}
               onReward={handleReward}
+              paused={menuOpen}
             />
           ) : null}
 
           {step === "playing" && activeGame === "2048" ? (
             <Play2048
+              key={runKey}
               snail={snail}
               bestScore={getHighScore(highScores, snail.id, "2048")}
               onClose={() => setStep("games")}
@@ -179,11 +186,56 @@ export function SnailGameFlowProvider({
 
           {step === "playing" && activeGame === "snake" ? (
             <PlaySnake
+              key={runKey}
               snail={snail}
               bestScore={getHighScore(highScores, snail.id, "snake")}
               onClose={() => setStep("games")}
               onReward={handleReward}
+              paused={menuOpen}
             />
+          ) : null}
+
+          {step === "playing" ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Game menu"
+              onPress={() => setMenuOpen(true)}
+              style={styles.menuButton}
+            >
+              <Text style={styles.menuButtonText}>☰</Text>
+            </Pressable>
+          ) : null}
+
+          {step === "playing" && menuOpen ? (
+            <View style={styles.pauseOverlay}>
+              <View style={styles.pauseCard}>
+                <Text style={styles.pauseTitle}>Paused</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setMenuOpen(false)}
+                  style={styles.pauseButton}
+                >
+                  <Text style={styles.pauseButtonText}>Resume</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setRunKey((key) => key + 1);
+                    setMenuOpen(false);
+                  }}
+                  style={styles.pauseButton}
+                >
+                  <Text style={styles.pauseButtonText}>Restart</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setStep("games")}
+                  style={[styles.pauseButton, styles.pauseButtonQuit]}
+                >
+                  <Text style={styles.pauseButtonText}>Quit</Text>
+                </Pressable>
+              </View>
+            </View>
           ) : null}
         </View>
       ) : null}
@@ -192,6 +244,19 @@ export function SnailGameFlowProvider({
 }
 
 const styles = StyleSheet.create({
+  menuButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(37,51,46,0.82)",
+    borderRadius: 18,
+    height: 36,
+    justifyContent: "center",
+    position: "absolute",
+    right: 14,
+    top: 48,
+    width: 36,
+    zIndex: 60
+  },
+  menuButtonText: { color: "#f8f6ed", fontSize: 18, fontWeight: "800" },
   overlay: {
     backgroundColor: "#edf1e8",
     bottom: 0,
@@ -200,5 +265,38 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 50
+  },
+  pauseButton: {
+    alignItems: "center",
+    backgroundColor: "#3f6d5b",
+    borderRadius: 10,
+    paddingVertical: 12
+  },
+  pauseButtonQuit: { backgroundColor: "#a85a32" },
+  pauseButtonText: { color: "#f8f6ed", fontSize: 15, fontWeight: "800" },
+  pauseCard: {
+    backgroundColor: "#f8f6ed",
+    borderRadius: 18,
+    gap: 10,
+    padding: 22,
+    width: 240
+  },
+  pauseOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(37,51,46,0.55)",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 60
+  },
+  pauseTitle: {
+    color: "#25332e",
+    fontSize: 20,
+    fontWeight: "900",
+    marginBottom: 4,
+    textAlign: "center"
   }
 });

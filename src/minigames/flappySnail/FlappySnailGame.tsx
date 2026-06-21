@@ -60,10 +60,12 @@ export function FlappySnailGame({
   character,
   onExit,
   onResult,
+  paused,
   rewardLabel,
   snailSprite
 }: GameComponentProps & {
   autoStart?: boolean;
+  paused?: boolean;
   rewardLabel?: (score: number) => string;
   snailSprite: ImageSourcePropType;
 }) {
@@ -90,6 +92,11 @@ export function FlappySnailGame({
     onResultRef.current = onResult;
   }, [onResult]);
 
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    pausedRef.current = Boolean(paused);
+  }, [paused]);
+
   // Rebuild before play if the viewport or character changes.
   useEffect(() => {
     if (stateRef.current.phase === "ready") {
@@ -105,6 +112,11 @@ export function FlappySnailGame({
 
     const loop = () => {
       if (!mounted) {
+        return;
+      }
+
+      if (pausedRef.current) {
+        raf = requestAnimationFrame(loop);
         return;
       }
 
