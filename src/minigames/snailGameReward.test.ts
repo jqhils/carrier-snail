@@ -1,4 +1,8 @@
-import { creditSnailGameReward, scoreToSnailReward } from "./snailGameReward";
+import {
+  creditSnailGameReward,
+  scoreToSaltStormReward,
+  scoreToSnailReward
+} from "./snailGameReward";
 
 describe("snail game reward", () => {
   it("a zero run earns nothing", () => {
@@ -32,5 +36,17 @@ describe("snail game reward", () => {
     expect(out.snails.find((snail) => snail.id === "b")?.experiencePoints).toBe(
       0
     );
+  });
+});
+
+describe("scoreToSaltStormReward (slime is hard-won)", () => {
+  it("gives no slime for a short run (under 10s)", () => {
+    expect(scoreToSaltStormReward(99).slime).toBe(0);
+  });
+  it("gives 1 slime at ~10s survived", () => {
+    expect(scoreToSaltStormReward(100).slime).toBe(1);
+  });
+  it("caps slime at 8", () => {
+    expect(scoreToSaltStormReward(100000).slime).toBe(8);
   });
 });

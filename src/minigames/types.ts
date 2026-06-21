@@ -6,7 +6,7 @@
 // about the picker, XP, or leaderboard. All of that lives in the hub. Adding a
 // new game means writing one component to this contract; nothing else changes.
 
-export type GameId = "flappy" | "2048" | "snake";
+export type GameId = "flappy" | "2048" | "snake" | "salt";
 
 // Passive power-up: optional scalar tweaks a game merges into its own config.
 // Each game reads only the fields it understands; an empty modifier = cosmetic.

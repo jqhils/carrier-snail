@@ -28,5 +28,11 @@ export const GAMES: GameCatalogEntry[] = [
     blurb: "Eat, grow, don't cross your own trail.",
     id: "snake",
     name: "Snail Snake"
+  },
+  {
+    available: true,
+    blurb: "Dodge the salt \u2014 snails hate it.",
+    id: "salt",
+    name: "Salt Storm"
   }
 ];
