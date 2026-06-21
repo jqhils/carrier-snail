@@ -38,7 +38,7 @@ a more visible trail, and selectable map skins.
 | `comp-sci` | Comp Sci Student Snail | uncommon | code > sleep |
 | `postal` | Postal Snail | uncommon | a born carrier |
 | `uni-sydney` | University of Sydney Snail | rare | sandstone and deadlines |
-| `absent-father` | Absent Father Snail | rare | gone for milk, 8 km out |
+| `absent-father` | Absent Father Snail | rare | gone for milk, several km out |
 | `red-bull` | Red Bull Snail | mythic | gives a snail wings |
 | `golden` | Golden Shell Snail | mythic | shimmering, prized |
 | `backwards` | Backwards Snail | cursed | crawls the wrong way (ties the backwards quirk) |

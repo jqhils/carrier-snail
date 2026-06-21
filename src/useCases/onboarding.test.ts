@@ -21,7 +21,7 @@ describe("onboarding", () => {
     const onboardingCopy = FIRST_RUN_ONBOARDING_STEPS.join(" ");
 
     expect(onboardingCopy).toMatch(/Garden Snail|snail/i);
-    expect(onboardingCopy).toMatch(/8 km|8km/i);
+    expect(onboardingCopy).toMatch(/between 1 km and under 5 km/i);
     expect(onboardingCopy).toMatch(/no mid-journey notifications/i);
     expect(onboardingCopy).toMatch(/one push/i);
     expect(onboardingCopy).toMatch(/recall/i);

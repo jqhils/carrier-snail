@@ -49,7 +49,8 @@ Floor itself is not optional.)*
 1. Write a to-do (a short line of text). To-dos are limitless and do not need a
    snail until you send one.
 2. Assign a snail from your stable when the to-do deserves a carrier. It
-   **spawns ~8 km away** and sets off toward your live location.
+   **spawns at a random spot between 1 km and under 5 km away** and sets off
+   toward your live location.
 3. It chases the places you come to **rest** — home, desk, bed. A snail moving
    at 48 m/hour only closes distance when you hold still. This is intended: the
    snail creeps toward your stillness.

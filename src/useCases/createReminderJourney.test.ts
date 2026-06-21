@@ -13,7 +13,8 @@ import {
   BASE_SNAIL_SPEED_METERS_PER_HOUR,
   distanceMeters,
   getCrawlFrame,
-  PHASE_ZERO_SPAWN_DISTANCE_METERS
+  PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS,
+  PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS
 } from "../journey/snailCrawl";
 
 const target = {
@@ -76,7 +77,7 @@ describe("createReminderJourney", () => {
     });
   });
 
-  it("starts the local journey about 8 km away on a straight geodesic", () => {
+  it("starts the local journey at a random point under 5 km away on a straight geodesic", () => {
     const repository = new InMemoryCarrierRepository(createInitialCarrierState());
 
     const { journey } = createReminderJourney(
@@ -88,11 +89,13 @@ describe("createReminderJourney", () => {
       }
     );
 
-    expect(distanceMeters(journey.start, journey.target)).toBeGreaterThan(
-      PHASE_ZERO_SPAWN_DISTANCE_METERS - 25
+    const spawnDistanceMeters = distanceMeters(journey.start, journey.target);
+
+    expect(spawnDistanceMeters).toBeGreaterThanOrEqual(
+      PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS
     );
-    expect(distanceMeters(journey.start, journey.target)).toBeLessThan(
-      PHASE_ZERO_SPAWN_DISTANCE_METERS + 25
+    expect(spawnDistanceMeters).toBeLessThan(
+      PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS
     );
 
     const afterOneHour = getCrawlFrame({

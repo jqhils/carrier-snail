@@ -129,16 +129,18 @@ export function assignSnailToToDo(
   }
 
   const createdAtMs = clock.now();
+  const journeyId = `journey-${state.journeys.length + 1}`;
   const baseJourney = createPhaseZeroJourney({
     createdAtMs,
     quirk: snail.quirk,
     quirkSeed: snail.quirkSeed,
+    spawnSeed: `${journeyId}:${todo.id}:${snail.id}:${createdAtMs}`,
     speedMetersPerHour: snail.baseSpeedMetersPerHour,
     target: coarsenCoordinate(locationSource.currentTarget())
   });
   const journey: JourneyRecord = {
     ...baseJourney,
-    id: `journey-${state.journeys.length + 1}`,
+    id: journeyId,
     snailId: snail.id,
     status: "in-flight",
     todoId: todo.id

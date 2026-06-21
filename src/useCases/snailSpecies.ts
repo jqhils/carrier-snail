@@ -176,7 +176,7 @@ export const SNAIL_SPECIES_CATALOG: SnailSpecies[] = [
     baseSpeedMetersPerHour: 65,
     displayName: "Absent Father Snail",
     id: "absent-father",
-    lore: "Went out for milk. Reports suggest an 8 km head start.",
+    lore: "Went out for milk. Reports suggest a several-kilometer head start.",
     quirk: "scenic-detour",
     rarity: "rare",
     reliability: 0.72,

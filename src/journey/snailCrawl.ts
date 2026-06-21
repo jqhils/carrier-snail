@@ -50,8 +50,8 @@ export type JourneyQuirkEffect =
     };
 
 export const BASE_SNAIL_SPEED_METERS_PER_HOUR = 48;
-export const PHASE_ZERO_SPAWN_DISTANCE_METERS = 8000;
-export const PHASE_ZERO_SPAWN_BEARING_DEGREES = 235;
+export const PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS = 1000;
+export const PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS = 5000;
 
 const EARTH_RADIUS_METERS = 6371008.8;
 const DEBUG_TIME_WARP_FACTORS = [1, 1000, 100000] as const;
@@ -81,19 +81,24 @@ export function createPhaseZeroJourney({
   createdAtMs,
   quirk = "none",
   quirkSeed = "phase-zero",
+  spawnSeed,
   speedMetersPerHour = BASE_SNAIL_SPEED_METERS_PER_HOUR,
   target
 }: {
   createdAtMs: number;
   quirk?: JourneyQuirk;
   quirkSeed?: string;
+  spawnSeed?: string;
   speedMetersPerHour?: number;
   target: Coordinate;
 }): PhaseZeroJourney {
+  const resolvedSpawnSeed =
+    spawnSeed ??
+    `${createdAtMs}:${target.latitude}:${target.longitude}:${quirk}:${quirkSeed}`;
   const start = destinationCoordinate({
     from: target,
-    bearingDegrees: PHASE_ZERO_SPAWN_BEARING_DEGREES,
-    distanceMeters: PHASE_ZERO_SPAWN_DISTANCE_METERS
+    bearingDegrees: seedUnit(resolvedSpawnSeed, "spawn-bearing") * 360,
+    distanceMeters: randomSpawnDistanceMeters(resolvedSpawnSeed)
   });
 
   return {
@@ -104,6 +109,16 @@ export function createPhaseZeroJourney({
     target,
     speedMetersPerHour
   };
+}
+
+function randomSpawnDistanceMeters(seed: string): number {
+  const minimumSquared = PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS ** 2;
+  const maximumSquared = PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS ** 2;
+
+  return Math.sqrt(
+    minimumSquared +
+      seedUnit(seed, "spawn-distance") * (maximumSquared - minimumSquared)
+  );
 }
 
 export function getCrawlFrame({
@@ -273,7 +288,7 @@ function seedUnit(seed: string, salt: string): number {
     hash = Math.imul(hash, 16777619);
   }
 
-  return (hash >>> 0) / 4294967295;
+  return (hash >>> 0) / 4294967296;
 }
 
 export function distanceMeters(a: Coordinate, b: Coordinate): number {

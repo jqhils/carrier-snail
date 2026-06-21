@@ -4,7 +4,8 @@ import {
   distanceMeters,
   getAllowedTimeWarpFactors,
   getCrawlFrame,
-  PHASE_ZERO_SPAWN_DISTANCE_METERS
+  PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS,
+  PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS
 } from "./snailCrawl";
 
 const target = {
@@ -13,21 +14,35 @@ const target = {
 };
 
 describe("phase zero snail crawl", () => {
-  it("spawns the demo snail about 8 km from the target", () => {
+  it("spawns the demo snail at a seeded random point under 5 km from the target", () => {
     const journey = createPhaseZeroJourney({
-      target,
-      createdAtMs: 0
+      createdAtMs: 0,
+      spawnSeed: "first-snail",
+      target
     });
+    const sameSeedJourney = createPhaseZeroJourney({
+      createdAtMs: 0,
+      spawnSeed: "first-snail",
+      target
+    });
+    const otherSeedJourney = createPhaseZeroJourney({
+      createdAtMs: 0,
+      spawnSeed: "other-snail",
+      target
+    });
+    const spawnDistanceMeters = distanceMeters(journey.start, journey.target);
 
-    expect(distanceMeters(journey.start, journey.target)).toBeGreaterThan(
-      PHASE_ZERO_SPAWN_DISTANCE_METERS - 25
+    expect(spawnDistanceMeters).toBeGreaterThanOrEqual(
+      PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS
     );
-    expect(distanceMeters(journey.start, journey.target)).toBeLessThan(
-      PHASE_ZERO_SPAWN_DISTANCE_METERS + 25
+    expect(spawnDistanceMeters).toBeLessThan(
+      PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS
     );
+    expect(sameSeedJourney.start).toEqual(journey.start);
+    expect(otherSeedJourney.start).not.toEqual(journey.start);
   });
 
-  it("moves the snail at base speed along the hardcoded geodesic", () => {
+  it("moves the snail at base speed along the spawned geodesic", () => {
     const journey = createPhaseZeroJourney({
       target,
       createdAtMs: 0
@@ -48,7 +63,7 @@ describe("phase zero snail crawl", () => {
       0
     );
     expect(afterOneHour.progress).toBeGreaterThan(0);
-    expect(afterOneHour.progress).toBeLessThan(0.01);
+    expect(afterOneHour.progress).toBeLessThan(0.05);
     expect(afterOneHour.arrived).toBe(false);
   });
 

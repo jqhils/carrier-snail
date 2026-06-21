@@ -78,23 +78,26 @@ export function createReminderJourney(
   }
 
   const createdAtMs = clock.now();
+  const reminderId = `reminder-${state.reminders.length + 1}`;
+  const journeyId = `journey-${state.journeys.length + 1}`;
   const baseJourney = createPhaseZeroJourney({
     createdAtMs,
     quirk: snail.quirk,
     quirkSeed: snail.quirkSeed,
+    spawnSeed: `${journeyId}:${reminderId}:${snail.id}:${createdAtMs}`,
     speedMetersPerHour: snail.baseSpeedMetersPerHour,
     target: coarsenCoordinate(locationSource.currentTarget())
   });
   const reminder: Reminder = {
     createdAtMs,
-    id: `reminder-${state.reminders.length + 1}`,
+    id: reminderId,
     snailId: snail.id,
     status: "in-flight",
     text
   };
   const journey: JourneyRecord = {
     ...baseJourney,
-    id: `journey-${state.journeys.length + 1}`,
+    id: journeyId,
     reminderId: reminder.id,
     snailId: snail.id,
     status: "in-flight",

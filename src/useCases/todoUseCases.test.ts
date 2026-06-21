@@ -1,4 +1,8 @@
-import { distanceMeters } from "../journey/snailCrawl";
+import {
+  distanceMeters,
+  PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS,
+  PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS
+} from "../journey/snailCrawl";
 import {
   createInitialCarrierState,
   InMemoryCarrierRepository,
@@ -86,8 +90,11 @@ describe("to-do use-cases", () => {
     });
 
     expect(result.journey.todoId).toBe(todo.id);
-    expect(distanceMeters(result.journey.start, result.journey.target)).toBeGreaterThan(
-      7900
+    expect(distanceMeters(result.journey.start, result.journey.target)).toBeGreaterThanOrEqual(
+      PHASE_ZERO_MIN_SPAWN_DISTANCE_METERS
+    );
+    expect(distanceMeters(result.journey.start, result.journey.target)).toBeLessThan(
+      PHASE_ZERO_MAX_SPAWN_DISTANCE_METERS
     );
     expect(state.todos[0]).toMatchObject({
       id: todo.id,

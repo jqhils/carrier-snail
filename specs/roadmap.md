@@ -20,9 +20,9 @@
 
 ### Phase 1 — The journey, client-only
 *The full loop end-to-end on one device, no backend.*
-- Set a reminder (text). Snail **spawns ~8 km away** and crawls toward your
-  foreground-sampled location at base speed via geodesic interpolation over
-  wall-clock time.
+- Set a reminder (text). Snail **spawns at a random spot between 1 km and under
+  5 km away** and crawls toward your foreground-sampled location at base speed
+  via geodesic interpolation over wall-clock time.
 - Slime trail draws behind it and **fades** over time (Skia).
 - Arrival fires a **local** notification; the reminder is shown.
 - ✅ **Done when:** set → crawl → arrive works locally, with no server.

@@ -2,7 +2,7 @@ import type { Clock } from "./createReminderJourney";
 import type { CarrierRepository, CarrierState } from "./localCarrierState";
 
 export const FIRST_RUN_ONBOARDING_STEPS = [
-  "Write a short to-do, then send a snail when it deserves a carrier. Your starter Garden Snail begins about 8 km away and crawls toward your coarse resting place.",
+  "Write a short to-do, then send a snail when it deserves a carrier. Your starter Garden Snail begins at a random spot between 1 km and under 5 km away, then crawls toward your coarse resting place.",
   "There are no mid-journey notifications. Carrier Snail sends one push only when the snail finally arrives.",
   "Recall is always available. The snail comes home empty and the to-do stays open."
 ] as const;

@@ -147,4 +147,5 @@ nothing in the stack locks us out of it.
 - RevenueCat vs direct store billing — revisit as tracked revenue approaches the
   ~1% threshold.
 - Gacha odds disclosure + per-store IAP compliance details.
-- Exact tunables: base speed, spawn distance (~8 km default), Floor constants.
+- Exact tunables: base speed, spawn distance (1 km to <5 km default), Floor
+  constants.

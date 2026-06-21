@@ -23,12 +23,13 @@ something I enjoy returning to, not a void.
 Carrier Snail keeps a limitless **to-do** list. Any to-do can be assigned to a
 **snail** that physically crawls across a **real map** toward my live location at
 genuine snail speed (~0.03 mph ≈ 48 m/hour). When I send a snail from my
-**stable**, it **spawns ~8 km away** and sets off, leaving a glistening **slime
-trail** that lingers and fades. There are **no notifications until it arrives** —
-then exactly **one push**. There is no speed-up button. A server-enforced
-**Delivery Floor** guarantees nothing ever arrives sooner than 24 hours (and
-never under ~40% of its honest travel time), so the app can never become a
-same-day tool — no matter my snail's speed, level, or spending.
+**stable**, it **spawns at a random spot between 1 km and under 5 km away** and
+sets off, leaving a glistening **slime trail** that lingers and fades. There are
+**no notifications until it arrives** — then exactly **one push**. There is no
+speed-up button. A server-enforced **Delivery Floor** guarantees nothing ever
+arrives sooner than 24 hours (and never under ~40% of its honest travel time),
+so the app can never become a same-day tool — no matter my snail's speed, level,
+or spending.
 
 The to-dos that still matter after the **journey** are the ones that were real.
 The snails are collectible — a finite stable I grow by completing journeys and
@@ -42,7 +43,7 @@ becomes something to tend and enjoy.
 1. As a reminder-setter, I want to write a short to-do (a line of text) without assigning a snail, so that I can capture a thought without consuming stable capacity.
 2. As a reminder-setter, I want to assign a snail from my stable to carry a to-do, so that I choose who delivers it and how.
 3. As a reminder-setter, I want to see how many snails are free versus busy before I send one, so that I understand my remaining journey capacity.
-4. As a reminder-setter, I want the snail to set off from a point ~8 km away, so that even a to-do sent at home becomes a real journey.
+4. As a reminder-setter, I want the snail to set off from a random point between 1 km and under 5 km away, so that even a to-do sent at home becomes a real journey.
 5. As a reminder-setter, I want an optimistic, honest estimate ("~next week") rather than a promised deadline, so that my expectations are set without a false guarantee.
 6. As a reminder-setter, I want to recall a snail at any time, freeing the snail while keeping the to-do open, so that I can change my mind without losing the thought.
 7. As a reminder-setter, I want delete and completion to be separate actions from recall, so that bringing a snail home never discards a to-do by accident.
@@ -235,8 +236,8 @@ push was scheduled, that a reward was granted — not internal call shapes.
     intends otherwise.
 - **Use-case layer — tested through the one seam**, with all ports faked:
   - Creating a to-do consumes no snail and does not create a journey.
-  - Assigning a snail to a to-do spawns a journey ~8 km out and marks the snail
-    busy; concurrent journeys are gated by stable size.
+  - Assigning a snail to a to-do spawns a journey between 1 km and under 5 km
+    out and marks the snail busy; concurrent journeys are gated by stable size.
   - Advancing the `Clock` produces correct positions and, at the clamped ETA,
     fires **exactly one** arrival push — and **never before the Floor**.
   - On completion, the snail returns to the stable and an egg is granted.
@@ -282,7 +283,7 @@ directly, for pure modules), and should avoid asserting on internals.
   tracker. Until then this file is the PRD of record; once a tracker exists,
   publish and label `ready-for-agent`.
 - **Tunables** (defaults, all adjustable except where noted): base speed
-  0.03 mph ≈ 48 m/h; spawn distance ~8 km; Delivery Floor 24 h / 40% — the Floor
-  *mechanism* is not adjustable away.
+  0.03 mph ≈ 48 m/h; spawn distance 1 km to <5 km; Delivery Floor 24 h / 40% —
+  the Floor *mechanism* is not adjustable away.
 - The `Clock` port is the keystone abstraction: test fast-forward, production
   time-warp, and anti-cheat authoritative time are one and the same seam.
