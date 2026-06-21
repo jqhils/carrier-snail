@@ -71,6 +71,7 @@ export function MySnailsScreen({
   const [detailSnailId, setDetailSnailId] = useState<string | undefined>();
   const [hatchingEggId, setHatchingEggId] = useState<string | undefined>();
   const [fullStablePromptVisible, setFullStablePromptVisible] = useState(false);
+  const [shopVisible, setShopVisible] = useState(false);
   const gameFlow = useSnailGameFlow();
 
   function playSnailGames(snailId: string) {
@@ -132,6 +133,17 @@ export function MySnailsScreen({
         eyebrow="Stable"
         title="My Snails"
         tone="sage"
+      />
+    );
+  }
+
+  if (shopVisible) {
+    return (
+      <ShopView
+        canPurchase={canPurchase}
+        onBack={() => setShopVisible(false)}
+        onBuyProduct={onBuyProduct}
+        purchaseCatalog={purchaseCatalog}
       />
     );
   }
@@ -306,34 +318,23 @@ export function MySnailsScreen({
           </View>
         )}
 
-        <View style={styles.shopList}>
-          <Text style={styles.shopDisclosure}>{PURCHASE_FLOOR_DISCLOSURE}</Text>
-          {purchaseCatalog.map((product) => (
-            <View key={product.id} style={styles.shopRow}>
-              <View style={styles.shopCopy}>
-                <Text numberOfLines={1} style={styles.shopTitle}>
-                  {product.label}
-                </Text>
-                <Text numberOfLines={2} style={styles.shopDetail}>
-                  {formatPurchaseDetail(product)}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Buy ${product.label}`}
-                disabled={!canPurchase}
-                onPress={() => onBuyProduct(product.id)}
-                style={({ pressed }) => [
-                  styles.buyButton,
-                  !canPurchase ? styles.buyButtonDisabled : null,
-                  pressed ? styles.buyButtonPressed : null
-                ]}
-              >
-                <Text style={styles.buyButtonText}>Buy</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open the shop"
+          onPress={() => setShopVisible(true)}
+          style={({ pressed }) => [
+            styles.shopEntry,
+            pressed ? styles.shopEntryPressed : null
+          ]}
+        >
+          <View style={styles.shopEntryBody}>
+            <Text style={styles.shopEntryTitle}>Shop</Text>
+            <Text style={styles.shopEntrySub}>
+              Eggs, cosmetics + stable slots
+            </Text>
+          </View>
+          <Text style={styles.shopEntryChevron}>›</Text>
+        </Pressable>
       </ScrollView>
       {hatchReveal ? (
         <HatchRevealOverlay
@@ -813,6 +814,99 @@ const HATCH_CONFETTI_PARTICLES = [
   { color: "#e0c85a", id: "g", rotate: 58, x: -34, y: -132 },
   { color: "#5f9c9a", id: "h", rotate: -146, x: 38, y: -138 }
 ];
+
+function shopIcon(product: PurchaseCatalogProduct): string {
+  if (product.grant.kind === "eggs") {
+    return "🥚";
+  }
+  if (product.grant.kind === "stable-slot") {
+    return "🐚";
+  }
+  return "✨";
+}
+
+function ShopView({
+  canPurchase,
+  onBack,
+  onBuyProduct,
+  purchaseCatalog
+}: {
+  canPurchase: boolean;
+  onBack: () => void;
+  onBuyProduct: (productId: PurchaseProductId) => void;
+  purchaseCatalog: PurchaseCatalogProduct[];
+}) {
+  return (
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <FadeInView>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.detailTopBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to My Snails"
+              onPress={onBack}
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed ? styles.backButtonPressed : null
+              ]}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.shopHeader}>
+            <Text style={styles.shopEyebrow}>Carrier Shop</Text>
+            <Text style={styles.shopHeading}>Shop</Text>
+            <Text style={styles.shopSubtitle}>
+              Eggs, cosmetics, and stable space for your snails.
+            </Text>
+          </View>
+
+          <View style={styles.shopCards}>
+            {purchaseCatalog.map((product) => (
+              <View key={product.id} style={styles.shopCard}>
+                <View style={styles.shopCardIcon}>
+                  <Text style={styles.shopCardIconText}>{shopIcon(product)}</Text>
+                </View>
+                <View style={styles.shopCardBody}>
+                  <Text numberOfLines={1} style={styles.shopCardTitle}>
+                    {product.label}
+                  </Text>
+                  <Text numberOfLines={2} style={styles.shopCardDetail}>
+                    {formatPurchaseDetail(product)}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Buy ${product.label}`}
+                  disabled={!canPurchase}
+                  onPress={() => onBuyProduct(product.id)}
+                  style={({ pressed }) => [
+                    styles.buyButton,
+                    !canPurchase ? styles.buyButtonDisabled : null,
+                    pressed ? styles.buyButtonPressed : null
+                  ]}
+                >
+                  <Text style={styles.buyButtonText}>Buy</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+
+          {!canPurchase ? (
+            <Text style={styles.shopUnavailable}>
+              Purchases are unavailable right now.
+            </Text>
+          ) : null}
+          <Text style={styles.shopDisclosure}>{PURCHASE_FLOOR_DISCLOSURE}</Text>
+        </ScrollView>
+      </FadeInView>
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   backButton: {
@@ -1377,6 +1471,103 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#edf1e8",
     flex: 1
+  },
+  shopCard: {
+    alignItems: "center",
+    backgroundColor: "#f8f6ed",
+    borderColor: "rgba(37, 51, 46, 0.1)",
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    padding: 14
+  },
+  shopCardBody: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0
+  },
+  shopCardDetail: {
+    color: "#56645e",
+    fontSize: 13,
+    lineHeight: 18
+  },
+  shopCardIcon: {
+    alignItems: "center",
+    backgroundColor: "#e7efe0",
+    borderRadius: 12,
+    height: 46,
+    justifyContent: "center",
+    width: 46
+  },
+  shopCardIconText: {
+    fontSize: 24
+  },
+  shopCardTitle: {
+    color: "#25332e",
+    fontSize: 16,
+    fontWeight: "800"
+  },
+  shopCards: {
+    gap: 12
+  },
+  shopEntry: {
+    alignItems: "center",
+    backgroundColor: "#3f6d5b",
+    borderRadius: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingVertical: 16
+  },
+  shopEntryBody: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0
+  },
+  shopEntryChevron: {
+    color: "#dfeee4",
+    fontSize: 26,
+    fontWeight: "800"
+  },
+  shopEntryPressed: {
+    backgroundColor: "#315547"
+  },
+  shopEntrySub: {
+    color: "#dfeee4",
+    fontSize: 13,
+    fontWeight: "600"
+  },
+  shopEntryTitle: {
+    color: "#f8faf6",
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  shopEyebrow: {
+    color: "#557363",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase"
+  },
+  shopHeader: {
+    gap: 6,
+    marginBottom: 4
+  },
+  shopHeading: {
+    color: "#25332e",
+    fontSize: 28,
+    fontWeight: "900"
+  },
+  shopSubtitle: {
+    color: "#56645e",
+    fontSize: 15,
+    lineHeight: 21
+  },
+  shopUnavailable: {
+    color: "#a13d2d",
+    fontSize: 13,
+    fontWeight: "700"
   },
   shopCopy: {
     flex: 1,
