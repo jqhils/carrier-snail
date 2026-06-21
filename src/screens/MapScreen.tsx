@@ -71,6 +71,7 @@ import {
   type MapSkinId
 } from "../useCases/mapSkins";
 import {
+  expThresholdForLevel,
   levelUpCost,
   levelUpSnail
 } from "../useCases/levelUpSnail";
@@ -315,6 +316,8 @@ export function MapScreen({
   const selectedCanLevel =
     !!selectedOwnedSnail &&
     selectedOwnedSnail.status === "resting" &&
+    selectedOwnedSnail.experiencePoints >=
+      expThresholdForLevel(selectedOwnedSnail.level) &&
     carrierState.softCurrency.slime >= selectedLevelCost;
   const unhatchedEggs = carrierState.eggs.filter(
     (egg) => egg.status === "unhatched"

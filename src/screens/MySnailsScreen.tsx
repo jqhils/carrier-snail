@@ -28,7 +28,7 @@ import type {
   PurchaseCatalogProduct,
   PurchaseProductId
 } from "../useCases/purchaseInventory";
-import { levelUpCost } from "../useCases/levelUpSnail";
+import { expThresholdForLevel, levelUpCost } from "../useCases/levelUpSnail";
 import { PURCHASE_FLOOR_DISCLOSURE } from "../useCases/purchaseInventory";
 import { MAX_SNAIL_NAME_LENGTH } from "../useCases/renameSnail";
 import { getSnailSpecies } from "../useCases/snailSpecies";
@@ -424,6 +424,14 @@ function SnailDetailView({
               <Text style={styles.renameLabel}>Level</Text>
               <Text numberOfLines={1} style={styles.levelText}>
                 Lv {detail.level}
+              </Text>
+              <Text numberOfLines={1} style={styles.renameLabel}>
+                Exp{" "}
+                {Math.min(
+                  detail.experiencePoints,
+                  expThresholdForLevel(detail.level)
+                )}
+                /{expThresholdForLevel(detail.level)}
               </Text>
             </View>
             <Pressable

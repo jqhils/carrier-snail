@@ -4,7 +4,7 @@ import {
 import { createInitialCarrierState, InMemoryCarrierRepository } from "./localCarrierState";
 import { computeServerJourneyEta } from "./computeServerJourneyEta";
 import { createReminderJourney } from "./createReminderJourney";
-import { levelUpSnail } from "./levelUpSnail";
+import { InsufficientExperienceError, levelUpSnail } from "./levelUpSnail";
 
 const target = {
   latitude: -33.8688,
@@ -17,6 +17,10 @@ describe("levelUpSnail", () => {
     const before = initialState.snails[0];
     const repository = new InMemoryCarrierRepository({
       ...initialState,
+      snails: initialState.snails.map((snail) => ({
+        ...snail,
+        experiencePoints: 100
+      })),
       softCurrency: { slime: 1 }
     });
 
@@ -41,6 +45,10 @@ describe("levelUpSnail", () => {
     const initialState = createInitialCarrierState();
     const repository = new InMemoryCarrierRepository({
       ...initialState,
+      snails: initialState.snails.map((snail) => ({
+        ...snail,
+        experiencePoints: 100
+      })),
       softCurrency: { slime: 3 }
     });
 
@@ -67,5 +75,22 @@ describe("levelUpSnail", () => {
     expect(eta.earliestArrivalAtMs).toBeGreaterThanOrEqual(
       DELIVERY_FLOOR_MINIMUM_MS
     );
+  });
+
+  it("requires experience before slime can be spent to level", () => {
+    const initialState = createInitialCarrierState();
+    const repository = new InMemoryCarrierRepository({
+      ...initialState,
+      snails: initialState.snails.map((snail) => ({
+        ...snail,
+        experiencePoints: 0
+      })),
+      softCurrency: { slime: 5 }
+    });
+
+    expect(() => levelUpSnail({ snailId: "garden-1" }, { repository })).toThrow(
+      InsufficientExperienceError
+    );
+    expect(repository.snapshot().softCurrency.slime).toBe(5);
   });
 });
