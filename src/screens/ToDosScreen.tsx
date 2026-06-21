@@ -15,6 +15,26 @@ import { SnailSprite } from "../components/SnailSprite";
 import type { StableSnailListItem } from "../useCases/localCarrierState";
 import type { ToDoListItem } from "../useCases/todoUseCases";
 
+// Status accent + pill colors (ported from the #71 UI pass). Statuses without an
+// entry fall back to the "open" green theme.
+const STATUS_THEME: Record<
+  string,
+  { accent: string; pillBackground: string; pillText: string }
+> = {
+  arrived: { accent: "#c79233", pillBackground: "#f6ecd6", pillText: "#946612" },
+  done: { accent: "#9aa49b", pillBackground: "#e8ece9", pillText: "#5f6e66" },
+  "in-transit": {
+    accent: "#365c8d",
+    pillBackground: "#e2eaf4",
+    pillText: "#2c4d77"
+  },
+  open: { accent: "#5f8a5e", pillBackground: "#e7efe0", pillText: "#3f6d5b" }
+};
+
+function statusThemeFor(status: string) {
+  return STATUS_THEME[status] ?? STATUS_THEME.open;
+}
+
 type ToDosScreenProps = {
   canAssignSnail: boolean;
   editingText: string;
@@ -81,7 +101,14 @@ export function ToDosScreen({
       >
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Your list</Text>
-          <Text style={styles.title}>To Dos</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>To Dos</Text>
+            <View style={styles.countChip}>
+              <Text style={styles.countChipText}>
+                {toDoItems.filter((todo) => todo.status !== "done").length} active
+              </Text>
+            </View>
+          </View>
           <Text style={styles.subtitle}>
             Limitless thoughts. Snails only leave when you send one.
           </Text>
@@ -140,9 +167,16 @@ export function ToDosScreen({
               const showNoSnailPrompt =
                 (todo.status === "open" || todo.status === "arrived") &&
                 !canAssignSnail;
+              const theme = statusThemeFor(todo.status);
 
               return (
-                <View key={todo.id} style={styles.todoItem}>
+                <View
+                  key={todo.id}
+                  style={[
+                    styles.todoItem,
+                    { borderLeftColor: theme.accent, borderLeftWidth: 4 }
+                  ]}
+                >
                   {editing ? (
                     <View style={styles.editBlock}>
                       <TextInput
@@ -184,7 +218,17 @@ export function ToDosScreen({
                         <Text numberOfLines={2} style={styles.todoText}>
                           {todo.text}
                         </Text>
-                        <Text style={styles.statusPill}>{todo.statusLabel}</Text>
+                        <Text
+                          style={[
+                            styles.statusPill,
+                            {
+                              backgroundColor: theme.pillBackground,
+                              color: theme.pillText
+                            }
+                          ]}
+                        >
+                          {todo.statusLabel}
+                        </Text>
                       </View>
                       {todo.snailName || todo.etaCopy ? (
                         <View style={styles.todoMetaRow}>
@@ -672,11 +716,27 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 7
   },
+  countChip: {
+    backgroundColor: "#e7efe0",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3
+  },
+  countChipText: {
+    color: "#3f6d5b",
+    fontSize: 12,
+    fontWeight: "800"
+  },
   title: {
     color: "#25332e",
     fontSize: 24,
     fontWeight: "800",
-    lineHeight: 30,
+    lineHeight: 30
+  },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
     marginTop: 3
   },
   todoHeaderRow: {
