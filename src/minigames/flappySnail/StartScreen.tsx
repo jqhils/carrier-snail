@@ -63,7 +63,7 @@ const C = {
   white: "#ffffff",
   ink: "#3a2a1c",
   cream: "#fff3cf",
-  tealText: "#11616a"
+  tealText: "#2f5546"
 } as const;
 
 /* ------------------------------ fonts ------------------------------ */

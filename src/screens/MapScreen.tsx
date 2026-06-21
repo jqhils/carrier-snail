@@ -71,6 +71,7 @@ import {
   type MapSkinId
 } from "../useCases/mapSkins";
 import {
+  expThresholdForLevel,
   levelUpCost,
   levelUpSnail
 } from "../useCases/levelUpSnail";
@@ -110,6 +111,11 @@ import {
   type ToDoListItem
 } from "../useCases/todoUseCases";
 import { updateForegroundTarget } from "../useCases/updateForegroundTarget";
+import {
+  creditSnailGameReward,
+  type SnailGameReward
+} from "../minigames/snailGameReward";
+import { SnailGameFlowProvider } from "../minigames/SnailGameFlow";
 import { MySnailsScreen } from "./MySnailsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { SettingsScreen } from "./SettingsScreen";
@@ -160,6 +166,7 @@ type BackendSession = {
 type MapScreenProps = {
   activeTab: BottomTabId;
   completeOnboardingSignal: number;
+  onGameActiveChange: (active: boolean) => void;
   onOnboardingVisibleChange: (visible: boolean) => void;
   onUnseenNotificationsChange: (hasUnseen: boolean) => void;
 };
@@ -167,6 +174,7 @@ type MapScreenProps = {
 export function MapScreen({
   activeTab,
   completeOnboardingSignal,
+  onGameActiveChange,
   onOnboardingVisibleChange,
   onUnseenNotificationsChange
 }: MapScreenProps) {
@@ -276,6 +284,7 @@ export function MapScreen({
     number | undefined
   >(undefined);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [gameActive, setGameActive] = useState(false);
   const [requestedWarp, setRequestedWarp] = useState(100000);
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
@@ -315,6 +324,8 @@ export function MapScreen({
   const selectedCanLevel =
     !!selectedOwnedSnail &&
     selectedOwnedSnail.status === "resting" &&
+    selectedOwnedSnail.experiencePoints >=
+      expThresholdForLevel(selectedOwnedSnail.level) &&
     carrierState.softCurrency.slime >= selectedLevelCost;
   const unhatchedEggs = carrierState.eggs.filter(
     (egg) => egg.status === "unhatched"
@@ -324,6 +335,10 @@ export function MapScreen({
   useEffect(() => {
     onOnboardingVisibleChange(onboardingVisible);
   }, [onboardingVisible, onOnboardingVisibleChange]);
+
+  useEffect(() => {
+    onGameActiveChange(gameActive);
+  }, [gameActive, onGameActiveChange]);
   const purchaseCatalog = useMemo(() => getPurchaseCatalog(), []);
   const entitlementProvider = useMemo(
     () =>
@@ -361,6 +376,26 @@ export function MapScreen({
       }
     },
     [backendSession, timeWarpFactor]
+  );
+
+  // Credit a finished minigame run: slime to the balance + experience to the
+  // snail that played, persisted like any other state change. Stays outside the
+  // Delivery Floor (snailGameReward never touches journey timing).
+  const handleGameReward = useCallback(
+    (snailId: string, reward: SnailGameReward) => {
+      const credited = creditSnailGameReward(
+        carrierState.snails,
+        snailId,
+        reward,
+        carrierState.softCurrency.slime
+      );
+      void persistNextCarrierState({
+        ...carrierState,
+        snails: credited.snails,
+        softCurrency: { slime: credited.slime }
+      });
+    },
+    [carrierState, persistNextCarrierState]
   );
   const markNotificationsViewed = useCallback(() => {
     if (!hasUnseenArrivals(carrierState)) {
@@ -620,6 +655,12 @@ export function MapScreen({
   });
 
   useEffect(() => {
+    // While a game is open, stop ticking the map: every tick re-renders the
+    // whole MapScreen tree (and the game mounted inside it). The backend is the
+    // source of truth, so journeys catch up when the game closes.
+    if (gameActive) {
+      return;
+    }
     const interval = setInterval(() => {
       const timestamp = Date.now();
 
@@ -647,7 +688,7 @@ export function MapScreen({
     }, 250);
 
     return () => clearInterval(interval);
-  }, [backendSession, pushSender, timeWarpFactor]);
+  }, [backendSession, gameActive, pushSender, timeWarpFactor]);
 
   useEffect(() => {
     onUnseenNotificationsChange(hasUnseenArrivals(carrierState));
@@ -1119,6 +1160,12 @@ export function MapScreen({
   }
 
   return (
+    <SnailGameFlowProvider
+      onActiveChange={setGameActive}
+      onReward={handleGameReward}
+      slimeBalance={carrierState.softCurrency.slime}
+      snails={carrierState.snails}
+    >
     <View style={styles.screen}>
       <View
         style={[
@@ -1565,6 +1612,7 @@ export function MapScreen({
         />
       ) : null}
     </View>
+    </SnailGameFlowProvider>
   );
 }
 

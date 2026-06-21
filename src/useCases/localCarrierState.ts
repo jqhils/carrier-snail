@@ -176,6 +176,7 @@ export type StableSnailListItem = {
 };
 
 export type StableSnailDetail = StableSnailListItem & {
+  experiencePoints: number;
   journeysCompleted: number;
   lore: string;
   quirk: JourneyQuirk;
@@ -343,6 +344,7 @@ export function getStableSnailDetail(
   return {
     ...stableCarryingDetails(state, snail.id),
     baseSpeedMetersPerHour: snail.baseSpeedMetersPerHour,
+    experiencePoints: snail.experiencePoints,
     id: snail.id,
     journeysCompleted: snail.journeysCompleted,
     level: snail.level,
