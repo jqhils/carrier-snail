@@ -11,7 +11,7 @@ import type { HazardKind } from "./saltStormEngine";
 // the frame. (Leaving a line commented while its PNG is missing keeps the build
 // working — only uncomment a line once that file actually exists.)
 export const HAZARD_SPRITES: Partial<Record<HazardKind, ImageSourcePropType>> = {
-  // salt: require("../../../assets/hazards/salt.png"),
+  salt: require("../../../assets/hazards/salt.png"),
   // bomb: require("../../../assets/hazards/bomb.png"),
   // poison: require("../../../assets/hazards/poison.png")
 };
