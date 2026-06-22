@@ -188,9 +188,6 @@ export function MapScreen({
   const [target, setTarget] = useState<Coordinate>(
     () => readmeScreenshotConfig?.target ?? MOCK_RESTING_POINT
   );
-  const [locationLabel, setLocationLabel] = useState(
-    () => readmeScreenshotConfig?.locationLabel ?? "Mock resting point"
-  );
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
@@ -252,6 +249,9 @@ export function MapScreen({
     [detailsCollapsed, sheetDrag, sheetTranslateY, snapSheet]
   );
   const cameraRef = useRef<CameraRef>(null);
+  // Set briefly when a snail marker is tapped, so the empty-map handler can tell
+  // a marker tap apart from a tap on bare map (which deselects + collapses).
+  const markerTapGuardRef = useRef(false);
   const [hasLocationFix, setHasLocationFix] = useState(
     Boolean(readmeScreenshotConfig)
   );
@@ -557,7 +557,6 @@ export function MapScreen({
           };
 
           setTarget(coords);
-          setLocationLabel("Live location");
           setHasLocationFix(true);
 
           if (!centeredOnFirstFix) {
@@ -1250,13 +1249,29 @@ export function MapScreen({
     }
   }
 
-  function selectWatchJourney(journeyId: string) {
-    // Tapping the snail that's already showing deselects it (and sticks, even if
-    // it's the only one out).
-    setSelectedWatchJourneyId(
-      effectiveSelectedJourneyId === journeyId ? null : journeyId
-    );
+  // Tapping a snail on the map opens its details and slides the sheet out.
+  function watchSnail(journeyId: string) {
+    // A marker tap can also bubble to the map's onPress on some platforms;
+    // guard the deselect briefly, then auto-clear so a later map tap still works.
+    markerTapGuardRef.current = true;
+    setTimeout(() => {
+      markerTapGuardRef.current = false;
+    }, 350);
+    setSelectedWatchJourneyId(journeyId);
     setWatchScrubProgress(undefined);
+    snapSheet(false);
+  }
+
+  // Tapping empty map (no snail) collapses the sheet back to "Tap a snail to
+  // watch".
+  function handleMapPress() {
+    if (markerTapGuardRef.current) {
+      return;
+    }
+
+    setSelectedWatchJourneyId(null);
+    setWatchScrubProgress(undefined);
+    snapSheet(true);
   }
 
   function scrubWatchJourney(progress: number | undefined) {
@@ -1324,6 +1339,7 @@ export function MapScreen({
             mapStyle={mapStyleUrl}
             onDidFailLoadingMap={() => setMapStatus("failed")}
             onDidFinishLoadingStyle={() => setMapStatus("ready")}
+            onPress={handleMapPress}
             style={StyleSheet.absoluteFill}
           >
             <Camera
@@ -1420,10 +1436,10 @@ export function MapScreen({
                     lngLat={[polyline.snail.longitude, polyline.snail.latitude]}
                   >
                     <Pressable
-                      accessibilityLabel={`Select ${snail.name}`}
+                      accessibilityLabel={`Watch ${snail.name}`}
                       accessibilityRole="button"
                       disabled={!canSelectJourney}
-                      onPress={() => selectWatchJourney(id)}
+                      onPress={() => watchSnail(id)}
                       style={({ pressed }) => [
                         styles.snailMarker,
                         highlighted ? styles.snailMarkerHighlighted : null,
@@ -1551,50 +1567,6 @@ export function MapScreen({
                   points {selectedWatchJourney.trailHistory.length}.
                 </Text>
               </>
-            ) : (
-              <>
-                <Text numberOfLines={3} style={styles.watchEta}>
-                  {watchState.journeys.length > 0
-                    ? "Tap a snail on the map, or choose one below to watch its crawl."
-                    : "No snail is carrying a thought yet. Send one from your To Dos."}
-                </Text>
-                <Text numberOfLines={1} style={styles.watchMeta}>
-                  Snails crawl toward {locationLabel.toLowerCase()}.
-                </Text>
-              </>
-            )}
-
-            {watchState.journeys.length > 0 ? (
-              <View style={styles.watchJourneyTabs}>
-                {watchState.journeys.map((watchJourney) => {
-                  const selected =
-                    selectedWatchJourney?.journeyId === watchJourney.journeyId;
-
-                  return (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
-                      key={watchJourney.journeyId}
-                      onPress={() => selectWatchJourney(watchJourney.journeyId)}
-                      style={({ pressed }) => [
-                        styles.watchJourneyTab,
-                        selected ? styles.watchJourneyTabSelected : null,
-                        pressed ? styles.watchJourneyTabPressed : null
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.watchJourneySwatch,
-                          { backgroundColor: watchJourney.trail.color }
-                        ]}
-                      />
-                      <Text numberOfLines={1} style={styles.watchJourneyTabText}>
-                        {watchJourney.snailName}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
             ) : null}
 
             {selectedWatchJourney ? (
