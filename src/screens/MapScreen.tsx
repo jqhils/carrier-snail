@@ -1439,7 +1439,12 @@ export function MapScreen({
                       accessibilityLabel={`Watch ${snail.name}`}
                       accessibilityRole="button"
                       disabled={!canSelectJourney}
-                      onPress={() => watchSnail(id)}
+                      // Select on press-IN, not press: the native map claims any
+                      // tap with the slightest movement as a pan and cancels a
+                      // plain onPress, so a tap "takes a few tries". Reacting on
+                      // touch-down wins the gesture. hitSlop enlarges the target.
+                      hitSlop={16}
+                      onPressIn={() => watchSnail(id)}
                       style={({ pressed }) => [
                         styles.snailMarker,
                         highlighted ? styles.snailMarkerHighlighted : null,
