@@ -151,7 +151,7 @@ const WATCH_SCRUB_STOPS = [
 // Draggable snail-details sheet: a fixed-height sheet that translates down so only
 // the grip (peek) shows, or sits at 0 (expanded). Two snap points.
 const SHEET_EXPANDED_HEIGHT = 400;
-const SHEET_PEEK_HEIGHT = 96;
+const SHEET_PEEK_HEIGHT = 72;
 const SHEET_COLLAPSED_OFFSET = SHEET_EXPANDED_HEIGHT - SHEET_PEEK_HEIGHT;
 
 type BackendSession = {
@@ -1513,20 +1513,29 @@ export function MapScreen({
             {...sheetPan.panHandlers}
           >
             <View style={styles.peekHandle} />
-            <View style={styles.peekTextBlock}>
-              <Text numberOfLines={1} style={styles.peekTitle}>
-                {selectedWatchJourney
-                  ? selectedWatchJourney.snailName
-                  : watchState.journeys.length > 0
-                    ? "Tap a snail to watch"
-                    : "No snails out right now"}
-              </Text>
-              {selectedWatchJourney ? (
+            {selectedWatchJourney ? (
+              <View style={styles.peekTextBlock}>
+                <Text numberOfLines={1} style={styles.peekTitle}>
+                  {selectedWatchJourney.snailName}
+                </Text>
                 <Text numberOfLines={1} style={styles.peekEta}>
                   {selectedWatchJourney.etaRange.copy}
                 </Text>
-              ) : null}
-            </View>
+              </View>
+            ) : (
+              <View style={styles.peekPromptRow}>
+                <MaterialCommunityIcons
+                  color={colors.textMuted}
+                  name="gesture-tap"
+                  size={16}
+                />
+                <Text numberOfLines={1} style={styles.peekPrompt}>
+                  {watchState.journeys.length > 0
+                    ? "Tap a snail for details"
+                    : "No snails out right now"}
+                </Text>
+              </View>
+            )}
           </View>
           <ScrollView
             contentContainerStyle={styles.controlsContent}

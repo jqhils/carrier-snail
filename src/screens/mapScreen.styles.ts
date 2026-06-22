@@ -392,7 +392,8 @@ export const styles = StyleSheet.create({
   peekEta: {
     ...text.bodySm,
     color: colors.textMuted,
-    marginTop: 2
+    marginTop: 1,
+    textAlign: "center"
   },
   peekHandle: {
     alignSelf: "center",
@@ -401,12 +402,27 @@ export const styles = StyleSheet.create({
     height: 4,
     width: 34
   },
+  // Collapsed, no-snail-selected prompt: a quiet, centered teaching cue.
+  peekPrompt: {
+    ...text.bodyStrong,
+    color: colors.textMuted,
+    textAlign: "center"
+  },
+  peekPromptRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    paddingTop: 4
+  },
   peekTextBlock: {
+    alignItems: "center",
+    maxWidth: "100%",
     minWidth: 0
   },
   peekTitle: {
     ...text.bodyStrongLg,
-    color: colors.textPrimary
+    color: colors.textPrimary,
+    textAlign: "center"
   },
   personalityButton: {
     alignItems: "center",
@@ -522,10 +538,11 @@ export const styles = StyleSheet.create({
     color: colors.textOnAccent
   },
   sheetGrip: {
-    gap: 8,
-    paddingBottom: 8,
+    alignItems: "center",
+    gap: 6,
+    paddingBottom: 10,
     paddingHorizontal: 18,
-    paddingTop: 10
+    paddingTop: 8
   },
   sheetScroll: {
     flex: 1
