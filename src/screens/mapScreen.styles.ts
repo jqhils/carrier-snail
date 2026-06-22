@@ -476,6 +476,25 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12
   },
+  persistenceBanner: {
+    alignItems: "center",
+    backgroundColor: colors.warning,
+    borderBottomWidth: 2,
+    borderColor: colors.border,
+    left: 0,
+    paddingBottom: 6,
+    paddingHorizontal: 12,
+    paddingTop: 44,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 50
+  },
+  persistenceBannerText: {
+    ...text.bodyXs,
+    color: colors.textPrimary,
+    textAlign: "center"
+  },
   screen: {
     backgroundColor: colors.background,
     flex: 1

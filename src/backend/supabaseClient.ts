@@ -12,13 +12,18 @@ export type CarrierSupabaseConfig = {
   url: string;
 };
 
-export function readCarrierSupabaseConfig(
-  env: NodeJS.ProcessEnv = process.env
-): CarrierSupabaseConfig | null {
-  const url = env.EXPO_PUBLIC_SUPABASE_URL;
+export function readCarrierSupabaseConfig(): CarrierSupabaseConfig | null {
+  // These MUST be direct `process.env.EXPO_PUBLIC_*` member accesses. Expo/Babel
+  // statically inlines only that exact form into release bundles; reading them
+  // through an alias (e.g. a parameter defaulting to process.env) silently
+  // breaks inlining. It still works in dev — Metro injects process.env at
+  // runtime — but resolves to undefined in a standalone build, dropping the app
+  // into local-only mode. That was the Android prod "cloud sync not configured"
+  // bug: the values were exported at bundle time but never substituted here.
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const anonKey =
-    env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
     return null;
