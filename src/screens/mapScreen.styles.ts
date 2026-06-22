@@ -392,7 +392,8 @@ export const styles = StyleSheet.create({
   peekEta: {
     ...text.bodySm,
     color: colors.textMuted,
-    marginTop: 2
+    marginTop: 1,
+    textAlign: "center"
   },
   peekHandle: {
     alignSelf: "center",
@@ -401,12 +402,27 @@ export const styles = StyleSheet.create({
     height: 4,
     width: 34
   },
+  // Collapsed, no-snail-selected prompt: a quiet, centered teaching cue.
+  peekPrompt: {
+    ...text.bodyStrong,
+    color: colors.textMuted,
+    textAlign: "center"
+  },
+  peekPromptRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    paddingTop: 4
+  },
   peekTextBlock: {
+    alignItems: "center",
+    maxWidth: "100%",
     minWidth: 0
   },
   peekTitle: {
     ...text.bodyStrongLg,
-    color: colors.textPrimary
+    color: colors.textPrimary,
+    textAlign: "center"
   },
   personalityButton: {
     alignItems: "center",
@@ -476,6 +492,25 @@ export const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12
   },
+  persistenceBanner: {
+    alignItems: "center",
+    backgroundColor: colors.warning,
+    borderBottomWidth: 2,
+    borderColor: colors.border,
+    left: 0,
+    paddingBottom: 6,
+    paddingHorizontal: 12,
+    paddingTop: 44,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 50
+  },
+  persistenceBannerText: {
+    ...text.bodyXs,
+    color: colors.textPrimary,
+    textAlign: "center"
+  },
   screen: {
     backgroundColor: colors.background,
     flex: 1
@@ -503,10 +538,11 @@ export const styles = StyleSheet.create({
     color: colors.textOnAccent
   },
   sheetGrip: {
-    gap: 8,
-    paddingBottom: 8,
+    alignItems: "center",
+    gap: 6,
+    paddingBottom: 10,
     paddingHorizontal: 18,
-    paddingTop: 10
+    paddingTop: 8
   },
   sheetScroll: {
     flex: 1
@@ -707,51 +743,11 @@ export const styles = StyleSheet.create({
     marginTop: 12,
     textTransform: "uppercase"
   },
-  watchEta: {
-    ...text.bodySm,
-    color: colors.textMuted,
-    marginTop: 10
-  },
   watchHeaderRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
     justifyContent: "space-between"
-  },
-  watchJourneySwatch: {
-    borderRadius: 5,
-    height: 10,
-    width: 10
-  },
-  watchJourneyTab: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    borderWidth: 2,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 30,
-    maxWidth: 142,
-    paddingHorizontal: 9
-  },
-  watchJourneyTabPressed: {
-    backgroundColor: colors.primarySoft
-  },
-  watchJourneyTabSelected: {
-    borderColor: colors.primary,
-    borderWidth: 3
-  },
-  watchJourneyTabText: {
-    ...text.bodyStrongSm,
-    color: colors.textPrimary,
-    flexShrink: 1
-  },
-  watchJourneyTabs: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 10
   },
   watchKicker: {
     ...text.pixelLabel,

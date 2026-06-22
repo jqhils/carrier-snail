@@ -44,8 +44,13 @@ import { SupabaseAnonymousAuthProvider } from "../backend/supabaseAnonymousAuthP
 import { SupabaseCarrierRepository } from "../backend/supabaseCarrierRepository";
 import {
   createCarrierSupabaseClient,
-  installSupabaseAutoRefresh
+  installSupabaseAutoRefresh,
+  readCarrierSupabaseConfig
 } from "../backend/supabaseClient";
+import {
+  loadLocalCarrierState,
+  persistLocalCarrierState
+} from "../backend/localCarrierStateStorage";
 import { completeArrivedJourneys } from "../useCases/completeArrivedJourneys";
 import {
   hasUnseenArrivals,
@@ -146,7 +151,7 @@ const WATCH_SCRUB_STOPS = [
 // Draggable snail-details sheet: a fixed-height sheet that translates down so only
 // the grip (peek) shows, or sits at 0 (expanded). Two snap points.
 const SHEET_EXPANDED_HEIGHT = 400;
-const SHEET_PEEK_HEIGHT = 96;
+const SHEET_PEEK_HEIGHT = 72;
 const SHEET_COLLAPSED_OFFSET = SHEET_EXPANDED_HEIGHT - SHEET_PEEK_HEIGHT;
 
 type BackendSession = {
@@ -182,9 +187,6 @@ export function MapScreen({
     !readmeScreenshotConfig?.expandMapDetails;
   const [target, setTarget] = useState<Coordinate>(
     () => readmeScreenshotConfig?.target ?? MOCK_RESTING_POINT
-  );
-  const [locationLabel, setLocationLabel] = useState(
-    () => readmeScreenshotConfig?.locationLabel ?? "Mock resting point"
   );
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
@@ -247,6 +249,9 @@ export function MapScreen({
     [detailsCollapsed, sheetDrag, sheetTranslateY, snapSheet]
   );
   const cameraRef = useRef<CameraRef>(null);
+  // Set briefly when a snail marker is tapped, so the empty-map handler can tell
+  // a marker tap apart from a tap on bare map (which deselects + collapses).
+  const markerTapGuardRef = useRef(false);
   const [hasLocationFix, setHasLocationFix] = useState(
     Boolean(readmeScreenshotConfig)
   );
@@ -289,6 +294,26 @@ export function MapScreen({
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null
   );
+  // How player data is being persisted, surfaced so a silent fall-back to
+  // device-only storage is never invisible again.
+  //   "pending" — still resolving the backend on launch
+  //   "cloud"   — Supabase session active; cloud is the source of truth
+  //   "local"   — Supabase not configured; saving to this device only
+  //   "error"   — Supabase configured but unreachable; saving to this device
+  const [persistenceMode, setPersistenceMode] = useState<
+    "pending" | "cloud" | "local" | "error"
+  >(() => {
+    if (readmeScreenshotConfig) {
+      return "cloud";
+    }
+
+    // No Supabase env in this build → device-local storage is the intended
+    // (and only) persistence; otherwise we're still resolving the backend.
+    return readCarrierSupabaseConfig() ? "pending" : "local";
+  });
+  // Set once a cloud session hydrates state, so a slower local-cache read can't
+  // clobber the authoritative cloud snapshot.
+  const hydratedFromBackendRef = useRef(false);
   const [backgroundLocationBusy, setBackgroundLocationBusy] = useState(false);
   const [backgroundLocationMode, setBackgroundLocationMode] =
     useState<BackgroundLocationMode>("foreground-only");
@@ -364,25 +389,67 @@ export function MapScreen({
     () => new ExpoBackgroundLocationController(),
     []
   );
-  const persistNextCarrierState = useCallback(
-    async (nextState: CarrierState) => {
-      if (backendSession) {
-        await backendSession.repository.saveCarrierState(
-          backendSession.user.id,
-          nextState
-        );
+  // Monotonic id for the latest mutation + a chain to serialize backend writes,
+  // so an older/slower reconcile can't clobber newer optimistic state and
+  // back-to-back mutations don't interleave on the server.
+  const persistSeqRef = useRef(0);
+  const persistChainRef = useRef<Promise<void>>(Promise.resolve());
 
-        const loaded = await loadBackendJourneyState({
-          clock: { now: () => Date.now() },
-          repository: backendSession.repository,
-          timeWarpFactor,
-          userId: backendSession.user.id
+  const persistNextCarrierState = useCallback(
+    (nextState: CarrierState): Promise<void> => {
+      // Optimistic: reflect the change in the UI and the device cache
+      // immediately, before any network I/O. This is what makes adding a to-do
+      // or sending/recalling a snail feel instant — previously the UI didn't
+      // update until a full Supabase save + reload round-trip completed. The
+      // cloud save reconciles in the background. In local mode this is the only
+      // persistence, so it must survive restarts regardless.
+      const seq = (persistSeqRef.current += 1);
+      setCarrierState(nextState);
+      void persistLocalCarrierState(nextState);
+
+      if (!backendSession) {
+        return Promise.resolve();
+      }
+
+      const session = backendSession;
+      // Serialize cloud writes so back-to-back mutations apply in order.
+      persistChainRef.current = persistChainRef.current
+        .catch(() => {})
+        .then(async () => {
+          await session.repository.saveCarrierState(session.user.id, nextState);
+
+          // Only the most recent mutation reconciles from the server, so a slow
+          // reload can't overwrite newer optimistic state.
+          if (persistSeqRef.current !== seq) {
+            return;
+          }
+
+          const loaded = await loadBackendJourneyState({
+            clock: { now: () => Date.now() },
+            repository: session.repository,
+            timeWarpFactor,
+            userId: session.user.id
+          });
+
+          if (persistSeqRef.current !== seq) {
+            return;
+          }
+
+          setCarrierState(loaded.carrierState);
+          void persistLocalCarrierState(loaded.carrierState);
+        })
+        .catch((error) => {
+          // Keep the optimistic state + local cache; surface rather than hide.
+          console.warn(
+            `Carrier Snail: cloud save failed; kept this device's copy. ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
         });
 
-        setCarrierState(loaded.carrierState);
-      } else {
-        setCarrierState(nextState);
-      }
+      // Resolve immediately so callers' post-update logic (clearing the input,
+      // updating selection) runs without waiting on the network.
+      return Promise.resolve();
     },
     [backendSession, timeWarpFactor]
   );
@@ -490,7 +557,6 @@ export function MapScreen({
           };
 
           setTarget(coords);
-          setLocationLabel("Live location");
           setHasLocationFix(true);
 
           if (!centeredOnFirstFix) {
@@ -514,6 +580,34 @@ export function MapScreen({
     };
   }, [mapDefaultZoom, readmeScreenshotConfig]);
 
+  // Hydrate from the device-local cache immediately on launch. This is what
+  // makes data survive a restart in local mode, and gives a fast offline
+  // snapshot while the backend (if any) resolves. A successful cloud load wins
+  // and is guarded against this slower read via hydratedFromBackendRef.
+  useEffect(() => {
+    if (readmeScreenshotConfig) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    loadLocalCarrierState()
+      .then((cached) => {
+        if (cancelled || hydratedFromBackendRef.current || !cached) {
+          return;
+        }
+
+        setCarrierState(cached);
+      })
+      .catch(() => {
+        // loadLocalCarrierState already swallows its own errors; nothing to do.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [readmeScreenshotConfig]);
+
   useEffect(() => {
     if (readmeScreenshotConfig) {
       return undefined;
@@ -522,6 +616,12 @@ export function MapScreen({
     const supabase = createCarrierSupabaseClient();
 
     if (!supabase) {
+      // No Supabase env configured in this build — device-local storage is the
+      // intended persistence here, not a failure. persistenceMode already
+      // initialized to "local" for this case.
+      console.info(
+        "Carrier Snail: Supabase not configured; using device-local storage."
+      );
       return undefined;
     }
 
@@ -538,8 +638,15 @@ export function MapScreen({
       });
 
       if (!user) {
-        // Backend configured but unavailable (e.g. anonymous sign-ins disabled).
-        // Fall back to local mode silently; the app stays fully usable.
+        // Backend configured but unavailable (e.g. anonymous sign-ins disabled,
+        // or the device's anon session was lost). Stay on device-local storage
+        // so the app keeps working — but make it visible, not silent.
+        console.warn(
+          "Carrier Snail: could not resolve a cloud session; using device-local storage."
+        );
+        if (!cancelled) {
+          setPersistenceMode("error");
+        }
         return;
       }
 
@@ -548,10 +655,18 @@ export function MapScreen({
         repository,
         userId: user.id
       });
+
+      // Seed an empty cloud account with whatever this device already has
+      // (offline progress) before falling back to a brand-new starter state, so
+      // switching from local to cloud doesn't drop a save.
+      let seedState = createInitialCarrierState();
+      const cached = await loadLocalCarrierState();
+      if (cached && cached.snails.length > 0) {
+        seedState = cached;
+      }
+
       const initialState =
-        loaded.carrierState.snails.length > 0
-          ? loaded.carrierState
-          : createInitialCarrierState();
+        loaded.carrierState.snails.length > 0 ? loaded.carrierState : seedState;
 
       if (loaded.carrierState.snails.length === 0) {
         await repository.saveCarrierState(user.id, initialState);
@@ -561,18 +676,25 @@ export function MapScreen({
         return;
       }
 
+      hydratedFromBackendRef.current = true;
       setBackendSession({ repository, user });
       setCarrierState(initialState);
+      setPersistenceMode("cloud");
+      // Refresh the offline cache with the authoritative cloud snapshot.
+      void persistLocalCarrierState(initialState);
     }
 
     loadBackendState().catch((error) => {
-      // Any other backend setup failure (e.g. row-level security), stay in
-      // local mode rather than surfacing a scary error.
+      // Any other backend setup failure (e.g. row-level security); keep using
+      // device-local storage but surface it instead of hiding it.
       console.warn(
-        `Carrier Snail backend unavailable; using local mode. ${
+        `Carrier Snail: backend unavailable; using device-local storage. ${
           error instanceof Error ? error.message : String(error)
         }`
       );
+      if (!cancelled) {
+        setPersistenceMode("error");
+      }
     });
 
     return () => {
@@ -1029,23 +1151,7 @@ export function MapScreen({
       );
       const nextState = repository.snapshot();
 
-      if (backendSession) {
-        await backendSession.repository.saveCarrierState(
-          backendSession.user.id,
-          nextState
-        );
-
-        const loaded = await loadBackendJourneyState({
-          clock: { now: () => Date.now() },
-          repository: backendSession.repository,
-          timeWarpFactor,
-          userId: backendSession.user.id
-        });
-
-        setCarrierState(loaded.carrierState);
-      } else {
-        setCarrierState(nextState);
-      }
+      await persistNextCarrierState(nextState);
 
       setRequestedSelectedSnailId(result.snail.id);
       setFormError("");
@@ -1096,23 +1202,7 @@ export function MapScreen({
       );
       const nextState = repository.snapshot();
 
-      if (backendSession) {
-        await backendSession.repository.saveCarrierState(
-          backendSession.user.id,
-          nextState
-        );
-
-        const loaded = await loadBackendJourneyState({
-          clock: { now: () => Date.now() },
-          repository: backendSession.repository,
-          timeWarpFactor,
-          userId: backendSession.user.id
-        });
-
-        setCarrierState(loaded.carrierState);
-      } else {
-        setCarrierState(nextState);
-      }
+      await persistNextCarrierState(nextState);
 
       setFormError("");
     } catch (error) {
@@ -1151,23 +1241,7 @@ export function MapScreen({
       );
       const nextState = repository.snapshot();
 
-      if (backendSession) {
-        await backendSession.repository.saveCarrierState(
-          backendSession.user.id,
-          nextState
-        );
-
-        const loaded = await loadBackendJourneyState({
-          clock: { now: () => Date.now() },
-          repository: backendSession.repository,
-          timeWarpFactor,
-          userId: backendSession.user.id
-        });
-
-        setCarrierState(loaded.carrierState);
-      } else {
-        setCarrierState(nextState);
-      }
+      await persistNextCarrierState(nextState);
 
       setFormError("");
     } catch (error) {
@@ -1175,13 +1249,29 @@ export function MapScreen({
     }
   }
 
-  function selectWatchJourney(journeyId: string) {
-    // Tapping the snail that's already showing deselects it (and sticks, even if
-    // it's the only one out).
-    setSelectedWatchJourneyId(
-      effectiveSelectedJourneyId === journeyId ? null : journeyId
-    );
+  // Tapping a snail on the map opens its details and slides the sheet out.
+  function watchSnail(journeyId: string) {
+    // A marker tap can also bubble to the map's onPress on some platforms;
+    // guard the deselect briefly, then auto-clear so a later map tap still works.
+    markerTapGuardRef.current = true;
+    setTimeout(() => {
+      markerTapGuardRef.current = false;
+    }, 350);
+    setSelectedWatchJourneyId(journeyId);
     setWatchScrubProgress(undefined);
+    snapSheet(false);
+  }
+
+  // Tapping empty map (no snail) collapses the sheet back to "Tap a snail to
+  // watch".
+  function handleMapPress() {
+    if (markerTapGuardRef.current) {
+      return;
+    }
+
+    setSelectedWatchJourneyId(null);
+    setWatchScrubProgress(undefined);
+    snapSheet(true);
   }
 
   function scrubWatchJourney(progress: number | undefined) {
@@ -1226,6 +1316,15 @@ export function MapScreen({
       snails={carrierState.snails}
     >
     <View style={styles.screen}>
+      {persistenceMode === "local" || persistenceMode === "error" ? (
+        <View pointerEvents="none" style={styles.persistenceBanner}>
+          <Text style={styles.persistenceBannerText}>
+            {persistenceMode === "error"
+              ? "⚠ Cloud sync unavailable — progress is saved on this device only"
+              : "Saving on this device only — cloud sync not configured"}
+          </Text>
+        </View>
+      ) : null}
       <View
         style={[
           styles.mapSurface,
@@ -1240,6 +1339,7 @@ export function MapScreen({
             mapStyle={mapStyleUrl}
             onDidFailLoadingMap={() => setMapStatus("failed")}
             onDidFinishLoadingStyle={() => setMapStatus("ready")}
+            onPress={handleMapPress}
             style={StyleSheet.absoluteFill}
           >
             <Camera
@@ -1336,10 +1436,15 @@ export function MapScreen({
                     lngLat={[polyline.snail.longitude, polyline.snail.latitude]}
                   >
                     <Pressable
-                      accessibilityLabel={`Select ${snail.name}`}
+                      accessibilityLabel={`Watch ${snail.name}`}
                       accessibilityRole="button"
                       disabled={!canSelectJourney}
-                      onPress={() => selectWatchJourney(id)}
+                      // Select on press-IN, not press: the native map claims any
+                      // tap with the slightest movement as a pan and cancels a
+                      // plain onPress, so a tap "takes a few tries". Reacting on
+                      // touch-down wins the gesture. hitSlop enlarges the target.
+                      hitSlop={16}
+                      onPressIn={() => watchSnail(id)}
                       style={({ pressed }) => [
                         styles.snailMarker,
                         highlighted ? styles.snailMarkerHighlighted : null,
@@ -1408,20 +1513,29 @@ export function MapScreen({
             {...sheetPan.panHandlers}
           >
             <View style={styles.peekHandle} />
-            <View style={styles.peekTextBlock}>
-              <Text numberOfLines={1} style={styles.peekTitle}>
-                {selectedWatchJourney
-                  ? selectedWatchJourney.snailName
-                  : watchState.journeys.length > 0
-                    ? "Tap a snail to watch"
-                    : "No snails out right now"}
-              </Text>
-              {selectedWatchJourney ? (
+            {selectedWatchJourney ? (
+              <View style={styles.peekTextBlock}>
+                <Text numberOfLines={1} style={styles.peekTitle}>
+                  {selectedWatchJourney.snailName}
+                </Text>
                 <Text numberOfLines={1} style={styles.peekEta}>
                   {selectedWatchJourney.etaRange.copy}
                 </Text>
-              ) : null}
-            </View>
+              </View>
+            ) : (
+              <View style={styles.peekPromptRow}>
+                <MaterialCommunityIcons
+                  color={colors.textMuted}
+                  name="gesture-tap"
+                  size={16}
+                />
+                <Text numberOfLines={1} style={styles.peekPrompt}>
+                  {watchState.journeys.length > 0
+                    ? "Tap a snail for details"
+                    : "No snails out right now"}
+                </Text>
+              </View>
+            )}
           </View>
           <ScrollView
             contentContainerStyle={styles.controlsContent}
@@ -1467,50 +1581,6 @@ export function MapScreen({
                   points {selectedWatchJourney.trailHistory.length}.
                 </Text>
               </>
-            ) : (
-              <>
-                <Text numberOfLines={3} style={styles.watchEta}>
-                  {watchState.journeys.length > 0
-                    ? "Tap a snail on the map, or choose one below to watch its crawl."
-                    : "No snail is carrying a thought yet. Send one from your To Dos."}
-                </Text>
-                <Text numberOfLines={1} style={styles.watchMeta}>
-                  Snails crawl toward {locationLabel.toLowerCase()}.
-                </Text>
-              </>
-            )}
-
-            {watchState.journeys.length > 0 ? (
-              <View style={styles.watchJourneyTabs}>
-                {watchState.journeys.map((watchJourney) => {
-                  const selected =
-                    selectedWatchJourney?.journeyId === watchJourney.journeyId;
-
-                  return (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Inspect ${watchJourney.reminderText}`}
-                      key={watchJourney.journeyId}
-                      onPress={() => selectWatchJourney(watchJourney.journeyId)}
-                      style={({ pressed }) => [
-                        styles.watchJourneyTab,
-                        selected ? styles.watchJourneyTabSelected : null,
-                        pressed ? styles.watchJourneyTabPressed : null
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.watchJourneySwatch,
-                          { backgroundColor: watchJourney.trail.color }
-                        ]}
-                      />
-                      <Text numberOfLines={1} style={styles.watchJourneyTabText}>
-                        {watchJourney.snailName}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
             ) : null}
 
             {selectedWatchJourney ? (
