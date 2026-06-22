@@ -4,26 +4,38 @@
 
 # Carrier Snail
 
-Carrier Snail is an Expo/React Native app where reminders crawl across a real
-map at snail speed. The constitution in `specs/` is the source of truth; the
-Delivery Floor must never be bypassed.
+Carrier Snail is an Expo/React Native app where your reminders are carried to
+you by a snail crawling across a real map — at honest snail speed. It's a calm,
+anti-urgency to-do app wrapped in a collectible game: hatch and level a stable of
+snail species, earn **slime** by making deliveries and playing minigames, and
+spend it in the shop.
+
+The constitution in `specs/` is the source of truth; the **Delivery Floor** (a
+reminder never arrives sooner than its honest distance-time) must never be
+bypassed.
 
 ## App preview
 
-<table>
-  <tr>
-    <td align="center"><img src="assets/readme/screenshots/intro.png" alt="Intro overlay with Get Started button" width="210"><br><strong>Intro</strong></td>
-    <td align="center"><img src="assets/readme/screenshots/map.png" alt="Map with an in-transit snail and trail details" width="210"><br><strong>Map</strong></td>
-    <td align="center"><img src="assets/readme/screenshots/snails.png" alt="My Snails inventory with several species" width="210"><br><strong>My Snails</strong></td>
-    <td align="center"><img src="assets/readme/screenshots/snail-detail.png" alt="Red Bull Snail detail page" width="210"><br><strong>Snail Details</strong></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="assets/readme/screenshots/flappy.png" alt="Flappy Snail mid-game screenshot" width="210"><br><strong>Flappy Snail</strong></td>
-    <td align="center"><img src="assets/readme/screenshots/todos.png" alt="Populated To Dos list" width="210"><br><strong>To Dos</strong></td>
-    <td align="center"><img src="assets/readme/screenshots/notifications.png" alt="Populated notifications inbox" width="210"><br><strong>Notifications</strong></td>
-    <td align="center"><img src="assets/readme/screenshots/settings.png" alt="Settings page" width="210"><br><strong>Settings</strong></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="assets/readme/app-preview-collage.png" alt="Carrier Snail app preview collage showing Intro, Map, My Snails, Snail Details, Flappy Snail, To Dos, Notifications, and Settings" width="100%">
+</p>
+
+## What's inside
+
+- **Real-map journeys.** Each reminder rides a snail crawling a live MapLibre
+  basemap at real snail speed; the trail shows distance travelled and remaining.
+- **A collectible stable.** Hatch eggs into snail species (each with its own
+  speed, trail, and look), then rename and level them. New players start with a
+  Garden Snail and one unhatched egg.
+- **Slime economy + shop.** Deliveries and minigames pay out *slime*, the soft
+  currency spent on leveling, extra stable slots, eggs, and cosmetics.
+- **Game Corner.** Four pick-up minigames — Flappy Snail, 2048 Snail, Snail
+  Snake, and Salt Storm — reachable from a snail's detail page; scores pay out
+  slime and experience for that snail.
+- **To-dos, arrivals, settings.** A two-tier to-do model, an arrivals inbox, and
+  optional background re-aiming, under a bottom tab bar.
+- **Pixel + vibrant look.** A hybrid 8-bit / MapleStory visual language (see
+  [Design system](#design-system)).
 
 ## Local development
 
@@ -42,7 +54,7 @@ npm test
 npm run build
 ```
 
-Run the Phase 0 native dev build:
+Run the native dev build:
 
 ```sh
 npm run ios
@@ -52,6 +64,22 @@ npm run android
 
 MapLibre React Native is native code and does not run in Expo Go or on web — use
 a dev build (`npm run ios` / `npm run android`).
+
+### Standalone (release) build
+
+A dev build streams its JS from Metro on every launch. To get a build that runs
+**without a dev server** — the JS bundle is embedded and `EXPO_PUBLIC_*` values
+are inlined at build time — build the release variant straight onto a connected
+device:
+
+```sh
+npx expo run:android --variant release
+```
+
+The resulting APK (`android/app/build/outputs/apk/release/app-release.apk`) is a
+complete standalone app; install it on another device with `adb install -r
+<apk>`. It's signed with the debug keystore (fine for sideloading; a Play Store
+upload needs a real release keystore or EAS Build).
 
 ### Map basemap (important)
 
@@ -63,6 +91,13 @@ see the snail crawl on actual roads), set a free
 
 ```sh
 EXPO_PUBLIC_MAP_STYLE_URL=https://api.maptiler.com/maps/streets-v2/style.json?key=YOUR_MAPTILER_KEY
+```
+
+For the selectable Streets / Outdoor / Dark map skins in Settings, also set a
+bare MapTiler key:
+
+```sh
+EXPO_PUBLIC_MAPTILER_KEY=YOUR_MAPTILER_KEY
 ```
 
 Self-hosted Protomaps on Cloudflare R2 is the keyless, zero-egress option for
@@ -77,11 +112,29 @@ computer**, or keep it on USB and run `adb reverse tcp:8081 tcp:8081`. A white
 screen followed by an error almost always means Metro isn't running or isn't
 reachable — not a code problem.
 
+## Design system
+
+The UI is driven by a central token module in `src/theme/` (`colors`,
+`typography`, `spacing`, `radii`, `elevation`) — import tokens, never hardcode
+hex. The look is "hybrid pixel + vibrant": a bright candy palette on a light
+background with chunky borders, using **Press Start 2P** for titles, buttons, and
+scores and **Fredoka** for readable body text (both loaded via `useFonts` at app
+start). Shared UI idioms (`PixelButton`, `PixelUI`) live in `src/components/`.
+
+## Project structure
+
+- `src/journey/` — the pure journey/crawl engine (no I/O), unit-tested in isolation.
+- `src/useCases/` — application logic behind injectable ports (repository, clock,
+  push, location); the seam everything is tested through.
+- `src/screens/`, `src/components/`, `src/minigames/` — the React Native UI.
+- `src/theme/` — design tokens. `src/backend/` — Supabase adapters.
+- `specs/` — the constitution and feature specs (source of truth).
+
 ## Backend spine
 
-Issue #4 adds the Supabase foundation without requiring credentials for local
-demo mode. To exercise backend persistence, apply the migration in
-`supabase/migrations/` to a Supabase project and set:
+The Supabase foundation runs without credentials in local demo mode. To exercise
+backend persistence, apply the migrations in `supabase/migrations/` to a Supabase
+project and set:
 
 ```sh
 EXPO_PUBLIC_SUPABASE_URL=...
