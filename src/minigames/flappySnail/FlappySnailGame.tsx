@@ -59,11 +59,13 @@ export function FlappySnailGame({
   onExit,
   onResult,
   paused,
+  readmeScreenshotFrame = false,
   rewardLabel,
   snailSprite
 }: GameComponentProps & {
   autoStart?: boolean;
   paused?: boolean;
+  readmeScreenshotFrame?: boolean;
   rewardLabel?: (score: number) => string;
   snailSprite: ImageSourcePropType;
 }) {
@@ -85,6 +87,32 @@ export function FlappySnailGame({
   const [game, setGame] = useState<FlappyState>(() =>
     createInitialState(config)
   );
+  const readmeGame = useMemo<FlappyState>(
+    () => ({
+      best: 7,
+      distanceSinceSpawn: 96,
+      phase: "playing",
+      pipes: [
+        {
+          gapY: Math.round(config.height * 0.42),
+          passed: false,
+          x: Math.round(config.snailX + 142)
+        },
+        {
+          gapY: Math.round(config.height * 0.56),
+          passed: false,
+          x: Math.round(config.snailX + 362)
+        }
+      ],
+      score: 4,
+      seed: 0x9e3779b9,
+      snailY: Math.round(config.height * 0.38),
+      spin: 0,
+      tiltDeg: -12,
+      velocity: -2.5
+    }),
+    [config.height, config.snailX]
+  );
 
   useEffect(() => {
     onResultRef.current = onResult;
@@ -105,6 +133,10 @@ export function FlappySnailGame({
 
   // Fixed-step loop. On death we report the run up to the hub (XP + reward).
   useEffect(() => {
+    if (readmeScreenshotFrame) {
+      return undefined;
+    }
+
     let raf = 0;
     let mounted = true;
 
@@ -142,7 +174,7 @@ export function FlappySnailGame({
       mounted = false;
       cancelAnimationFrame(raf);
     };
-  }, [config, character.id]);
+  }, [config, character.id, readmeScreenshotFrame]);
 
   function handleTap() {
     if (stateRef.current.phase === "dead") {
@@ -157,9 +189,11 @@ export function FlappySnailGame({
     setGame(stateRef.current);
   }
 
-  const score = game.score;
+  const renderedGame = readmeScreenshotFrame ? readmeGame : game;
+  const score = renderedGame.score;
   const multiplier = scoreToSpeedMultiplier(score);
-  const tiltRad = (game.tiltDeg * Math.PI) / 180 + game.spin;
+  const tiltRad =
+    (renderedGame.tiltDeg * Math.PI) / 180 + renderedGame.spin;
   const groundY = config.height - config.groundHeight;
   // Size the flyer by the sprite's real aspect so different species sprites
   // aren't squished (each of Joseph's PNGs has its own dimensions).
@@ -178,7 +212,7 @@ export function FlappySnailGame({
           />
         </Rect>
 
-        {game.pipes.map((pipe, index) => {
+        {renderedGame.pipes.map((pipe, index) => {
           const topHeight = pipe.gapY - config.pipeGap / 2;
           const bottomY = pipe.gapY + config.pipeGap / 2;
           return (
@@ -198,7 +232,7 @@ export function FlappySnailGame({
         <Group
           transform={[
             { translateX: config.snailX },
-            { translateY: game.snailY },
+            { translateY: renderedGame.snailY },
             { rotate: tiltRad }
           ]}
         >
@@ -227,13 +261,13 @@ export function FlappySnailGame({
 
       <Pressable style={styles.fill} onPress={handleTap} />
 
-      {game.phase !== "ready" ? (
+      {renderedGame.phase !== "ready" ? (
         <Text style={styles.score} pointerEvents="none">
           {score}
         </Text>
       ) : null}
 
-      {game.phase === "ready" && !autoStart ? (
+      {renderedGame.phase === "ready" && !autoStart ? (
         <View style={styles.readyWrap} pointerEvents="none">
           <Text style={styles.title}>{character.name.toUpperCase()}</Text>
           <Text style={styles.subtitle}>{character.tagline}</Text>
@@ -241,7 +275,7 @@ export function FlappySnailGame({
         </View>
       ) : null}
 
-      {game.phase === "dead" ? (
+      {renderedGame.phase === "dead" ? (
         <View style={styles.overlay}>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Wings clipped</Text>

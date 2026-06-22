@@ -49,6 +49,7 @@ type MySnailsScreenProps = {
   onReleaseSnail: (snailId: string) => void;
   onSelectSnail: (snailId: string) => void;
   purchaseCatalog: PurchaseCatalogProduct[];
+  readmeDetailSnailId?: string;
   selectedCanLevel: boolean;
   selectedSnailId: string;
   stable: StableSnapshot;
@@ -65,13 +66,16 @@ export function MySnailsScreen({
   onReleaseSnail,
   onSelectSnail,
   purchaseCatalog,
+  readmeDetailSnailId,
   selectedCanLevel,
   selectedSnailId,
   slimeBalance,
   stable,
   unhatchedEggs
 }: MySnailsScreenProps) {
-  const [detailSnailId, setDetailSnailId] = useState<string | undefined>();
+  const [detailSnailId, setDetailSnailId] = useState<string | undefined>(
+    readmeDetailSnailId
+  );
   const [hatchingEggId, setHatchingEggId] = useState<string | undefined>();
   const [fullStablePromptVisible, setFullStablePromptVisible] = useState(false);
   const [shopVisible, setShopVisible] = useState(false);

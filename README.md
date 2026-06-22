@@ -1,8 +1,29 @@
+<p align="center">
+  <img src="assets/readme/snail-standoff-banner.png" alt="Three snails facing Garden Snail" width="100%">
+</p>
+
 # Carrier Snail
 
 Carrier Snail is an Expo/React Native app where reminders crawl across a real
 map at snail speed. The constitution in `specs/` is the source of truth; the
 Delivery Floor must never be bypassed.
+
+## App preview
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/readme/screenshots/intro.png" alt="Intro overlay with Get Started button" width="210"><br><strong>Intro</strong></td>
+    <td align="center"><img src="assets/readme/screenshots/map.png" alt="Map with an in-transit snail and trail details" width="210"><br><strong>Map</strong></td>
+    <td align="center"><img src="assets/readme/screenshots/snails.png" alt="My Snails inventory with several species" width="210"><br><strong>My Snails</strong></td>
+    <td align="center"><img src="assets/readme/screenshots/snail-detail.png" alt="Red Bull Snail detail page" width="210"><br><strong>Snail Details</strong></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/readme/screenshots/flappy.png" alt="Flappy Snail mid-game screenshot" width="210"><br><strong>Flappy Snail</strong></td>
+    <td align="center"><img src="assets/readme/screenshots/todos.png" alt="Populated To Dos list" width="210"><br><strong>To Dos</strong></td>
+    <td align="center"><img src="assets/readme/screenshots/notifications.png" alt="Populated notifications inbox" width="210"><br><strong>Notifications</strong></td>
+    <td align="center"><img src="assets/readme/screenshots/settings.png" alt="Settings page" width="210"><br><strong>Settings</strong></td>
+  </tr>
+</table>
 
 ## Local development
 

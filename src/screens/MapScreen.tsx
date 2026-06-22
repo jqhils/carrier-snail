@@ -93,6 +93,10 @@ import {
   listStableSnails,
   type CarrierState
 } from "../useCases/localCarrierState";
+import {
+  createReadmeMapScreenshotConfig,
+  type ReadmeScreenshotId
+} from "../readmeScreenshots";
 import { buildJourneyWatchState } from "../useCases/watchJourneyState";
 import { loadBackendJourneyState } from "../useCases/loadBackendJourneyState";
 import {
@@ -156,6 +160,7 @@ type MapScreenProps = {
   onGameActiveChange: (active: boolean) => void;
   onOnboardingVisibleChange: (visible: boolean) => void;
   onUnseenNotificationsChange: (hasUnseen: boolean) => void;
+  readmeScreenshotId?: ReadmeScreenshotId;
 };
 
 export function MapScreen({
@@ -163,18 +168,39 @@ export function MapScreen({
   completeOnboardingSignal,
   onGameActiveChange,
   onOnboardingVisibleChange,
-  onUnseenNotificationsChange
+  onUnseenNotificationsChange,
+  readmeScreenshotId
 }: MapScreenProps) {
-  const [target, setTarget] = useState<Coordinate>(MOCK_RESTING_POINT);
-  const [locationLabel, setLocationLabel] = useState("Mock resting point");
+  const readmeScreenshotConfig = useMemo(
+    () =>
+      readmeScreenshotId
+        ? createReadmeMapScreenshotConfig(readmeScreenshotId)
+        : undefined,
+    [readmeScreenshotId]
+  );
+  const initialDetailsCollapsed =
+    !readmeScreenshotConfig?.expandMapDetails;
+  const [target, setTarget] = useState<Coordinate>(
+    () => readmeScreenshotConfig?.target ?? MOCK_RESTING_POINT
+  );
+  const [locationLabel, setLocationLabel] = useState(
+    () => readmeScreenshotConfig?.locationLabel ?? "Mock resting point"
+  );
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
   const [selectedMapSkinId, setSelectedMapSkinId] =
-    useState<MapSkinId>(DEFAULT_MAP_SKIN_ID);
-  const [detailsCollapsed, setDetailsCollapsed] = useState(true);
+    useState<MapSkinId>(
+      () => readmeScreenshotConfig?.selectedMapSkinId ?? DEFAULT_MAP_SKIN_ID
+    );
+  const [detailsCollapsed, setDetailsCollapsed] = useState(
+    initialDetailsCollapsed
+  );
   const [sheetTranslateY] = useState(
-    () => new Animated.Value(SHEET_COLLAPSED_OFFSET)
+    () =>
+      new Animated.Value(
+        initialDetailsCollapsed ? SHEET_COLLAPSED_OFFSET : 0
+      )
   );
   const [sheetDrag] = useState(() => ({ start: 0 }));
   const snapSheet = useCallback(
@@ -221,7 +247,9 @@ export function MapScreen({
     [detailsCollapsed, sheetDrag, sheetTranslateY, snapSheet]
   );
   const cameraRef = useRef<CameraRef>(null);
-  const [hasLocationFix, setHasLocationFix] = useState(false);
+  const [hasLocationFix, setHasLocationFix] = useState(
+    Boolean(readmeScreenshotConfig)
+  );
   const mapStyleUrl = useMemo(
     () =>
       buildMapStyleUrl({
@@ -248,7 +276,7 @@ export function MapScreen({
     });
   }
   const [carrierState, setCarrierState] = useState(() =>
-    createInitialCarrierState()
+    readmeScreenshotConfig?.carrierState ?? createInitialCarrierState()
   );
   const [toDoText, setToDoText] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | undefined>(
@@ -257,7 +285,7 @@ export function MapScreen({
   const [editingTodoText, setEditingTodoText] = useState("");
   const [formError, setFormError] = useState("");
   const [requestedSelectedSnailId, setRequestedSelectedSnailId] =
-    useState("garden-1");
+    useState(readmeScreenshotConfig?.selectedSnailId ?? "garden-1");
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null
   );
@@ -266,13 +294,17 @@ export function MapScreen({
     useState<BackgroundLocationMode>("foreground-only");
   const [selectedWatchJourneyId, setSelectedWatchJourneyId] = useState<
     string | null | undefined
-  >(undefined);
+  >(readmeScreenshotConfig?.selectedJourneyId);
   const [watchScrubProgress, setWatchScrubProgress] = useState<
     number | undefined
   >(undefined);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(
+    () => readmeScreenshotConfig?.nowMs ?? Date.now()
+  );
   const [gameActive, setGameActive] = useState(false);
-  const [requestedWarp, setRequestedWarp] = useState(100000);
+  const [requestedWarp, setRequestedWarp] = useState(
+    readmeScreenshotConfig ? 1 : 100000
+  );
   const allowedWarps = getAllowedTimeWarpFactors(RUNTIME_MODE);
   const timeWarpFactor = coerceTimeWarpFactor(requestedWarp, RUNTIME_MODE);
   const stable = useMemo(
@@ -391,6 +423,10 @@ export function MapScreen({
   }, [carrierState, persistNextCarrierState]);
 
   useEffect(() => {
+    if (readmeScreenshotConfig) {
+      return undefined;
+    }
+
     let cancelled = false;
 
     AsyncStorage.getItem(MAP_SKIN_STORAGE_KEY)
@@ -410,9 +446,13 @@ export function MapScreen({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [readmeScreenshotConfig]);
 
   useEffect(() => {
+    if (readmeScreenshotConfig) {
+      return undefined;
+    }
+
     let cancelled = false;
     let subscription: Location.LocationSubscription | undefined;
     let centeredOnFirstFix = false;
@@ -472,9 +512,13 @@ export function MapScreen({
       cancelled = true;
       subscription?.remove();
     };
-  }, [mapDefaultZoom]);
+  }, [mapDefaultZoom, readmeScreenshotConfig]);
 
   useEffect(() => {
+    if (readmeScreenshotConfig) {
+      return undefined;
+    }
+
     const supabase = createCarrierSupabaseClient();
 
     if (!supabase) {
@@ -535,9 +579,13 @@ export function MapScreen({
       cancelled = true;
       uninstallAutoRefresh();
     };
-  }, []);
+  }, [readmeScreenshotConfig]);
 
   useEffect(() => {
+    if (readmeScreenshotConfig) {
+      return undefined;
+    }
+
     if (!backendSession) {
       return undefined;
     }
@@ -568,7 +616,7 @@ export function MapScreen({
     return () => {
       cancelled = true;
     };
-  }, [backendSession, target]);
+  }, [backendSession, readmeScreenshotConfig, target]);
 
   const watchState = useMemo(
     () =>
@@ -635,7 +683,7 @@ export function MapScreen({
     // While a game is open, stop ticking the map: every tick re-renders the
     // whole MapScreen tree (and the game mounted inside it). The backend is the
     // source of truth, so journeys catch up when the game closes.
-    if (gameActive) {
+    if (gameActive || readmeScreenshotConfig) {
       return;
     }
     const interval = setInterval(() => {
@@ -665,7 +713,13 @@ export function MapScreen({
     }, 250);
 
     return () => clearInterval(interval);
-  }, [backendSession, gameActive, pushSender, timeWarpFactor]);
+  }, [
+    backendSession,
+    gameActive,
+    pushSender,
+    readmeScreenshotConfig,
+    timeWarpFactor
+  ]);
 
   useEffect(() => {
     onUnseenNotificationsChange(hasUnseenArrivals(carrierState));
@@ -679,6 +733,40 @@ export function MapScreen({
       target: crawl.target
     })
   }));
+
+  useEffect(() => {
+    if (!readmeScreenshotConfig?.fitMapToJourney || !selectedWatchJourney) {
+      return undefined;
+    }
+
+    const coordinates = [
+      selectedWatchJourney.start,
+      ...selectedWatchJourney.trailHistory.map(({ coordinate }) => coordinate),
+      selectedWatchJourney.preview.coordinate,
+      selectedWatchJourney.target
+    ];
+    const longitudes = coordinates.map(({ longitude }) => longitude);
+    const latitudes = coordinates.map(({ latitude }) => latitude);
+    const bounds: [number, number, number, number] = [
+      Math.min(...longitudes),
+      Math.min(...latitudes),
+      Math.max(...longitudes),
+      Math.max(...latitudes)
+    ];
+    const timer = setTimeout(() => {
+      cameraRef.current?.fitBounds(bounds, {
+        duration: 0,
+        padding: {
+          bottom: SHEET_EXPANDED_HEIGHT + 28,
+          left: 42,
+          right: 42,
+          top: 72
+        }
+      });
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [mapStatus, readmeScreenshotConfig, selectedWatchJourney]);
 
   function cycleWarp() {
     const currentIndex = allowedWarps.indexOf(timeWarpFactor);
@@ -1518,6 +1606,7 @@ export function MapScreen({
           }}
           onSelectSnail={setRequestedSelectedSnailId}
           purchaseCatalog={purchaseCatalog}
+          readmeDetailSnailId={readmeScreenshotConfig?.detailSnailId}
           selectedCanLevel={selectedCanLevel}
           selectedSnailId={selectedSnailId}
           stable={stable}
